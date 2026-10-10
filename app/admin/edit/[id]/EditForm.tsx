@@ -9,14 +9,19 @@ export default function EditForm({ article }: { article: any }) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState('');
 
-  // Format date for datetime-local input (YYYY-MM-DDTHH:mm)
+  // Format date for datetime-local input (YYYY-MM-DDTHH:mm) in Local Time
   const formatForInput = (dateString: string | Date | null) => {
     if (!dateString) return '';
     const date = new Date(dateString);
-    // Adjust for local timezone offset
-    const offset = date.getTimezoneOffset() * 60000;
-    const localDate = new Date(date.getTime() - offset);
-    return localDate.toISOString().slice(0, 16);
+    if (isNaN(date.getTime())) return '';
+    
+    const yyyy = date.getFullYear();
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const dd = String(date.getDate()).padStart(2, '0');
+    const hh = String(date.getHours()).padStart(2, '0');
+    const min = String(date.getMinutes()).padStart(2, '0');
+    
+    return `${yyyy}-${mm}-${dd}T${hh}:${min}`;
   };
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {

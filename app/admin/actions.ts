@@ -148,14 +148,17 @@ export async function updateArticle(id: number, formData: FormData) {
     const publishAtStr = formData.get('publishAt') as string;
     const content = formData.get('content') as string;
 
-    const publishAt = publishAtStr ? new Date(publishAtStr) : null;
+    // Ganti 'T' menjadi spasi agar node.js selalu mem-parsingnya sebagai Waktu Lokal, bukan UTC.
+    const safePublishAtStr = publishAtStr ? publishAtStr.replace('T', ' ') : '';
+    const publishAt = safePublishAtStr ? new Date(safePublishAtStr) : null;
+    
     let status = 'draft';
     let publishedAt = null;
 
     if (publishAt) {
       if (publishAt <= new Date()) {
         status = 'published';
-        publishedAt = new Date(); // If backdated, set publishedAt to now, or maybe preserve old one? Let's just update.
+        publishedAt = new Date(); // If backdated, set publishedAt to now
       } else {
         status = 'scheduled';
       }
