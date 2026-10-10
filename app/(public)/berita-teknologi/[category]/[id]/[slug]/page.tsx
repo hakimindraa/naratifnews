@@ -130,7 +130,7 @@ export default async function ArticlePage({
               <div>
                 <div className="font-bold text-gray-900">{article.author} - Naratif</div>
                 <div className="text-gray-500 text-sm">
-                  {article.publishedAt ? format(new Date(article.publishedAt), 'EEEE, dd MMM yyyy HH:mm', { locale: idLocale }) : '-'} WIB
+                  {article.publishedAt ? new Date(article.publishedAt).toLocaleString('id-ID', { weekday: 'long', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' }).replace(' pukul', '') : '-'} WIB
                 </div>
               </div>
             </div>

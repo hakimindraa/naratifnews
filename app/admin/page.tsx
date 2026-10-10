@@ -94,7 +94,7 @@ Konten berita kedua Anda di sini...`}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap flex items-center gap-2">
                       <Clock className="w-4 h-4 text-gray-400" />
-                      {article.publishAt ? new Date(article.publishAt).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short'}) : '-'}
+                      {article.publishAt ? new Date(article.publishAt).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Jakarta'}) + ' WIB' : '-'}
                     </td>
                     <td className="px-6 py-4 text-right flex justify-end items-center gap-1">
                       <a href={`/admin/edit/${article.id}`} className="text-gray-400 hover:text-blue-600 p-2 transition-colors" title="Edit Artikel">

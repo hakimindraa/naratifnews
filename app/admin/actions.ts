@@ -58,7 +58,16 @@ export async function uploadMarkdownFile(formData: FormData) {
         let publishedAt = null;
 
         if (data.publish_at) {
-          publishAt = new Date(data.publish_at);
+          // Pastikan selalu dibaca sebagai WIB (UTC+7) jika tidak ada informasi timezone
+          let pStr = String(data.publish_at).trim();
+          if (!pStr.includes('+') && !pStr.endsWith('Z')) {
+            // Jika dipisah spasi atau T
+            if (pStr.includes(' ')) {
+              pStr = pStr.replace(' ', 'T');
+            }
+            pStr += '+07:00';
+          }
+          publishAt = new Date(pStr);
           if (publishAt <= new Date()) {
             status = 'published';
             publishedAt = new Date(); // terbit sekarang
@@ -148,8 +157,8 @@ export async function updateArticle(id: number, formData: FormData) {
     const publishAtStr = formData.get('publishAt') as string;
     const content = formData.get('content') as string;
 
-    // Ganti 'T' menjadi spasi agar node.js selalu mem-parsingnya sebagai Waktu Lokal, bukan UTC.
-    const safePublishAtStr = publishAtStr ? publishAtStr.replace('T', ' ') : '';
+    // Ganti 'T' menjadi spasi dan tambahkan UTC+7 (WIB) agar tidak dianggap UTC oleh server Vercel
+    const safePublishAtStr = publishAtStr ? publishAtStr.replace('T', ' ') + '+07:00' : '';
     const publishAt = safePublishAtStr ? new Date(safePublishAtStr) : null;
     
     let status = 'draft';
