@@ -1,0 +1,21 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+  --font-sans: var(--font-inter);
+  --font-heading: var(--font-jakarta);
+}
+
+:root {
+  --background: #ffffff;
+  --foreground: #111111;
+  color-scheme: light;
+}
+
+body {
+  background-color: var(--background) !important;
+  color: var(--foreground) !important;
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+}
+
