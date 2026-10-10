@@ -64,7 +64,7 @@ export default async function CategoryPage({
             ) : (
               categoryArticles.map((article) => (
                 <div key={article.id} className="group cursor-pointer flex flex-col sm:flex-row gap-6 pb-8 border-b border-gray-100 last:border-0">
-                  <Link href={`/${category.toLowerCase()}/${article.id}/${article.slug}`} className="sm:w-1/3 shrink-0">
+                  <Link href={`/berita-teknologi/${category.toLowerCase()}/${article.id}/${article.slug}`} className="sm:w-1/3 shrink-0">
                     <div className="relative w-full h-48 sm:h-32 overflow-hidden rounded-xl shadow-sm">
                       <img
                         src={article.coverUrl || ''}
@@ -78,7 +78,7 @@ export default async function CategoryPage({
                       {article.category}
                     </div>
                     <h2 className="text-xl font-bold font-heading text-gray-900 group-hover:text-blue-700 transition-colors line-clamp-2 mb-2 leading-snug">
-                      <Link href={`/${category.toLowerCase()}/${article.id}/${article.slug}`}>{article.title}</Link>
+                      <Link href={`/berita-teknologi/${category.toLowerCase()}/${article.id}/${article.slug}`}>{article.title}</Link>
                     </h2>
                     <p className="text-gray-600 text-sm line-clamp-2 mb-3 flex-grow">
                       {article.excerpt}
@@ -115,7 +115,7 @@ export default async function CategoryPage({
                         {article.category}
                       </div>
                       <h4 className="font-bold text-gray-900 group-hover:text-blue-700 transition-colors line-clamp-2 text-sm leading-snug">
-                        <Link href={`/${article.category.toLowerCase()}/${article.id}/${article.slug}`}>{article.title}</Link>
+                        <Link href={`/berita-teknologi/${article.category.toLowerCase()}/${article.id}/${article.slug}`}>{article.title}</Link>
                       </h4>
                     </div>
                   </div>

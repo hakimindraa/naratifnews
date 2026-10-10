@@ -17,7 +17,8 @@ export default async function Home() {
     .limit(10);
 
   const featuredArticle = publishedArticles.length > 0 ? publishedArticles[0] : null;
-  const latestArticles = publishedArticles.slice(1, 5);
+  const bacaJugaArticles = publishedArticles.slice(1, 3);
+  const latestArticles = publishedArticles.slice(3, 7);
   // Untuk populer, sementara kita ambil dari urutan 5-10
   const popularArticles = publishedArticles.slice(5, 10);
 
@@ -32,37 +33,57 @@ export default async function Home() {
 
       {featuredArticle && (
         <div className="flex flex-col lg:flex-row gap-8">
-          {/* Main Featured Article */}
+          {/* Main Featured Article with Baca Juga */}
           <div className="lg:w-2/3 flex flex-col">
             <div className="flex-grow">
-              <Link href={`/${featuredArticle.category.toLowerCase()}/${featuredArticle.id}/${featuredArticle.slug}`} className="relative block w-full h-[320px] sm:h-[450px] lg:h-[500px] bg-gray-100 overflow-hidden rounded-xl mb-5 shadow-sm group">
-                <img
-                  src={featuredArticle.coverUrl || ''}
-                  alt={featuredArticle.title}
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent"></div>
-                
-                <div className="absolute bottom-0 left-0 right-0 p-5 sm:p-8">
-                  <div className="mb-3">
-                    <span className="bg-blue-600 text-white text-[10px] sm:text-xs font-bold uppercase tracking-wider px-2.5 py-1 rounded-sm shadow-md">
+              <div className="flex flex-col w-full bg-white border border-gray-100 overflow-hidden rounded-xl mb-5 shadow-sm group">
+                <Link href={`/berita-teknologi/${featuredArticle.category.toLowerCase()}/${featuredArticle.id}/${featuredArticle.slug}`} className="w-full relative overflow-hidden bg-gray-50 aspect-video block">
+                  <img
+                    src={featuredArticle.coverUrl || ''}
+                    alt={featuredArticle.title}
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                  />
+                </Link>
+
+                <div className="p-5 sm:p-8 flex flex-col justify-center bg-white relative z-10">
+                  <div className="mb-4">
+                    <span className="bg-blue-600 text-white text-[10px] sm:text-xs font-bold uppercase tracking-wider px-2.5 py-1 rounded-sm shadow-sm">
                       {featuredArticle.category}
                     </span>
                   </div>
-                  <h2 className="text-2xl sm:text-4xl lg:text-5xl font-bold font-heading text-white group-hover:text-blue-100 transition-colors mb-2 leading-tight line-clamp-3">
-                    {featuredArticle.title}
-                  </h2>
-                  <div className="flex items-center text-xs sm:text-sm text-gray-300 font-medium">
-                    <span className="font-bold text-gray-100">{featuredArticle.author}</span>
+                  <Link href={`/berita-teknologi/${featuredArticle.category.toLowerCase()}/${featuredArticle.id}/${featuredArticle.slug}`}>
+                    <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold font-heading text-gray-900 group-hover:text-blue-700 transition-colors mb-3 leading-tight line-clamp-3">
+                      {featuredArticle.title}
+                    </h2>
+                  </Link>
+                  <div className="flex items-center text-xs sm:text-sm text-gray-500 font-medium mt-1 mb-5">
+                    <span className="font-bold text-gray-800">{featuredArticle.author}</span>
                     <span className="mx-2">•</span>
                     <span>
-                      {featuredArticle.publishedAt 
+                      {featuredArticle.publishedAt
                         ? formatDistanceToNow(new Date(featuredArticle.publishedAt), { addSuffix: true, locale: id })
                         : ''}
                     </span>
                   </div>
+
+                  {/* BACA JUGA */}
+                  {bacaJugaArticles.length > 0 && (
+                    <div className="mt-4 pt-4 sm:pt-5 border-t border-dashed border-gray-200">
+                        <div className="text-[10px] sm:text-xs font-black text-red-600 uppercase tracking-widest mb-2 sm:mb-3">Baca Juga</div>
+                        <ul className="space-y-2 sm:space-y-3">
+                          {bacaJugaArticles.map(bj => (
+                            <li key={bj.id} className="group/link">
+                              <Link href={`/berita-teknologi/${bj.category.toLowerCase()}/${bj.id}/${bj.slug}`} className="flex items-start gap-1.5 sm:gap-2">
+                                <svg className="w-4 h-4 sm:w-5 sm:h-5 text-red-500 shrink-0 mt-0.5 sm:mt-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
+                                <span className="text-sm sm:text-base font-bold text-gray-800 group-hover/link:text-blue-600 transition-colors line-clamp-2 leading-snug">{bj.title}</span>
+                              </Link>
+                            </li>
+                          ))}
+                        </ul>
+                    </div>
+                  )}
                 </div>
-              </Link>
+              </div>
             </div>
           </div>
 
@@ -86,7 +107,7 @@ export default async function Home() {
                         {article.category}
                       </div>
                       <h4 className="font-bold text-gray-900 group-hover:text-blue-700 transition-colors line-clamp-2 text-base leading-snug">
-                        <Link href={`/${article.category.toLowerCase()}/${article.id}/${article.slug}`}>{article.title}</Link>
+                        <Link href={`/berita-teknologi/${article.category.toLowerCase()}/${article.id}/${article.slug}`}>{article.title}</Link>
                       </h4>
                     </div>
                   </div>
@@ -104,23 +125,23 @@ export default async function Home() {
             <h3 className="text-2xl font-bold font-heading text-gray-900">Berita Terbaru</h3>
             <div className="ml-4 flex-grow h-px bg-gray-200"></div>
           </div>
-          
-          <div className="flex flex-col gap-5 sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:gap-x-6 sm:gap-y-10">
+
+          <div className="grid grid-cols-2 gap-4 sm:gap-x-6 sm:gap-y-10 lg:grid-cols-4">
             {latestArticles.map((article) => (
               <div key={article.id} className="group cursor-pointer">
-                <Link href={`/${article.category.toLowerCase()}/${article.id}/${article.slug}`} className="flex flex-row sm:flex-col gap-4 sm:gap-0 sm:h-full items-center sm:items-start">
-                  
+                <Link href={`/berita-teknologi/${article.category.toLowerCase()}/${article.id}/${article.slug}`} className="flex flex-col gap-2 sm:gap-0 sm:h-full items-start">
+
                   {/* Thumbnail Image */}
-                  <div className="relative w-1/3 sm:w-full aspect-[4/3] sm:h-48 sm:aspect-auto bg-gray-100 overflow-hidden rounded-lg sm:rounded-xl sm:mb-4 shadow-sm shrink-0">
+                  <div className="relative w-full aspect-[4/3] sm:h-48 sm:aspect-auto bg-gray-100 overflow-hidden rounded-lg sm:rounded-xl mb-2 sm:mb-4 shadow-sm shrink-0">
                     <img
                       src={article.coverUrl || ''}
                       alt={article.title}
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                     />
                   </div>
-                  
+
                   {/* Text Content */}
-                  <div className="flex flex-col w-2/3 sm:w-full justify-center sm:justify-start">
+                  <div className="flex flex-col w-full justify-start">
                     <div className="text-blue-600 text-[10px] sm:text-xs font-bold uppercase tracking-wider mb-1 sm:mb-2">
                       {article.category}
                     </div>
@@ -128,7 +149,7 @@ export default async function Home() {
                       {article.title}
                     </h4>
                     <div className="text-[10px] sm:text-xs text-gray-500 font-medium sm:mt-auto">
-                      {article.publishedAt 
+                      {article.publishedAt
                         ? formatDistanceToNow(new Date(article.publishedAt), { addSuffix: true, locale: id })
                         : ''}
                     </div>

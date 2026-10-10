@@ -20,6 +20,37 @@ export default async function AdminDashboard() {
         <UploadButton />
       </div>
 
+      <div className="bg-blue-50 p-6 rounded-xl border border-blue-100">
+        <h2 className="text-blue-900 font-bold mb-2 flex items-center gap-2">
+          <FileText className="w-5 h-5" />
+          Panduan Upload Banyak Artikel Sekaligus (Bulk Upload)
+        </h2>
+        <p className="text-sm text-blue-800 mb-4">
+          Anda bisa mengunggah puluhan artikel sekaligus hanya dalam 1 file <code>.md</code>. Cukup pisahkan tiap artikel dengan kata <strong>---SPLIT---</strong> di baris baru. Silakan <i>copy</i> template ini:
+        </p>
+        <pre className="bg-[#0f172a] text-blue-50 p-4 rounded-lg text-sm overflow-x-auto font-mono">
+{`---
+title: "Judul Berita Pertama"
+slug: "judul-berita-pertama"
+category: "Software"
+cover: "https://linkgambar.com/gambar1.jpg"
+publish_at: "2026-10-12 07:00"
+---
+Konten berita pertama Anda di sini...
+
+---SPLIT---
+
+---
+title: "Judul Berita Kedua"
+slug: "judul-berita-kedua"
+category: "Hardware"
+cover: "https://linkgambar.com/gambar2.jpg"
+publish_at: "2026-10-12 15:00"
+---
+Konten berita kedua Anda di sini...`}
+        </pre>
+      </div>
+
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="p-6 border-b border-gray-200">
           <h2 className="text-lg font-bold text-gray-900">Daftar Artikel ({dbArticles.length})</h2>

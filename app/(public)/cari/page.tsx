@@ -85,7 +85,7 @@ export default async function SearchPage({
 
             {searchResults.map((article) => (
               <div key={article.id} className="group cursor-pointer flex flex-col sm:flex-row gap-5 pb-6 border-b border-gray-100 last:border-0">
-                <Link href={`/${article.category.toLowerCase()}/${article.id}/${article.slug}`} className="sm:w-1/3 shrink-0">
+                <Link href={`/berita-teknologi/${article.category.toLowerCase()}/${article.id}/${article.slug}`} className="sm:w-1/3 shrink-0">
                   <div className="relative w-full h-40 sm:h-28 overflow-hidden rounded-lg shadow-sm">
                     <img
                       src={article.coverUrl || ''}
@@ -99,7 +99,7 @@ export default async function SearchPage({
                     {article.category}
                   </div>
                   <h3 className="text-lg font-bold font-heading text-gray-900 group-hover:text-blue-700 transition-colors line-clamp-2 mb-2 leading-snug">
-                    <Link href={`/${article.category.toLowerCase()}/${article.id}/${article.slug}`}>{article.title}</Link>
+                    <Link href={`/berita-teknologi/${article.category.toLowerCase()}/${article.id}/${article.slug}`}>{article.title}</Link>
                   </h3>
                   <div className="text-xs text-gray-500 font-medium mt-auto">
                      {article.publishedAt ? formatDistanceToNow(new Date(article.publishedAt), { addSuffix: true, locale: idLocale }) : ''}
@@ -132,7 +132,7 @@ export default async function SearchPage({
                         {pop.category}
                       </div>
                       <h4 className="font-bold text-gray-900 group-hover:text-blue-700 transition-colors line-clamp-2 text-sm leading-snug">
-                        <Link href={`/${pop.category.toLowerCase()}/${pop.id}/${pop.slug}`}>{pop.title}</Link>
+                        <Link href={`/berita-teknologi/${pop.category.toLowerCase()}/${pop.id}/${pop.slug}`}>{pop.title}</Link>
                       </h4>
                     </div>
                   </div>

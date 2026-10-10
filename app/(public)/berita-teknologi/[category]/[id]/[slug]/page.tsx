@@ -9,8 +9,67 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeSanitize from 'rehype-sanitize';
 import { notFound } from "next/navigation";
+import { Metadata } from "next";
 
 export const instant = false;
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ category: string; id: string; slug: string }>;
+}): Promise<Metadata> {
+  const { category, id: paramId, slug } = await params;
+  const articleId = parseInt(paramId, 10);
+  
+  if (isNaN(articleId)) {
+    return { title: 'Not Found' };
+  }
+
+  const [article] = await db
+    .select()
+    .from(articles)
+    .where(eq(articles.id, articleId))
+    .limit(1);
+
+  if (!article) {
+    return { title: 'Not Found' };
+  }
+
+  // Buat deskripsi singkat dari konten (hapus karakter markdown dasar dan ambil 160 karakter pertama)
+  const plainTextContent = article.content.replace(/[#*`_\[\]()]/g, ' ').replace(/\s+/g, ' ').substring(0, 160).trim() + '...';
+  
+  // URL lengkap artikel (bisa disesuaikan dengan domain asli nantinya)
+  const articleUrl = `https://naratif.com/berita-teknologi/${category}/${articleId}/${slug}`;
+
+  return {
+    title: `${article.title} - Naratif Tekno`,
+    description: plainTextContent,
+    openGraph: {
+      title: article.title,
+      description: plainTextContent,
+      url: articleUrl,
+      siteName: 'Naratif Tekno',
+      images: [
+        {
+          url: article.coverUrl || '', // WhatsApp/Facebook akan mengambil gambar ini
+          width: 1200,
+          height: 630,
+          alt: article.title,
+        },
+      ],
+      locale: 'id_ID',
+      type: 'article',
+      publishedTime: article.publishedAt ? new Date(article.publishedAt).toISOString() : undefined,
+      authors: [article.author || 'Redaksi Naratif'],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: article.title,
+      description: plainTextContent,
+      images: [article.coverUrl || ''],
+    },
+  };
+}
 
 export default async function ArticlePage({
   params,
@@ -29,12 +88,7 @@ export default async function ArticlePage({
   const [article] = await db
     .select()
     .from(articles)
-    .where(
-      and(
-        eq(articles.id, articleId),
-        eq(articles.slug, slug)
-      )
-    )
+    .where(eq(articles.id, articleId))
     .limit(1);
 
   if (!article) {
@@ -55,7 +109,7 @@ export default async function ArticlePage({
       <nav className="flex text-sm text-gray-500 mb-6 items-center">
         <Link href="/" className="hover:text-blue-600 transition-colors">Home</Link>
         <ChevronRight className="w-4 h-4 mx-2" />
-        <Link href={`/${category}`} className="hover:text-blue-600 transition-colors">{article.category}</Link>
+        <Link href={`/berita-teknologi/${category}`} className="hover:text-blue-600 transition-colors">{article.category}</Link>
         <ChevronRight className="w-4 h-4 mx-2" />
         <span className="text-gray-900 truncate max-w-xs sm:max-w-md">{article.title}</span>
       </nav>
@@ -99,7 +153,7 @@ export default async function ArticlePage({
 
           {article.coverUrl && (
             <div className="w-full mb-8">
-              <div className="relative w-full h-[300px] sm:h-[450px] rounded-xl overflow-hidden shadow-sm mb-3 bg-gray-100">
+              <div className="relative w-full aspect-video rounded-xl overflow-hidden shadow-sm mb-3 bg-gray-50">
                 <img src={article.coverUrl} alt={article.title} className="w-full h-full object-cover" />
               </div>
               {article.coverCaption && (
@@ -163,7 +217,7 @@ export default async function ArticlePage({
                         {pop.category}
                       </div>
                       <h4 className="font-bold text-gray-900 group-hover:text-blue-700 transition-colors line-clamp-2 text-sm leading-snug">
-                        <Link href={`/${pop.category.toLowerCase()}/${pop.id}/${pop.slug}`}>{pop.title}</Link>
+                        <Link href={`/berita-teknologi/${pop.category.toLowerCase()}/${pop.id}/${pop.slug}`}>{pop.title}</Link>
                       </h4>
                     </div>
                   </div>
