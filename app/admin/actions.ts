@@ -99,3 +99,58 @@ export async function uploadMarkdownFile(formData: FormData) {
     return { error: error.message || 'Terjadi kesalahan saat menyimpan artikel.' };
   }
 }
+
+export async function deleteArticle(id: number) {
+  try {
+    await db.delete(articles).where(eq(articles.id, id));
+    revalidatePath('/', 'layout');
+    return { success: true };
+  } catch (error) {
+    return { error: 'Gagal menghapus artikel' };
+  }
+}
+
+export async function updateArticle(id: number, formData: FormData) {
+  try {
+    const title = formData.get('title') as string;
+    const slug = formData.get('slug') as string;
+    const category = formData.get('category') as string;
+    const excerpt = formData.get('excerpt') as string;
+    const coverUrl = formData.get('coverUrl') as string;
+    const publishAtStr = formData.get('publishAt') as string;
+    const content = formData.get('content') as string;
+
+    const publishAt = publishAtStr ? new Date(publishAtStr) : null;
+    let status = 'draft';
+    let publishedAt = null;
+
+    if (publishAt) {
+      if (publishAt <= new Date()) {
+        status = 'published';
+        publishedAt = new Date(); // If backdated, set publishedAt to now, or maybe preserve old one? Let's just update.
+      } else {
+        status = 'scheduled';
+      }
+    }
+
+    await db.update(articles)
+      .set({
+        title,
+        slug,
+        category,
+        excerpt,
+        coverUrl,
+        content,
+        publishAt,
+        publishedAt,
+        status,
+        updatedAt: new Date(),
+      })
+      .where(eq(articles.id, id));
+
+    revalidatePath('/', 'layout');
+    return { success: true };
+  } catch (error) {
+    return { error: 'Gagal mengupdate artikel' };
+  }
+}

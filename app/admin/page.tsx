@@ -1,5 +1,6 @@
 import { FileText, Clock, Settings, Trash2 } from "lucide-react";
 import UploadButton from "./UploadButton";
+import DeleteButton from "./DeleteButton";
 import { db } from "@/db";
 import { articles } from "@/db/schema";
 import { desc } from "drizzle-orm";
@@ -64,13 +65,11 @@ export default async function AdminDashboard() {
                       <Clock className="w-4 h-4 text-gray-400" />
                       {article.publishAt ? new Date(article.publishAt).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short'}) : '-'}
                     </td>
-                    <td className="px-6 py-4 text-right">
-                      <button className="text-gray-400 hover:text-blue-600 p-2 transition-colors">
+                    <td className="px-6 py-4 text-right flex justify-end items-center gap-1">
+                      <a href={`/admin/edit/${article.id}`} className="text-gray-400 hover:text-blue-600 p-2 transition-colors" title="Edit Artikel">
                         <Settings className="w-4 h-4" />
-                      </button>
-                      <button className="text-gray-400 hover:text-red-600 p-2 transition-colors">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      </a>
+                      <DeleteButton id={article.id} title={article.title} />
                     </td>
                   </tr>
                 ))
