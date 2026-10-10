@@ -36,7 +36,7 @@ export default async function Home() {
           <div className="lg:w-2/3 flex flex-col">
             <div className="group cursor-pointer flex-grow">
               <Link href={`/${featuredArticle.category.toLowerCase()}/${featuredArticle.id}/${featuredArticle.slug}`}>
-                <div className="relative w-full h-[400px] sm:h-[500px] overflow-hidden rounded-xl mb-5 shadow-sm">
+                <div className="relative w-full h-[250px] sm:h-[400px] lg:h-[500px] bg-gray-100 overflow-hidden rounded-xl mb-5 shadow-sm">
                   <img
                     src={featuredArticle.coverUrl || ''}
                     alt={featuredArticle.title}
@@ -110,7 +110,7 @@ export default async function Home() {
             {latestArticles.map((article) => (
               <div key={article.id} className="group cursor-pointer flex flex-col">
                 <Link href={`/${article.category.toLowerCase()}/${article.id}/${article.slug}`} className="flex flex-col h-full">
-                  <div className="relative w-full h-48 overflow-hidden rounded-xl mb-4 shadow-sm">
+                  <div className="relative w-full h-48 bg-gray-100 overflow-hidden rounded-xl mb-4 shadow-sm">
                     <img
                       src={article.coverUrl || ''}
                       alt={article.title}
