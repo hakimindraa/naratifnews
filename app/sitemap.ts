@@ -1,11 +1,11 @@
 import type { MetadataRoute } from 'next';
+import { connection } from 'next/server';
 import { db } from '@/db';
 import { articles } from '@/db/schema';
 import { eq, desc } from 'drizzle-orm';
 
-export const dynamic = 'force-dynamic';
-
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  await connection();
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.naratif.web.id';
 
   let articleUrls: MetadataRoute.Sitemap = [];
@@ -29,7 +29,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'daily' as const,
       priority: 0.8,
     }));
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.digest?.startsWith('NEXT_')) {
+      throw error;
+    }
     console.error('Error fetching articles for sitemap:', error);
   }
 
