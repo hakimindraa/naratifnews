@@ -252,11 +252,12 @@ Ingat, balas HANYA dengan dokumen JSON yang valid sesuai format yang ditentukan.
     payload.response_format = { type: 'json_object' };
   }
 
-  // Eksekusi request dengan retry handling untuk status 503/429
+  // Eksekusi request dengan retry handling untuk status 503/429 (Lonjakan trafik sesaat di server Google)
   let response: Response | null = null;
   let lastErrorText = '';
 
-  for (let attempt = 1; attempt <= 2; attempt++) {
+  const maxAttempts = 3;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     response = await fetch(endpoint, {
       method: 'POST',
       headers,
@@ -268,8 +269,9 @@ Ingat, balas HANYA dengan dokumen JSON yang valid sesuai format yang ditentukan.
     }
 
     lastErrorText = await response.text();
-    if ((response.status === 503 || response.status === 429) && attempt < 2) {
-      await new Promise((r) => setTimeout(r, 2000));
+    if ((response.status === 503 || response.status === 429) && attempt < maxAttempts) {
+      const waitMs = attempt * 2000;
+      await new Promise((r) => setTimeout(r, waitMs));
       continue;
     }
     break;
