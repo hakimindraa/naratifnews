@@ -22,7 +22,8 @@ import {
   Image as ImageIcon,
   Trash2,
   Search,
-  Globe
+  Globe,
+  Wand2
 } from 'lucide-react';
 import { generateArticleAction, getGenerationDataAction, deleteGenerationLogAction, clearFailedLogsAction } from './actions';
 
@@ -230,37 +231,37 @@ export default function GeneratorStudioPage() {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8">
       {/* HEADER BANNER */}
-      <div className="bg-gradient-to-br from-gray-900 via-gray-800 to-indigo-950 text-white rounded-3xl p-6 sm:p-8 shadow-xl border border-gray-800 relative overflow-hidden">
+      <div className="bg-gradient-to-br from-gray-900 via-gray-800 to-indigo-950 text-white rounded-2xl sm:rounded-3xl p-5 sm:p-8 shadow-xl border border-gray-800 relative overflow-hidden">
         <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-5 sm:gap-6">
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-300 text-xs font-semibold uppercase tracking-wider mb-3 border border-indigo-500/30">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Naratif AI Studio x Groq Cloud</span>
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-300 text-xs font-semibold uppercase tracking-wider mb-2.5 sm:mb-3 border border-indigo-500/30">
+              <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+              <span>Naratif AI Studio</span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight font-heading">
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold tracking-tight font-heading">
               Studio Generator Berita Otomatis
             </h1>
-            <p className="text-gray-300 text-sm sm:text-base mt-2 max-w-2xl leading-relaxed">
+            <p className="text-gray-300 text-xs sm:text-sm lg:text-base mt-2 max-w-2xl leading-relaxed">
               Kendalikan AI untuk mencari, menyusun naskah, dan menerbitkan artikel berita teknologi ke Naratif hanya dengan sekali klik atau instruksi kustom Anda.
             </p>
           </div>
 
           {/* Quick Metrics */}
-          <div className="flex items-center gap-4 bg-white/5 backdrop-blur-md px-5 py-3 rounded-2xl border border-white/10 shrink-0">
-            <div className="text-center px-2">
-              <div className="text-xs text-gray-400 font-medium">AI Engine Aktif</div>
-              <div className="text-sm font-bold text-white flex items-center justify-center gap-1.5 mt-0.5">
+          <div className="flex items-center justify-between sm:justify-start gap-3 sm:gap-4 bg-white/5 backdrop-blur-md px-4 sm:px-5 py-2.5 sm:py-3 rounded-2xl border border-white/10 shrink-0 w-full sm:w-auto">
+            <div className="text-left sm:text-center px-1 sm:px-2">
+              <div className="text-[11px] sm:text-xs text-gray-400 font-medium">AI Engine Aktif</div>
+              <div className="text-xs sm:text-sm font-bold text-white flex items-center gap-1.5 mt-0.5">
                 <span className={`w-2 h-2 rounded-full ${selectedProvider === 'gemini' ? 'bg-amber-400' : selectedProvider === 'groq' ? 'bg-cyan-400' : 'bg-emerald-400'} animate-pulse`} />
-                {selectedProvider === 'gemini' ? 'Google Gemini 3.8 Flash' : selectedProvider === 'groq' ? 'Groq (GPT-OSS 120B)' : '9Router (Muse Spark)'}
+                <span>{selectedProvider === 'gemini' ? 'Google Gemini 3.8 Flash' : selectedProvider === 'groq' ? 'Groq (GPT-OSS 120B)' : '9Router (Muse Spark)'}</span>
               </div>
             </div>
-            <div className="w-px h-8 bg-white/10" />
-            <div className="text-center px-2">
-              <div className="text-xs text-gray-400 font-medium">Keberhasilan</div>
-              <div className="text-sm font-bold text-emerald-400 mt-0.5">
+            <div className="w-px h-7 sm:h-8 bg-white/10" />
+            <div className="text-right sm:text-center px-1 sm:px-2">
+              <div className="text-[11px] sm:text-xs text-gray-400 font-medium">Tingkat Keberhasilan</div>
+              <div className="text-xs sm:text-sm font-bold text-emerald-400 mt-0.5">
                 {stats.successRate}
               </div>
             </div>
@@ -269,79 +270,79 @@ export default function GeneratorStudioPage() {
       </div>
 
       {/* STAT CARDS (REAL DATA DARI NEON DB) */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm flex items-center justify-between">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-gray-200 shadow-sm flex items-center justify-between">
           <div>
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Total Hasil AI</p>
-            <h3 className="text-2xl font-bold text-gray-900 mt-1 font-heading">
+            <p className="text-[10px] sm:text-xs font-semibold text-gray-500 uppercase tracking-wider">Total Hasil AI</p>
+            <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mt-0.5 sm:mt-1 font-heading">
               {stats.totalGenerated}
             </h3>
-            <span className="inline-flex items-center text-xs text-indigo-600 font-medium mt-1">
-              <TrendingUp className="w-3.5 h-3.5 mr-1" />
-              {stats.totalGenerated === 0 ? 'Belum ada artikel' : 'Tercatat di database'}
+            <span className="inline-flex items-center text-[10px] sm:text-xs text-indigo-600 font-medium mt-0.5 sm:mt-1">
+              <TrendingUp className="w-3 h-3 sm:w-3.5 sm:h-3.5 mr-1" />
+              <span className="truncate max-w-[85px] sm:max-w-none">{stats.totalGenerated === 0 ? 'Belum ada' : 'Tercatat di DB'}</span>
             </span>
           </div>
-          <div className="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600">
-            <Bot className="w-6 h-6" />
+          <div className="w-9 h-9 sm:w-12 sm:h-12 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 shrink-0">
+            <Bot className="w-5 h-5 sm:w-6 sm:h-6" />
           </div>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm flex items-center justify-between">
+        <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-gray-200 shadow-sm flex items-center justify-between">
           <div>
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Terbit Langsung</p>
-            <h3 className="text-2xl font-bold text-gray-900 mt-1 font-heading">
+            <p className="text-[10px] sm:text-xs font-semibold text-gray-500 uppercase tracking-wider">Terbit Langsung</p>
+            <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mt-0.5 sm:mt-1 font-heading">
               {stats.publishedCount}
             </h3>
-            <span className="text-xs text-emerald-600 mt-1 font-medium">Status Published</span>
+            <span className="text-[10px] sm:text-xs text-emerald-600 mt-0.5 sm:mt-1 font-medium block truncate max-w-[85px] sm:max-w-none">Status Published</span>
           </div>
-          <div className="w-12 h-12 bg-emerald-50 rounded-xl flex items-center justify-center text-emerald-600">
-            <CheckCircle2 className="w-6 h-6" />
+          <div className="w-9 h-9 sm:w-12 sm:h-12 bg-emerald-50 rounded-xl flex items-center justify-center text-emerald-600 shrink-0">
+            <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6" />
           </div>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm flex items-center justify-between">
+        <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-gray-200 shadow-sm flex items-center justify-between">
           <div>
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Draft Siap Review</p>
-            <h3 className="text-2xl font-bold text-gray-900 mt-1 font-heading">
+            <p className="text-[10px] sm:text-xs font-semibold text-gray-500 uppercase tracking-wider">Draft Siap Review</p>
+            <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mt-0.5 sm:mt-1 font-heading">
               {stats.draftCount}
             </h3>
-            <span className="text-xs text-amber-600 font-medium mt-1">Perlu pengecekan</span>
+            <span className="text-[10px] sm:text-xs text-amber-600 font-medium mt-0.5 sm:mt-1 block truncate max-w-[85px] sm:max-w-none">Perlu pengecekan</span>
           </div>
-          <div className="w-12 h-12 bg-amber-50 rounded-xl flex items-center justify-center text-amber-600">
-            <PenSquare className="w-6 h-6" />
+          <div className="w-9 h-9 sm:w-12 sm:h-12 bg-amber-50 rounded-xl flex items-center justify-center text-amber-600 shrink-0">
+            <PenSquare className="w-5 h-5 sm:w-6 sm:h-6" />
           </div>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm flex items-center justify-between">
+        <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-gray-200 shadow-sm flex items-center justify-between">
           <div>
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Rata-Rata Waktu</p>
-            <h3 className="text-2xl font-bold text-gray-900 mt-1 font-heading">
+            <p className="text-[10px] sm:text-xs font-semibold text-gray-500 uppercase tracking-wider">Rata-Rata Waktu</p>
+            <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mt-0.5 sm:mt-1 font-heading">
               {stats.avgDuration}
             </h3>
-            <span className="text-xs text-gray-500 mt-1">
-              {stats.avgDuration === '-' ? 'Belum ada riwayat' : 'Per artikel'}
+            <span className="text-[10px] sm:text-xs text-gray-500 mt-0.5 sm:mt-1 block truncate max-w-[85px] sm:max-w-none">
+              {stats.avgDuration === '-' ? 'Belum ada' : 'Per artikel'}
             </span>
           </div>
-          <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600">
-            <Clock className="w-6 h-6" />
+          <div className="w-9 h-9 sm:w-12 sm:h-12 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600 shrink-0">
+            <Clock className="w-5 h-5 sm:w-6 sm:h-6" />
           </div>
         </div>
       </div>
 
       {/* MAIN COMMAND CENTER */}
-      <div className="bg-white rounded-3xl border border-gray-200 shadow-sm p-6 sm:p-8 space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-5">
+      <div className="bg-white rounded-2xl sm:rounded-3xl border border-gray-200 shadow-sm p-4 sm:p-6 lg:p-8 space-y-5 sm:space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-4 sm:pb-5">
           <div>
-            <h2 className="text-xl font-bold text-gray-900 font-heading flex items-center gap-2">
-              <Zap className="w-5 h-5 text-indigo-600" />
+            <h2 className="text-lg sm:text-xl font-bold text-gray-900 font-heading flex items-center gap-2">
+              <Wand2 className="w-5 h-5 text-indigo-600 shrink-0" />
               Perintahkan AI Membuat Berita
             </h2>
-            <p className="text-sm text-gray-500 mt-0.5">
+            <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
               Pilih topik cepat di bawah atau ketik instruksi spesifik Anda sendiri.
             </p>
           </div>
-          <div className="flex items-center gap-2 text-xs text-gray-500 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-200 self-start sm:self-auto">
-            <Info className="w-3.5 h-3.5 text-gray-400" />
+          <div className="flex items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs text-gray-500 bg-gray-50 px-2.5 sm:px-3 py-1.5 rounded-lg border border-gray-200 self-start sm:self-auto">
+            <Info className="w-3.5 h-3.5 text-gray-400 shrink-0" />
             <span>Format output otomatis tersimpan ke Neon Database</span>
           </div>
         </div>
@@ -352,7 +353,7 @@ export default function GeneratorStudioPage() {
             <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
             Pilihan Cepat (Klik Sekali untuk Mengisi):
           </label>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
             {PRESET_TOPICS.map((preset, idx) => {
               const Icon = preset.icon;
               const isSelected = prompt === preset.prompt;
@@ -362,25 +363,25 @@ export default function GeneratorStudioPage() {
                   type="button"
                   onClick={() => handleSelectPreset(preset)}
                   disabled={isLoading}
-                  className={`p-3.5 text-left rounded-2xl border transition-all duration-200 flex flex-col justify-between gap-2.5 group cursor-pointer ${
+                  className={`p-3 sm:p-3.5 text-left rounded-xl sm:rounded-2xl border transition-all duration-200 flex flex-col justify-between gap-2.5 group cursor-pointer ${
                     isSelected
                       ? 'border-indigo-600 bg-indigo-50/70 shadow-sm ring-1 ring-indigo-600'
                       : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                   }`}
                 >
                   <div className="flex items-center justify-between">
-                    <span className="p-2 rounded-xl bg-white border border-gray-100 shadow-2xs text-indigo-600 group-hover:scale-110 transition-transform">
+                    <span className="p-1.5 sm:p-2 rounded-lg sm:rounded-xl bg-white border border-gray-100 shadow-2xs text-indigo-600 group-hover:scale-110 transition-transform">
                       <Icon className="w-4 h-4" />
                     </span>
-                    <span className="text-[11px] font-semibold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-md">
+                    <span className="text-[10px] sm:text-[11px] font-semibold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-md">
                       {preset.category}
                     </span>
                   </div>
                   <div>
-                    <h4 className="text-sm font-bold text-gray-900 group-hover:text-indigo-600 transition-colors">
+                    <h4 className="text-xs sm:text-sm font-bold text-gray-900 group-hover:text-indigo-600 transition-colors">
                       {preset.label}
                     </h4>
-                    <p className="text-xs text-gray-500 line-clamp-1 mt-0.5">
+                    <p className="text-[11px] sm:text-xs text-gray-500 line-clamp-1 mt-0.5">
                       {preset.prompt}
                     </p>
                   </div>
@@ -407,7 +408,7 @@ export default function GeneratorStudioPage() {
               onChange={(e) => setPrompt(e.target.value)}
               disabled={isLoading}
               placeholder="Contoh: Buatkan berita mendalam tentang peluncuran chip fabrikasi baru dan bagaimana para developer menyambutnya..."
-              className="w-full rounded-2xl border border-gray-300 p-4 text-sm text-gray-900 placeholder:text-gray-400 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20 outline-none transition-all resize-none shadow-2xs"
+              className="w-full rounded-xl sm:rounded-2xl border border-gray-300 p-3.5 sm:p-4 text-xs sm:text-sm text-gray-900 placeholder:text-gray-400 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20 outline-none transition-all resize-none shadow-2xs"
             />
           </div>
         </div>
@@ -419,7 +420,7 @@ export default function GeneratorStudioPage() {
               <ImageIcon className="w-3.5 h-3.5 text-gray-400" />
               Link Cover Image (ImgBB - Opsional):
             </label>
-            <span className="text-[11px] text-gray-400">
+            <span className="text-[10px] sm:text-[11px] text-gray-400">
               Kosongkan jika ingin input nanti di editor
             </span>
           </div>
@@ -429,30 +430,30 @@ export default function GeneratorStudioPage() {
             onChange={(e) => setCoverUrl(e.target.value)}
             disabled={isLoading}
             placeholder="Contoh: https://i.ibb.co/xxxxxx/sampul-berita.jpg"
-            className="w-full rounded-2xl border border-gray-300 px-4 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20 outline-none transition-all shadow-2xs"
+            className="w-full rounded-xl sm:rounded-2xl border border-gray-300 px-3.5 sm:px-4 py-2.5 text-xs sm:text-sm text-gray-900 placeholder:text-gray-400 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20 outline-none transition-all shadow-2xs"
           />
         </div>
 
         {/* 3. SETTINGS & TRIGGER BAR */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pt-2">
-          {/* Controls */}
-          <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-col gap-4 pt-2">
+          {/* Controls: Responsive grid on mobile, flex on desktop */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:flex lg:flex-wrap items-stretch sm:items-center gap-2.5 sm:gap-3">
             {/* AI Engine Switcher */}
-            <div className="flex items-center gap-2 bg-indigo-50/90 px-3.5 py-2 rounded-xl border border-indigo-200">
-              <span className="text-xs font-semibold text-indigo-900 flex items-center gap-1">
-                <Bot className="w-3.5 h-3.5 text-indigo-600" />
-                AI Engine:
-              </span>
-              <select
-                value={selectedProvider}
-                onChange={(e) => setSelectedProvider(e.target.value as 'gemini' | 'groq' | '9router')}
-                disabled={isLoading}
-                className="bg-transparent text-sm font-bold text-indigo-950 outline-none cursor-pointer"
-              >
-                <option value="gemini">✨ Google Gemini 3.8 Flash (Rekomendasi)</option>
-                <option value="groq">⚡ Groq Cloud (GPT-OSS 120B)</option>
-                <option value="9router">🟢 9Router Lokal (Muse Spark)</option>
-              </select>
+            <div className="flex items-center gap-2 bg-indigo-50/90 px-3.5 py-2.5 rounded-xl border border-indigo-200">
+              <Bot className="w-4 h-4 text-indigo-600 shrink-0" />
+              <div className="flex flex-col min-w-0 flex-1">
+                <span className="text-[10px] font-semibold text-indigo-900 uppercase tracking-wider">AI Engine</span>
+                <select
+                  value={selectedProvider}
+                  onChange={(e) => setSelectedProvider(e.target.value as 'gemini' | 'groq' | '9router')}
+                  disabled={isLoading}
+                  className="bg-transparent text-xs sm:text-sm font-bold text-indigo-950 outline-none cursor-pointer truncate"
+                >
+                  <option value="gemini">Google Gemini 3.8 Flash (Rekomendasi)</option>
+                  <option value="groq">Groq Cloud (GPT-OSS 120B)</option>
+                  <option value="9router">9Router Lokal (Muse Spark)</option>
+                </select>
+              </div>
             </div>
 
             {/* Google News Research Toggle */}
@@ -461,31 +462,33 @@ export default function GeneratorStudioPage() {
               onClick={() => setEnableWebSearch(!enableWebSearch)}
               disabled={isLoading}
               title="Cari berita & fakta terkini dari Google News Indonesia sebelum menulis artikel"
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl border transition-all cursor-pointer ${
+              className={`flex items-center justify-between sm:justify-start gap-2.5 px-3.5 py-2.5 rounded-xl border transition-all cursor-pointer ${
                 enableWebSearch
                   ? 'bg-blue-50/90 border-blue-300 text-blue-900 shadow-2xs'
                   : 'bg-gray-50 border-gray-200 text-gray-500 hover:bg-gray-100'
               }`}
             >
-              <Search className={`w-3.5 h-3.5 ${enableWebSearch ? 'text-blue-600' : 'text-gray-400'}`} />
-              <span className="text-xs font-semibold">
-                Riset Google News:
-              </span>
-              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+              <div className="flex items-center gap-2">
+                <Search className={`w-4 h-4 shrink-0 ${enableWebSearch ? 'text-blue-600' : 'text-gray-400'}`} />
+                <span className="text-xs sm:text-sm font-semibold">
+                  Riset Google News
+                </span>
+              </div>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
                 enableWebSearch ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'
               }`}>
-                {enableWebSearch ? 'Aktif (100% Gratis)' : 'Nonaktif'}
+                {enableWebSearch ? 'Aktif (Gratis)' : 'Nonaktif'}
               </span>
             </button>
 
             {/* Category */}
-            <div className="flex items-center gap-2 bg-gray-50 px-3.5 py-2 rounded-xl border border-gray-200">
+            <div className="flex items-center justify-between sm:justify-start gap-2 bg-gray-50 px-3.5 py-2.5 rounded-xl border border-gray-200">
               <span className="text-xs font-medium text-gray-500">Kategori:</span>
               <select
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
                 disabled={isLoading}
-                className="bg-transparent text-sm font-bold text-gray-800 outline-none cursor-pointer"
+                className="bg-transparent text-xs sm:text-sm font-bold text-gray-800 outline-none cursor-pointer"
               >
                 <option value="AI">AI</option>
                 <option value="Software">Software</option>
@@ -496,8 +499,8 @@ export default function GeneratorStudioPage() {
             </div>
 
             {/* Target Status */}
-            <div className="flex items-center gap-2 bg-gray-50 px-3.5 py-2 rounded-xl border border-gray-200">
-              <span className="text-xs font-medium text-gray-500">Hasil Simpan:</span>
+            <div className="flex items-center justify-between sm:justify-start gap-2 bg-gray-50 px-3.5 py-2.5 rounded-xl border border-gray-200">
+              <span className="text-xs font-medium text-gray-500">Hasil:</span>
               <div className="flex items-center gap-1">
                 <button
                   type="button"
@@ -509,7 +512,7 @@ export default function GeneratorStudioPage() {
                       : 'text-gray-600 hover:text-gray-900'
                   }`}
                 >
-                  Draft (Review)
+                  Draft
                 </button>
                 <button
                   type="button"
@@ -521,19 +524,19 @@ export default function GeneratorStudioPage() {
                       : 'text-gray-600 hover:text-gray-900'
                   }`}
                 >
-                  Langsung Publish
+                  Publish
                 </button>
               </div>
             </div>
 
             {/* Length */}
-            <div className="flex items-center gap-2 bg-gray-50 px-3.5 py-2 rounded-xl border border-gray-200">
+            <div className="flex items-center justify-between sm:justify-start gap-2 bg-gray-50 px-3.5 py-2.5 rounded-xl border border-gray-200">
               <span className="text-xs font-medium text-gray-500">Panjang:</span>
               <select
                 value={articleLength}
                 onChange={(e) => setArticleLength(e.target.value as any)}
                 disabled={isLoading}
-                className="bg-transparent text-sm font-bold text-gray-800 outline-none cursor-pointer"
+                className="bg-transparent text-xs sm:text-sm font-bold text-gray-800 outline-none cursor-pointer"
               >
                 <option value="standar">Standar (~700 kata)</option>
                 <option value="mendalam">Mendalam (~1200 kata)</option>
@@ -541,31 +544,33 @@ export default function GeneratorStudioPage() {
             </div>
           </div>
 
-          {/* Action Button */}
-          <button
-            type="button"
-            onClick={handleStartGeneration}
-            disabled={!prompt.trim() || isLoading}
-            className={`inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl font-bold text-sm shadow-md transition-all duration-200 cursor-pointer ${
-              isLoading
-                ? 'bg-indigo-400 text-white cursor-not-allowed'
-                : !prompt.trim()
-                ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                : 'bg-indigo-600 hover:bg-indigo-700 text-white hover:shadow-indigo-500/25 active:scale-98'
-            }`}
-          >
-            {isLoading ? (
-              <>
-                <RefreshCw className="w-4 h-4 animate-spin" />
-                <span>AI Sedang Bekerja...</span>
-              </>
-            ) : (
-              <>
-                <Zap className="w-4 h-4" />
-                <span>⚡ Mulai Cari, Buat & Upload</span>
-              </>
-            )}
-          </button>
+          {/* Action Button - Full width on mobile */}
+          <div className="flex justify-end pt-1">
+            <button
+              type="button"
+              onClick={handleStartGeneration}
+              disabled={!prompt.trim() || isLoading}
+              className={`w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-2xl font-bold text-sm shadow-md transition-all duration-200 cursor-pointer ${
+                isLoading
+                  ? 'bg-indigo-400 text-white cursor-not-allowed'
+                  : !prompt.trim()
+                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                  : 'bg-indigo-600 hover:bg-indigo-700 text-white hover:shadow-indigo-500/25 active:scale-98'
+              }`}
+            >
+              {isLoading ? (
+                <>
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  <span>AI Sedang Bekerja...</span>
+                </>
+              ) : (
+                <>
+                  <Wand2 className="w-4 h-4" />
+                  <span>Mulai Cari, Buat & Unggah</span>
+                </>
+              )}
+            </button>
+          </div>
         </div>
 
         {/* 4. REALTIME PROGRESS STEPPER */}
@@ -713,17 +718,17 @@ export default function GeneratorStudioPage() {
       </div>
 
       {/* MONITORING / REAL DATABASE HISTORY LOGS TABLE */}
-      <div className="bg-white rounded-3xl border border-gray-200 shadow-sm overflow-hidden">
-        <div className="p-6 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="bg-white rounded-2xl sm:rounded-3xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="p-4 sm:p-6 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
           <div>
-            <h3 className="text-lg font-bold text-gray-900 font-heading">
+            <h3 className="text-base sm:text-lg font-bold text-gray-900 font-heading">
               Riwayat Perintah & Pemantau Kerja
             </h3>
             <p className="text-xs text-gray-500 mt-0.5">
               Catatan riil dari database Neon DB seluruh artikel yang pernah digenerate oleh AI.
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 self-start sm:self-auto">
             {logs.some((l) => l.status === 'failed') && (
               <button
                 type="button"
@@ -742,93 +747,168 @@ export default function GeneratorStudioPage() {
         </div>
 
         {logs.length === 0 ? (
-          <div className="p-12 text-center text-gray-400 text-sm">
+          <div className="p-8 sm:p-12 text-center text-gray-400 text-xs sm:text-sm">
             Belum ada riwayat pembuatan berita. Coba perintahkan AI di atas untuk membuat berita pertama Anda!
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm text-gray-600">
-              <thead className="bg-gray-50/75 border-b border-gray-200 text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                <tr>
-                  <th className="px-6 py-4">Waktu</th>
-                  <th className="px-6 py-4">Topik / Instruksi</th>
-                  <th className="px-6 py-4">Judul Artikel Dihasilkan</th>
-                  <th className="px-6 py-4">Kategori</th>
-                  <th className="px-6 py-4">Status</th>
-                  <th className="px-6 py-4">Durasi</th>
-                  <th className="px-6 py-4 text-right">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {logs.map((log) => (
-                  <tr key={log.id} className="hover:bg-gray-50/60 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap text-xs text-gray-500">
-                      <div className="flex items-center gap-1.5">
-                        <Clock className="w-3.5 h-3.5 text-gray-400" />
-                        <span>{formatLogDate(log.createdAt)}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-xs font-medium text-gray-800 max-w-xs">
-                      <span className="line-clamp-2">{log.prompt}</span>
-                    </td>
-                    <td className="px-6 py-4 text-xs font-bold text-gray-900 max-w-sm">
-                      <span className="line-clamp-2">
-                        {log.articleTitle || log.errorMessage || '-'}
+          <>
+            {/* 1. MOBILE CARD LIST VIEW (TAMPIL HANYA DI HP / LAYAR KECIL) */}
+            <div className="block md:hidden divide-y divide-gray-100">
+              {logs.map((log) => (
+                <div key={log.id} className="p-4 space-y-2.5 hover:bg-gray-50/60 transition-colors">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[11px] text-gray-500 flex items-center gap-1">
+                      <Clock className="w-3 h-3 text-gray-400" />
+                      {formatLogDate(log.createdAt)}
+                    </span>
+                    {log.status === 'published' ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800">
+                        <CheckCircle2 className="w-3 h-3" /> Published
                       </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="text-[11px] font-semibold bg-gray-100 text-gray-700 px-2.5 py-1 rounded-md">
+                    ) : log.status === 'scheduled' ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-100 text-blue-800">
+                        <Clock className="w-3 h-3" /> Terjadwal
+                      </span>
+                    ) : log.status === 'draft' ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800">
+                        <PenSquare className="w-3 h-3" /> Draft
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-red-100 text-red-800">
+                        <AlertCircle className="w-3 h-3" /> Gagal
+                      </span>
+                    )}
+                  </div>
+
+                  <div>
+                    <h4 className="text-sm font-bold text-gray-900 line-clamp-2 leading-snug">
+                      {log.articleTitle || log.errorMessage || '-'}
+                    </h4>
+                    <p className="text-xs text-gray-500 line-clamp-1 mt-1">
+                      Instruksi: {log.prompt}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-semibold bg-gray-100 text-gray-700 px-2 py-0.5 rounded-md">
                         {log.category}
                       </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {log.status === 'published' ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">
-                          <CheckCircle2 className="w-3 h-3" /> Published
-                        </span>
-                      ) : log.status === 'scheduled' ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-800">
-                          <Clock className="w-3 h-3" /> Terjadwal
-                        </span>
-                      ) : log.status === 'draft' ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800">
-                          <PenSquare className="w-3 h-3" /> Draft
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-800">
-                          <AlertCircle className="w-3 h-3" /> Gagal
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-xs text-gray-500">
-                      {log.durationMs ? `${(log.durationMs / 1000).toFixed(1)}s` : '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        {log.articleId ? (
-                          <Link
-                            href={`/admin/edit/${log.articleId}`}
-                            className="text-xs font-semibold text-gray-700 hover:text-indigo-600 bg-gray-100 hover:bg-gray-200 px-2.5 py-1.5 rounded-lg transition-colors"
-                          >
-                            Edit
-                          </Link>
-                        ) : null}
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteLog(log.id)}
-                          disabled={deletingId === log.id}
-                          title="Hapus riwayat ini"
-                          className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer disabled:opacity-50"
+                      <span className="text-[10px] text-gray-400">
+                        {log.durationMs ? `${(log.durationMs / 1000).toFixed(1)}s` : '-'}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {log.articleId && (
+                        <Link
+                          href={`/admin/edit/${log.articleId}`}
+                          className="text-xs font-semibold text-gray-700 hover:text-indigo-600 bg-gray-100 hover:bg-gray-200 px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1"
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </td>
+                          <PenSquare className="w-3 h-3" />
+                          Edit
+                        </Link>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteLog(log.id)}
+                        disabled={deletingId === log.id}
+                        title="Hapus riwayat ini"
+                        className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer disabled:opacity-50"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* 2. DESKTOP TABLE VIEW (TAMPIL DI LAYAR TABLET & DESKTOP) */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-left text-sm text-gray-600">
+                <thead className="bg-gray-50/75 border-b border-gray-200 text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                  <tr>
+                    <th className="px-6 py-4">Waktu</th>
+                    <th className="px-6 py-4">Topik / Instruksi</th>
+                    <th className="px-6 py-4">Judul Artikel Dihasilkan</th>
+                    <th className="px-6 py-4">Kategori</th>
+                    <th className="px-6 py-4">Status</th>
+                    <th className="px-6 py-4">Durasi</th>
+                    <th className="px-6 py-4 text-right">Aksi</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {logs.map((log) => (
+                    <tr key={log.id} className="hover:bg-gray-50/60 transition-colors">
+                      <td className="px-6 py-4 whitespace-nowrap text-xs text-gray-500">
+                        <div className="flex items-center gap-1.5">
+                          <Clock className="w-3.5 h-3.5 text-gray-400" />
+                          <span>{formatLogDate(log.createdAt)}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-xs font-medium text-gray-800 max-w-xs">
+                        <span className="line-clamp-2">{log.prompt}</span>
+                      </td>
+                      <td className="px-6 py-4 text-xs font-bold text-gray-900 max-w-sm">
+                        <span className="line-clamp-2">
+                          {log.articleTitle || log.errorMessage || '-'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="text-[11px] font-semibold bg-gray-100 text-gray-700 px-2.5 py-1 rounded-md">
+                          {log.category}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {log.status === 'published' ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">
+                            <CheckCircle2 className="w-3 h-3" /> Published
+                          </span>
+                        ) : log.status === 'scheduled' ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-800">
+                            <Clock className="w-3 h-3" /> Terjadwal
+                          </span>
+                        ) : log.status === 'draft' ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800">
+                            <PenSquare className="w-3 h-3" /> Draft
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-800">
+                            <AlertCircle className="w-3 h-3" /> Gagal
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-xs text-gray-500">
+                        {log.durationMs ? `${(log.durationMs / 1000).toFixed(1)}s` : '-'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          {log.articleId ? (
+                            <Link
+                              href={`/admin/edit/${log.articleId}`}
+                              className="text-xs font-semibold text-gray-700 hover:text-indigo-600 bg-gray-100 hover:bg-gray-200 px-2.5 py-1.5 rounded-lg transition-colors"
+                            >
+                              Edit
+                            </Link>
+                          ) : null}
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteLog(log.id)}
+                            disabled={deletingId === log.id}
+                            title="Hapus riwayat ini"
+                            className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer disabled:opacity-50"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
     </div>

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Sparkles, Newspaper } from "lucide-react";
 import { logoutAdmin } from "./auth-actions";
 
 export default function AdminLayout({
@@ -25,13 +26,15 @@ export default function AdminLayout({
                 href="/admin/generator"
                 className="px-3 py-1.5 rounded-lg bg-indigo-600/30 text-indigo-300 hover:bg-indigo-600/40 hover:text-indigo-200 border border-indigo-500/30 transition-all flex items-center gap-1.5"
               >
-                <span>⚡ AI Studio</span>
+                <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+                <span>AI Studio</span>
               </Link>
             </nav>
           </div>
-          <div className="flex items-center gap-4 text-sm">
-            <Link href="/admin/generator" className="sm:hidden text-xs px-2.5 py-1 rounded bg-indigo-600/40 text-indigo-300 border border-indigo-500/30">
-              ⚡ AI Studio
+          <div className="flex items-center gap-3 sm:gap-4 text-sm">
+            <Link href="/admin/generator" className="sm:hidden text-xs px-2.5 py-1.5 rounded-lg bg-indigo-600/40 text-indigo-200 border border-indigo-500/30 flex items-center gap-1 font-semibold">
+              <Sparkles className="w-3.5 h-3.5 text-indigo-300" />
+              <span>AI Studio</span>
             </Link>
             <a href="/" target="_blank" className="hover:text-gray-300 transition-colors">Lihat Web</a>
             <form action={logoutAdmin}>

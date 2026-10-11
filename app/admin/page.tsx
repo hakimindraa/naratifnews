@@ -48,7 +48,7 @@ export default async function AdminDashboard() {
             className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-4 py-2.5 rounded-lg font-bold hover:from-indigo-700 hover:to-indigo-800 transition-all shadow-sm text-sm"
           >
             <Sparkles className="w-4 h-4 shrink-0 text-indigo-200" />
-            <span>⚡ AI Studio</span>
+            <span>AI Studio</span>
           </Link>
           <Link
             href="/admin/tulis"
