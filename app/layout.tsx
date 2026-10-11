@@ -19,6 +19,9 @@ export const metadata: Metadata = {
     template: "%s | Naratif",
   },
   description: "Portal berita dan informasi seputar perkembangan teknologi, software, gadget, AI, dan inovasi digital terkini.",
+  verification: {
+    google: "NA1fdypaSoCCl78MmgJf3I5WDVSDC9AIn_I9g9zAqrU",
+  },
 };
 
 export default function RootLayout({
