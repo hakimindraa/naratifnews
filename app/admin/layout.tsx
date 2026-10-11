@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { logoutAdmin } from "./auth-actions";
 
 export default function AdminLayout({
@@ -9,10 +10,29 @@ export default function AdminLayout({
     <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
       <header className="bg-gray-900 text-white shadow-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="font-bold text-xl font-heading tracking-wide">
-            Naratif Admin
+          <div className="flex items-center gap-6">
+            <Link href="/admin" className="font-bold text-xl font-heading tracking-wide hover:text-gray-200 transition-colors">
+              Naratif Admin
+            </Link>
+            <nav className="hidden sm:flex items-center gap-1 text-sm font-medium">
+              <Link
+                href="/admin"
+                className="px-3 py-1.5 rounded-lg hover:bg-gray-800 text-gray-300 hover:text-white transition-colors"
+              >
+                Dasbor Redaksi
+              </Link>
+              <Link
+                href="/admin/generator"
+                className="px-3 py-1.5 rounded-lg bg-indigo-600/30 text-indigo-300 hover:bg-indigo-600/40 hover:text-indigo-200 border border-indigo-500/30 transition-all flex items-center gap-1.5"
+              >
+                <span>⚡ AI Studio</span>
+              </Link>
+            </nav>
           </div>
           <div className="flex items-center gap-4 text-sm">
+            <Link href="/admin/generator" className="sm:hidden text-xs px-2.5 py-1 rounded bg-indigo-600/40 text-indigo-300 border border-indigo-500/30">
+              ⚡ AI Studio
+            </Link>
             <a href="/" target="_blank" className="hover:text-gray-300 transition-colors">Lihat Web</a>
             <form action={logoutAdmin}>
               <button type="submit" className="text-gray-300 hover:text-white font-bold transition-colors">

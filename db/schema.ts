@@ -1,4 +1,4 @@
-import { pgTable, serial, text, varchar, timestamp, index, uniqueIndex } from 'drizzle-orm/pg-core';
+import { pgTable, serial, text, varchar, timestamp, index, uniqueIndex, integer } from 'drizzle-orm/pg-core';
 
 export const articles = pgTable('articles', {
   id: serial('id').primaryKey(),
@@ -21,3 +21,19 @@ export const articles = pgTable('articles', {
   index('status_published_at_idx').on(table.status, table.publishedAt),
   index('category_published_at_idx').on(table.category, table.publishedAt),
 ]);
+
+export const aiGenerationLogs = pgTable('ai_generation_logs', {
+  id: serial('id').primaryKey(),
+  prompt: text('prompt').notNull(),
+  articleId: integer('article_id').references(() => articles.id, { onDelete: 'set null' }),
+  articleTitle: varchar('article_title', { length: 255 }),
+  category: varchar('category', { length: 100 }).notNull(),
+  status: varchar('status', { length: 50 }).notNull(), // 'published' | 'draft' | 'failed'
+  model: varchar('model', { length: 100 }),
+  durationMs: integer('duration_ms'),
+  errorMessage: text('error_message'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index('ai_logs_created_at_idx').on(table.createdAt),
+]);
+

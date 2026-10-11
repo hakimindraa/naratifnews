@@ -1,4 +1,4 @@
-import { FileText, Clock, Settings, Trash2, CheckCircle2, Layers, PenSquare } from "lucide-react";
+import { FileText, Clock, Settings, Trash2, CheckCircle2, Layers, PenSquare, Sparkles } from "lucide-react";
 import Link from "next/link";
 import UploadButton from "./UploadButton";
 import DeleteButton from "./DeleteButton";
@@ -41,11 +41,18 @@ export default async function AdminDashboard() {
           <p className="text-gray-500 text-xs sm:text-sm mt-1">Kelola dan terbitkan artikel Naratif secara langsung atau terjadwal.</p>
         </div>
 
-        {/* Action Buttons: Tulis Manual & Upload Bulk */}
+        {/* Action Buttons: Tulis Manual, AI Studio & Upload Bulk */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full sm:w-auto">
           <Link
+            href="/admin/generator"
+            className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-4 py-2.5 rounded-lg font-bold hover:from-indigo-700 hover:to-indigo-800 transition-all shadow-sm text-sm"
+          >
+            <Sparkles className="w-4 h-4 shrink-0 text-indigo-200" />
+            <span>⚡ AI Studio</span>
+          </Link>
+          <Link
             href="/admin/tulis"
-            className="inline-flex items-center justify-center gap-2 bg-gray-900 text-white px-5 py-2.5 rounded-lg font-bold hover:bg-black transition-all shadow-sm text-sm"
+            className="inline-flex items-center justify-center gap-2 bg-gray-900 text-white px-4 py-2.5 rounded-lg font-bold hover:bg-black transition-all shadow-sm text-sm"
           >
             <PenSquare className="w-4 h-4 shrink-0" />
             <span>+ Tulis Berita</span>
