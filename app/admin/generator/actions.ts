@@ -113,11 +113,38 @@ export async function generateArticleAction(payload: GeneratePayload) {
 
 export async function getGenerationDataAction() {
   try {
-    const logs = await db
-      .select()
+    const rawLogs = await db
+      .select({
+        id: aiGenerationLogs.id,
+        prompt: aiGenerationLogs.prompt,
+        articleId: aiGenerationLogs.articleId,
+        articleTitle: aiGenerationLogs.articleTitle,
+        category: aiGenerationLogs.category,
+        logStatus: aiGenerationLogs.status,
+        articleStatus: articles.status,
+        model: aiGenerationLogs.model,
+        durationMs: aiGenerationLogs.durationMs,
+        errorMessage: aiGenerationLogs.errorMessage,
+        createdAt: aiGenerationLogs.createdAt,
+      })
       .from(aiGenerationLogs)
+      .leftJoin(articles, eq(aiGenerationLogs.articleId, articles.id))
       .orderBy(desc(aiGenerationLogs.createdAt))
       .limit(30);
+
+    const logs = rawLogs.map((item) => ({
+      id: item.id,
+      prompt: item.prompt,
+      articleId: item.articleId,
+      articleTitle: item.articleTitle,
+      category: item.category,
+      // Ambil status realtime artikel (misalnya saat artikel dipublish oleh cron job)
+      status: item.articleStatus || item.logStatus,
+      model: item.model,
+      durationMs: item.durationMs,
+      errorMessage: item.errorMessage,
+      createdAt: item.createdAt,
+    }));
 
     const totalLogs = logs.length;
     const publishedCount = logs.filter((l) => l.status === 'published').length;
