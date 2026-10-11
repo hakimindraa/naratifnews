@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { db } from "@/db";
 import { articles } from "@/db/schema";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, ilike } from "drizzle-orm";
 import { formatDistanceToNow } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 
@@ -14,16 +14,24 @@ export default async function CategoryPage({
   params: Promise<{ category: string }>;
 }) {
   const { category } = await params;
-  const categoryName = category.charAt(0).toUpperCase() + category.slice(1);
+  const rawCat = decodeURIComponent(category).trim().toLowerCase();
+  const categoryMap: Record<string, string> = {
+    'ai': 'AI',
+    'software': 'Software',
+    'hardware': 'Hardware',
+    'infrastruktur': 'Infrastruktur',
+    'gadget': 'Gadget',
+  };
+  const categoryName = categoryMap[rawCat] || (category.charAt(0).toUpperCase() + category.slice(1));
 
-  // Ambil artikel per kategori yang published
+  // Ambil artikel per kategori yang published (case-insensitive)
   const categoryArticles = await db
     .select()
     .from(articles)
     .where(
       and(
         eq(articles.status, 'published'),
-        eq(articles.category, categoryName)
+        ilike(articles.category, categoryName)
       )
     )
     .orderBy(desc(articles.publishedAt))
@@ -41,7 +49,7 @@ export default async function CategoryPage({
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Breadcrumbs */}
       <nav className="flex text-sm text-gray-500 mb-6 items-center">
-        <Link href="/" className="hover:text-blue-600 transition-colors">Home</Link>
+        <Link href="/" className="hover:text-gray-900 transition-colors">Home</Link>
         <ChevronRight className="w-4 h-4 mx-2" />
         <span className="text-gray-900 font-medium">{categoryName}</span>
       </nav>
@@ -51,7 +59,7 @@ export default async function CategoryPage({
         <div className="lg:w-2/3">
           <div className="flex items-center mb-8">
             <h1 className="text-3xl font-bold font-heading text-gray-900 uppercase tracking-tight">
-              Indeks <span className="text-blue-700">{categoryName}</span>
+              Indeks <span className="text-gray-900">{categoryName}</span>
             </h1>
             <div className="ml-4 flex-grow h-px bg-gray-200"></div>
           </div>
@@ -74,10 +82,10 @@ export default async function CategoryPage({
                     </div>
                   </Link>
                   <div className="sm:w-2/3 flex flex-col">
-                    <div className="text-blue-600 text-xs font-bold uppercase tracking-wider mb-2">
+                    <div className="text-gray-900 text-xs font-bold uppercase tracking-wider mb-2">
                       {article.category}
                     </div>
-                    <h2 className="text-xl font-bold font-heading text-gray-900 group-hover:text-blue-700 transition-colors line-clamp-2 mb-2 leading-snug">
+                    <h2 className="text-xl font-bold font-heading text-gray-900 group-hover:text-gray-600 transition-colors line-clamp-2 mb-2 leading-snug">
                       <Link href={`/berita-teknologi/${category.toLowerCase()}/${article.id}/${article.slug}`}>{article.title}</Link>
                     </h2>
                     <p className="text-gray-600 text-sm line-clamp-2 mb-3 flex-grow">
@@ -107,14 +115,14 @@ export default async function CategoryPage({
               ) : (
                 popularArticles.map((article, index) => (
                   <div key={article.id} className="flex gap-4 group cursor-pointer">
-                    <div className="text-4xl font-black font-heading text-gray-200 group-hover:text-blue-200 transition-colors -mt-1">
+                    <div className="text-4xl font-black font-heading text-gray-200 group-hover:text-gray-300 transition-colors -mt-1">
                       {index + 1}
                     </div>
                     <div>
-                      <div className="text-blue-600 text-xs font-bold uppercase tracking-wider mb-1">
+                      <div className="text-gray-900 text-xs font-bold uppercase tracking-wider mb-1">
                         {article.category}
                       </div>
-                      <h4 className="font-bold text-gray-900 group-hover:text-blue-700 transition-colors line-clamp-2 text-sm leading-snug">
+                      <h4 className="font-bold text-gray-900 group-hover:text-gray-600 transition-colors line-clamp-2 text-sm leading-snug">
                         <Link href={`/berita-teknologi/${article.category.toLowerCase()}/${article.id}/${article.slug}`}>{article.title}</Link>
                       </h4>
                     </div>

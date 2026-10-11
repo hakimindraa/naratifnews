@@ -41,7 +41,7 @@ export default function UploadButton() {
   };
 
   return (
-    <div className="flex flex-col items-end gap-2">
+    <div className="flex flex-col items-stretch sm:items-end gap-2 w-full sm:w-auto">
       <input 
         type="file" 
         accept=".md" 
@@ -52,9 +52,9 @@ export default function UploadButton() {
       <button 
         onClick={() => fileInputRef.current?.click()}
         disabled={loading}
-        className="flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-lg font-bold hover:bg-blue-700 transition-all shadow-sm disabled:opacity-50"
+        className="flex items-center justify-center gap-2 bg-gray-900 text-white px-5 py-2.5 rounded-lg font-bold hover:bg-black transition-all shadow-sm disabled:opacity-50 w-full sm:w-auto text-sm sm:text-base"
       >
-        <Upload className="w-5 h-5" />
+        <Upload className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
         {loading ? 'Mengunggah...' : 'Upload .MD File'}
       </button>
       

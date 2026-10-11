@@ -4,6 +4,7 @@ import { articles } from '@/db/schema';
 import { lte, eq, and } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
+export const dynamic = 'force-dynamic';
 export const maxDuration = 20; // 20 seconds, below cron-job.org's 30s timeout
 
 export async function GET(request: Request) {

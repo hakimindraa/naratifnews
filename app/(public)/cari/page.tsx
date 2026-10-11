@@ -6,7 +6,14 @@ import { eq, desc, and, ilike, or } from "drizzle-orm";
 import { formatDistanceToNow } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 
+import { Metadata } from "next";
+
 export const instant = false;
+
+export const metadata: Metadata = {
+  title: "Cari Berita",
+  description: "Cari berita dan informasi teknologi terbaru di Naratif.",
+};
 
 export default async function SearchPage({
   searchParams,
@@ -59,10 +66,10 @@ export default async function SearchPage({
                 name="q"
                 defaultValue={query}
                 placeholder="Ketik kata kunci pencarian..." 
-                className="w-full px-4 py-3 pl-12 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm"
+                className="w-full px-4 py-3 pl-12 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-gray-900 shadow-sm"
               />
               <Search className="w-5 h-5 text-gray-400 absolute left-4" />
-              <button type="submit" className="absolute right-2 bg-blue-600 text-white px-4 py-1.5 rounded-md hover:bg-blue-700 font-medium text-sm transition-colors">
+              <button type="submit" className="absolute right-2 bg-gray-900 text-white px-4 py-1.5 rounded-md hover:bg-black font-medium text-sm transition-colors">
                 Cari
               </button>
             </form>
@@ -95,10 +102,10 @@ export default async function SearchPage({
                   </div>
                 </Link>
                 <div className="sm:w-2/3 flex flex-col">
-                  <div className="text-blue-600 text-xs font-bold uppercase tracking-wider mb-1">
+                  <div className="text-gray-900 text-xs font-bold uppercase tracking-wider mb-1">
                     {article.category}
                   </div>
-                  <h3 className="text-lg font-bold font-heading text-gray-900 group-hover:text-blue-700 transition-colors line-clamp-2 mb-2 leading-snug">
+                  <h3 className="text-lg font-bold font-heading text-gray-900 group-hover:text-gray-600 transition-colors line-clamp-2 mb-2 leading-snug">
                     <Link href={`/berita-teknologi/${article.category.toLowerCase()}/${article.id}/${article.slug}`}>{article.title}</Link>
                   </h3>
                   <div className="text-xs text-gray-500 font-medium mt-auto">
@@ -124,14 +131,14 @@ export default async function SearchPage({
               ) : (
                 popularArticles.map((pop, index) => (
                   <div key={pop.id} className="flex gap-4 group cursor-pointer">
-                    <div className="text-4xl font-black font-heading text-gray-200 group-hover:text-blue-200 transition-colors -mt-1">
+                    <div className="text-4xl font-black font-heading text-gray-200 group-hover:text-gray-300 transition-colors -mt-1">
                       {index + 1}
                     </div>
                     <div>
-                      <div className="text-blue-600 text-xs font-bold uppercase tracking-wider mb-1">
+                      <div className="text-gray-900 text-xs font-bold uppercase tracking-wider mb-1">
                         {pop.category}
                       </div>
-                      <h4 className="font-bold text-gray-900 group-hover:text-blue-700 transition-colors line-clamp-2 text-sm leading-snug">
+                      <h4 className="font-bold text-gray-900 group-hover:text-gray-600 transition-colors line-clamp-2 text-sm leading-snug">
                         <Link href={`/berita-teknologi/${pop.category.toLowerCase()}/${pop.id}/${pop.slug}`}>{pop.title}</Link>
                       </h4>
                     </div>

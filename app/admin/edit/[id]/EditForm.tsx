@@ -52,7 +52,7 @@ export default function EditForm({ article }: { article: any }) {
             name="title" 
             defaultValue={article.title} 
             required 
-            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-gray-900 focus:border-gray-900"
           />
         </div>
         
@@ -63,7 +63,7 @@ export default function EditForm({ article }: { article: any }) {
             name="slug" 
             defaultValue={article.slug} 
             required 
-            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-gray-900 focus:border-gray-900"
           />
         </div>
 
@@ -72,7 +72,7 @@ export default function EditForm({ article }: { article: any }) {
           <select 
             name="category" 
             defaultValue={article.category}
-            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-gray-900 focus:border-gray-900"
           >
             {['Software', 'Hardware', 'AI', 'Infrastruktur', 'Gadget'].map(cat => (
               <option key={cat} value={cat}>{cat}</option>
@@ -87,7 +87,7 @@ export default function EditForm({ article }: { article: any }) {
             name="publishAt" 
             defaultValue={formatForInput(article.publishAt)}
             required
-            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-gray-900 focus:border-gray-900"
           />
         </div>
       </div>
@@ -99,7 +99,7 @@ export default function EditForm({ article }: { article: any }) {
           name="coverUrl" 
           defaultValue={article.coverUrl} 
           required 
-          className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+          className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-gray-900 focus:border-gray-900"
         />
       </div>
 
@@ -109,7 +109,7 @@ export default function EditForm({ article }: { article: any }) {
           name="excerpt" 
           defaultValue={article.excerpt} 
           rows={2}
-          className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+          className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-gray-900 focus:border-gray-900"
         />
       </div>
 
@@ -120,7 +120,7 @@ export default function EditForm({ article }: { article: any }) {
           defaultValue={article.content} 
           required 
           rows={15}
-          className="w-full px-4 py-2 border border-gray-300 rounded-md font-mono text-sm focus:ring-blue-500 focus:border-blue-500"
+          className="w-full px-4 py-2 border border-gray-300 rounded-md font-mono text-sm focus:ring-gray-900 focus:border-gray-900"
         />
       </div>
 
@@ -135,7 +135,7 @@ export default function EditForm({ article }: { article: any }) {
         <button 
           type="submit" 
           disabled={isPending}
-          className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+          className="px-6 py-2 bg-gray-900 text-white rounded-md hover:bg-black disabled:opacity-50"
         >
           {isPending ? 'Menyimpan...' : 'Simpan Perubahan'}
         </button>

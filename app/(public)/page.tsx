@@ -47,12 +47,12 @@ export default async function Home() {
 
                 <div className="p-5 sm:p-8 flex flex-col justify-center bg-white relative z-10">
                   <div className="mb-4">
-                    <span className="bg-blue-600 text-white text-[10px] sm:text-xs font-bold uppercase tracking-wider px-2.5 py-1 rounded-sm shadow-sm">
+                    <span className="bg-gray-900 text-white text-[10px] sm:text-xs font-bold uppercase tracking-wider px-2.5 py-1 rounded-sm shadow-sm">
                       {featuredArticle.category}
                     </span>
                   </div>
                   <Link href={`/berita-teknologi/${featuredArticle.category.toLowerCase()}/${featuredArticle.id}/${featuredArticle.slug}`}>
-                    <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold font-heading text-gray-900 group-hover:text-blue-700 transition-colors mb-3 leading-tight line-clamp-3">
+                    <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold font-heading text-gray-900 group-hover:text-gray-600 transition-colors mb-3 leading-tight line-clamp-3">
                       {featuredArticle.title}
                     </h2>
                   </Link>
@@ -75,7 +75,7 @@ export default async function Home() {
                             <li key={bj.id} className="group/link">
                               <Link href={`/berita-teknologi/${bj.category.toLowerCase()}/${bj.id}/${bj.slug}`} className="flex items-start gap-1.5 sm:gap-2">
                                 <svg className="w-4 h-4 sm:w-5 sm:h-5 text-red-500 shrink-0 mt-0.5 sm:mt-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
-                                <span className="text-sm sm:text-base font-bold text-gray-800 group-hover/link:text-blue-600 transition-colors line-clamp-2 leading-snug">{bj.title}</span>
+                                <span className="text-sm sm:text-base font-bold text-gray-800 group-hover/link:text-gray-600 transition-colors line-clamp-2 leading-snug">{bj.title}</span>
                               </Link>
                             </li>
                           ))}
@@ -99,14 +99,14 @@ export default async function Home() {
               ) : (
                 popularArticles.map((article, index) => (
                   <div key={article.id} className="flex gap-4 group cursor-pointer">
-                    <div className="text-5xl font-black font-heading text-gray-100 group-hover:text-blue-100 transition-colors -mt-2">
+                    <div className="text-5xl font-black font-heading text-gray-100 group-hover:text-gray-300 transition-colors -mt-2">
                       {index + 1}
                     </div>
                     <div>
-                      <div className="text-blue-600 text-xs font-bold uppercase tracking-wider mb-1">
+                      <div className="text-gray-900 text-xs font-bold uppercase tracking-wider mb-1">
                         {article.category}
                       </div>
-                      <h4 className="font-bold text-gray-900 group-hover:text-blue-700 transition-colors line-clamp-2 text-base leading-snug">
+                      <h4 className="font-bold text-gray-900 group-hover:text-gray-600 transition-colors line-clamp-2 text-base leading-snug">
                         <Link href={`/berita-teknologi/${article.category.toLowerCase()}/${article.id}/${article.slug}`}>{article.title}</Link>
                       </h4>
                     </div>
@@ -142,10 +142,10 @@ export default async function Home() {
 
                   {/* Text Content */}
                   <div className="flex flex-col w-full justify-start">
-                    <div className="text-blue-600 text-[10px] sm:text-xs font-bold uppercase tracking-wider mb-1 sm:mb-2">
+                    <div className="text-gray-900 text-[10px] sm:text-xs font-bold uppercase tracking-wider mb-1 sm:mb-2">
                       {article.category}
                     </div>
-                    <h4 className="font-bold text-gray-900 group-hover:text-blue-700 transition-colors line-clamp-3 mb-1 sm:mb-3 text-sm sm:text-lg leading-snug sm:flex-grow">
+                    <h4 className="font-bold text-gray-900 group-hover:text-gray-600 transition-colors line-clamp-3 mb-1 sm:mb-3 text-sm sm:text-lg leading-snug sm:flex-grow">
                       {article.title}
                     </h4>
                     <div className="text-[10px] sm:text-xs text-gray-500 font-medium sm:mt-auto">

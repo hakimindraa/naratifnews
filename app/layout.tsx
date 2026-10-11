@@ -13,8 +13,12 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Naratif - Portal Berita",
-  description: "Portal berita bersih, minimalis, dan ramah semua usia.",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://www.naratif.web.id'),
+  title: {
+    default: "Naratif - Informasi Berita Teknologi",
+    template: "%s | Naratif",
+  },
+  description: "Portal berita dan informasi seputar perkembangan teknologi, software, gadget, AI, dan inovasi digital terkini.",
 };
 
 export default function RootLayout({

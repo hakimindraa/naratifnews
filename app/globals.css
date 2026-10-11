@@ -27,3 +27,27 @@ body {
   scrollbar-width: none;
 }
 
+/* Article Typography */
+.article-content {
+  font-size: 1.125rem;
+  line-height: 1.85;
+  color: #1f2937;
+}
+
+.article-content p {
+  margin-bottom: 1.5rem;
+  line-height: 1.85;
+}
+
+.article-content h2,
+.article-content h3 {
+  color: #111827;
+  font-family: var(--font-heading), sans-serif;
+}
+
+.article-content ul,
+.article-content ol {
+  margin-bottom: 1.5rem;
+}
+
+

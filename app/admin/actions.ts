@@ -45,7 +45,15 @@ export async function uploadMarkdownFile(formData: FormData) {
         }
 
         const categoryAllowed = ['Software', 'Hardware', 'AI', 'Infrastruktur', 'Gadget'];
-        const catFormatted = data.category.charAt(0).toUpperCase() + data.category.slice(1);
+        const rawCategory = String(data.category || '').trim().toLowerCase();
+        const categoryMap: Record<string, string> = {
+          'ai': 'AI',
+          'software': 'Software',
+          'hardware': 'Hardware',
+          'infrastruktur': 'Infrastruktur',
+          'gadget': 'Gadget',
+        };
+        const catFormatted = categoryMap[rawCategory] || (data.category.charAt(0).toUpperCase() + data.category.slice(1));
         
         if (!categoryAllowed.includes(catFormatted)) {
           errors.push(`Gagal: Kategori '${data.category}' pada '${data.title}' tidak valid.`);
@@ -192,5 +200,98 @@ export async function updateArticle(id: number, formData: FormData) {
     return { success: true };
   } catch (error) {
     return { error: 'Gagal mengupdate artikel' };
+  }
+}
+
+export async function createArticle(formData: FormData) {
+  try {
+    const title = (formData.get('title') as string || '').trim();
+    let slug = (formData.get('slug') as string || '').trim();
+    const category = (formData.get('category') as string || 'Software').trim();
+    let excerpt = (formData.get('excerpt') as string || '').trim();
+    const coverUrl = (formData.get('coverUrl') as string || '').trim();
+    const coverCaption = (formData.get('coverCaption') as string || '').trim();
+    const publishAtStr = (formData.get('publishAt') as string || '').trim();
+    const content = (formData.get('content') as string || '').trim();
+    const author = (formData.get('author') as string || 'Redaksi').trim();
+    const tagsStr = (formData.get('tags') as string || '').trim();
+
+    if (!title) return { error: 'Judul artikel wajib diisi.' };
+    if (!content) return { error: 'Konten artikel wajib diisi.' };
+    if (!coverUrl) return { error: 'Link cover gambar wajib diisi.' };
+
+    // Format category
+    const categoryAllowed = ['Software', 'Hardware', 'AI', 'Infrastruktur', 'Gadget'];
+    const rawCategory = category.toLowerCase();
+    const categoryMap: Record<string, string> = {
+      'ai': 'AI',
+      'software': 'Software',
+      'hardware': 'Hardware',
+      'infrastruktur': 'Infrastruktur',
+      'gadget': 'Gadget',
+    };
+    const catFormatted = categoryMap[rawCategory] || 'Software';
+
+    // Auto-generate slug jika kosong
+    if (!slug) {
+      slug = title
+        .toLowerCase()
+        .replace(/[^\w\s-]/g, '')
+        .replace(/[\s_-]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+    }
+
+    // Auto-generate excerpt jika kosong
+    if (!excerpt) {
+      excerpt = content
+        .replace(/#+\s+/g, '')
+        .replace(/[*_`\[\]()]/g, '')
+        .substring(0, 160)
+        .trim();
+      if (excerpt.length >= 150) excerpt += '...';
+    }
+
+    // Cek apakah slug sudah ada
+    const existing = await db.select({ id: articles.id }).from(articles).where(eq(articles.slug, slug)).limit(1);
+    if (existing.length > 0) {
+      slug = `${slug}-${Date.now().toString().slice(-4)}`;
+    }
+
+    // Waktu terbit
+    const safePublishAtStr = publishAtStr ? publishAtStr.replace('T', ' ') + '+07:00' : '';
+    const publishAt = safePublishAtStr ? new Date(safePublishAtStr) : new Date();
+
+    let status = 'published';
+    let publishedAt: Date | null = new Date();
+
+    if (publishAt > new Date()) {
+      status = 'scheduled';
+      publishedAt = null;
+    }
+
+    const tags = tagsStr 
+      ? tagsStr.split(',').map(t => t.trim().replace(/^#/, '')).filter(t => t.length > 0)
+      : [];
+
+    const [newArticle] = await db.insert(articles).values({
+      title,
+      slug,
+      category: catFormatted,
+      excerpt,
+      content,
+      coverUrl,
+      coverCaption,
+      author: author || 'Redaksi',
+      tags,
+      status,
+      publishAt,
+      publishedAt,
+    }).returning({ id: articles.id, slug: articles.slug });
+
+    revalidatePath('/', 'layout');
+    return { success: true, id: newArticle.id };
+  } catch (error: any) {
+    console.error('Error creating article:', error);
+    return { error: error.message || 'Gagal menyimpan artikel baru.' };
   }
 }
