@@ -126,6 +126,12 @@ import fs from 'fs';
 import path from 'path';
 
 function getEnvVar(key: string, defaultValue = ''): string {
+  // 1. Cek process.env dulu (terutama saat di Vercel / serverless production)
+  if (process.env[key]) {
+    return process.env[key]!;
+  }
+
+  // 2. Fallback baca file .env.local saat running di lokal dev tanpa restart
   try {
     const envPath = path.join(process.cwd(), '.env.local');
     if (fs.existsSync(envPath)) {
@@ -143,9 +149,9 @@ function getEnvVar(key: string, defaultValue = ''): string {
       }
     }
   } catch (e) {
-    // fallback to process.env
+    // fallback
   }
-  return process.env[key] || defaultValue;
+  return defaultValue;
 }
 
 export async function requestArticleFromModelRouter(
@@ -166,7 +172,7 @@ export async function requestArticleFromModelRouter(
 
   if (provider === 'gemini') {
     baseUrl = getEnvVar('GEMINI_BASE_URL', 'https://generativelanguage.googleapis.com/v1beta/openai');
-    apiKey = getEnvVar('GEMINI_API_KEY', 'AIzaSyD_lhIrfhwgagV4JKr1DOwfpfCe0itCmSI');
+    apiKey = getEnvVar('GEMINI_API_KEY');
     modelName = getEnvVar('GEMINI_MODEL', 'gemini-3.8-flash');
     useJsonFormat = true;
   } else if (provider === 'groq') {
@@ -176,13 +182,13 @@ export async function requestArticleFromModelRouter(
     useJsonFormat = true;
   } else {
     baseUrl = getEnvVar('LOCAL_9ROUTER_BASE_URL', 'http://localhost:20128/v1');
-    apiKey = getEnvVar('LOCAL_9ROUTER_KEY', 'sk-112992202cc5a537-c30afk-edb2de20');
+    apiKey = getEnvVar('LOCAL_9ROUTER_KEY');
     modelName = getEnvVar('LOCAL_9ROUTER_MODEL', 'oc/muse-spark-1.3-contributor-free');
     useJsonFormat = false;
   }
 
   if (!apiKey && provider !== '9router') {
-    throw new Error(`API Key untuk ${provider} belum disetel di file .env.local`);
+    throw new Error(`API Key untuk ${provider} belum disetel di Environment Variables`);
   }
 
   baseUrl = baseUrl.replace(/\/+$/, '');
