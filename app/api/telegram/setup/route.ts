@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { setTelegramWebhook, getTelegramWebhookInfo } from '@/lib/telegram';
 
-export const dynamic = 'force-dynamic';
-
 export async function GET(req: NextRequest) {
   try {
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.naratif.web.id';
