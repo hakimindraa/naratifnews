@@ -22,7 +22,7 @@ export type AIProvider = 'gemini' | 'groq' | '9router';
 export interface GenerateArticleOptions {
   prompt: string;
   category?: string;
-  length?: 'standar' | 'mendalam';
+  length?: 'ringkas' | 'standar' | 'mendalam';
   provider?: AIProvider;
   enableWebSearch?: boolean;
 }
@@ -262,7 +262,12 @@ export async function requestArticleFromModelRouter(
 ): Promise<GeneratedArticleDraft & { modelUsed: string; providerUsed: string }> {
   const provider: AIProvider = options.provider || 'gemini';
 
-  const wordCountTarget = options.length === 'mendalam' ? '1000 - 1400 kata' : '600 - 800 kata';
+  const wordCountTarget =
+    options.length === 'ringkas'
+      ? '350 - 500 kata'
+      : options.length === 'mendalam'
+      ? '1000 - 1400 kata'
+      : '600 - 800 kata';
   const targetCategory = options.category || 'AI';
 
   // 1. Lakukan riset Google News secara mendalam (Dual Engine: Lokal & Global) jika diaktifkan (Default: Aktif)

@@ -99,3 +99,25 @@ export async function getTelegramWebhookInfo(): Promise<any> {
   const res = await fetch(`https://api.telegram.org/bot${token}/getWebhookInfo`);
   return await res.json();
 }
+
+export async function answerCallbackQuery(
+  callbackQueryId: string,
+  text?: string
+): Promise<any> {
+  const token = getTelegramToken();
+  if (!token) return { success: false, error: 'TELEGRAM_BOT_TOKEN belum disetel.' };
+
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${token}/answerCallbackQuery`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        callback_query_id: callbackQueryId,
+        text,
+      }),
+    });
+    return await res.json();
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
