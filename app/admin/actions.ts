@@ -84,6 +84,25 @@ export async function uploadMarkdownFile(formData: FormData) {
           }
         }
 
+        // Normalisasi tags (bisa format array YAML maupun teks dipisah koma)
+        let formattedTags: string[] = [];
+        if (Array.isArray(data.tags)) {
+          formattedTags = data.tags.map((t: any) => String(t).trim().replace(/^#/, '')).filter(Boolean);
+        } else if (typeof data.tags === 'string' && data.tags.trim()) {
+          formattedTags = data.tags.split(',').map((t: string) => t.trim().replace(/^#/, '')).filter(Boolean);
+        }
+
+        // Auto-generate excerpt jika belum diisi di frontmatter
+        let excerpt = (data.excerpt || '').trim();
+        if (!excerpt && content) {
+          excerpt = content
+            .replace(/#+\s+/g, '')
+            .replace(/[*_`\[\]()]/g, '')
+            .substring(0, 160)
+            .trim();
+          if (excerpt.length >= 150) excerpt += '...';
+        }
+
         // Cek apakah slug sudah ada (untuk update/overwrite)
         const existing = await db.select({ id: articles.id }).from(articles).where(eq(articles.slug, data.slug)).limit(1);
 
@@ -91,13 +110,13 @@ export async function uploadMarkdownFile(formData: FormData) {
           // Update
           await db.update(articles).set({
             title: data.title,
-            excerpt: data.excerpt || '',
+            excerpt: excerpt,
             content: content,
             coverUrl: data.cover,
             coverCaption: data.cover_caption || '',
             category: catFormatted,
             author: data.author || 'Redaksi',
-            tags: data.tags || [],
+            tags: formattedTags,
             status: status,
             publishAt: publishAt,
             publishedAt: publishedAt,
@@ -108,13 +127,13 @@ export async function uploadMarkdownFile(formData: FormData) {
           await db.insert(articles).values({
             slug: data.slug,
             title: data.title,
-            excerpt: data.excerpt || '',
+            excerpt: excerpt,
             content: content,
             coverUrl: data.cover,
             coverCaption: data.cover_caption || '',
             category: catFormatted,
             author: data.author || 'Redaksi',
-            tags: data.tags || [],
+            tags: formattedTags,
             status: status,
             publishAt: publishAt,
             publishedAt: publishedAt,
