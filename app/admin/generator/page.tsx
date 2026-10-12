@@ -16,6 +16,7 @@ import {
   Smartphone,
   Cpu,
   Layers,
+  Code,
   Check,
   TrendingUp,
   Info,
@@ -51,27 +52,33 @@ interface StatsData {
 const PRESET_TOPICS = [
   {
     icon: Flame,
-    label: 'Tren Model AI Terbaru',
+    label: 'Tren & Inovasi AI Terkini',
     category: 'AI',
-    prompt: 'Bahas peluncuran model AI mutakhir terkini, peningkatan efisiensi komputasi, dan dampaknya bagi para pengembang perangkat lunak.',
+    prompt: 'Bahas perkembangan terkini teknologi kecerdasan buatan dan model generasi baru, bagaimana inovasi mutakhir ini mengubah industri, serta efisiensi dan dampaknya bagi masyarakat berdasarkan riset dan data faktual terkini.',
   },
   {
-    icon: Smartphone,
-    label: 'Review Gadget & Chipset 2026',
-    category: 'Gadget',
-    prompt: 'Ulas inovasi arsitektur chipset flagship smartphone generasi baru dengan teknologi fabrikasi mutakhir dan fitur AI on-device.',
+    icon: Code,
+    label: 'Ekosistem & Tren Software',
+    category: 'Software',
+    prompt: 'Ulas perkembangan mutakhir dunia rekayasa perangkat lunak, adopsi standar teknologi baru di kalangan developer, dan inovasi arsitektur aplikasi modern berdasarkan fakta industri terkini.',
   },
   {
     icon: Cpu,
-    label: 'Framework Web & Developer Tools',
-    category: 'Software',
-    prompt: 'Perkembangan Next.js dan ekosistem React Server Components serta bagaimana dampaknya terhadap performa aplikasi web modern.',
+    label: 'Dinamika Semikonduktor & Hardware',
+    category: 'Hardware',
+    prompt: 'Sorot perkembangan industri semikonduktor, kemajuan arsitektur komputasi perangkat keras generasi terbaru, serta pengaruhnya terhadap pasar teknologi global berdasarkan rilis dan laporan terkini.',
   },
   {
     icon: Layers,
     label: 'Infrastruktur Cloud & Keamanan',
     category: 'Infrastruktur',
-    prompt: 'Tantangan keamanan siber di era arsitektur serverless dan strategi perlindungan data cloud modern bagi perusahaan teknologi.',
+    prompt: 'Bahas perkembangan infrastruktur data center modern, tren komputasi awan, dan lanskap keamanan siber terkini dalam menghadapi tantangan era digital berdasarkan fakta riset terbaru.',
+  },
+  {
+    icon: Smartphone,
+    label: 'Inovasi Gadget & Konsumen',
+    category: 'Gadget',
+    prompt: 'Analisis tren inovasi perangkat pintar generasi terbaru, fitur-fitur mutakhir yang mulai diadopsi massal, dan arah masa depan ekosistem teknologi konsumen berdasarkan pembaruan industri terkini.',
   },
 ];
 
@@ -353,7 +360,7 @@ export default function GeneratorStudioPage() {
             <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
             Pilihan Cepat (Klik Sekali untuk Mengisi):
           </label>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-2.5 sm:gap-3">
             {PRESET_TOPICS.map((preset, idx) => {
               const Icon = preset.icon;
               const isSelected = prompt === preset.prompt;
@@ -407,7 +414,7 @@ export default function GeneratorStudioPage() {
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               disabled={isLoading}
-              placeholder="Contoh: Buatkan berita mendalam tentang peluncuran chip fabrikasi baru dan bagaimana para developer menyambutnya..."
+              placeholder="Contoh: Analisis perkembangan terbaru dan tren terhangat saat ini, sorot dampaknya bagi ekosistem industri dan masyarakat berdasarkan riset berita faktual terkini..."
               className="w-full rounded-xl sm:rounded-2xl border border-gray-300 p-3.5 sm:p-4 text-xs sm:text-sm text-gray-900 placeholder:text-gray-400 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20 outline-none transition-all resize-none shadow-2xs"
             />
           </div>
