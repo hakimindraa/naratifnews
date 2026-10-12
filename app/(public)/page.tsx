@@ -4,23 +4,34 @@ import { articles } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { formatDistanceToNow } from "date-fns";
 import { id } from "date-fns/locale";
+import LatestNewsSection from "./LatestNewsSection";
 
 export const instant = false;
 
 export default async function Home() {
-  // Ambil hanya artikel yang berstatus published
+  // Ambil artikel yang berstatus published (hingga 54 artikel: 1 featured, 2 baca juga, 50 latest, + 1 untuk cek apakah ada sisa)
   const publishedArticles = await db
     .select()
     .from(articles)
     .where(eq(articles.status, 'published'))
     .orderBy(desc(articles.publishedAt))
-    .limit(10);
+    .limit(54);
 
   const featuredArticle = publishedArticles.length > 0 ? publishedArticles[0] : null;
   const bacaJugaArticles = publishedArticles.slice(1, 3);
-  const latestArticles = publishedArticles.slice(3, 7);
+  const rawLatestArticles = publishedArticles.slice(3, 53);
+  const hasMore = publishedArticles.length > 53;
   // Untuk populer, sementara kita ambil dari urutan 5-10
   const popularArticles = publishedArticles.slice(5, 10);
+
+  const initialLatestArticles = rawLatestArticles.map((a) => ({
+    id: a.id,
+    slug: a.slug,
+    title: a.title,
+    coverUrl: a.coverUrl,
+    category: a.category,
+    publishedAt: a.publishedAt ? a.publishedAt.toISOString() : null,
+  }));
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -118,49 +129,12 @@ export default async function Home() {
         </div>
       )}
 
-      {/* Latest Articles Grid */}
-      {latestArticles.length > 0 && (
-        <div className="mt-16">
-          <div className="flex items-center mb-8">
-            <h3 className="text-2xl font-bold font-heading text-gray-900">Berita Terbaru</h3>
-            <div className="ml-4 flex-grow h-px bg-gray-200"></div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4 sm:gap-x-6 sm:gap-y-10 lg:grid-cols-4">
-            {latestArticles.map((article) => (
-              <div key={article.id} className="group cursor-pointer">
-                <Link href={`/berita-teknologi/${article.category.toLowerCase()}/${article.id}/${article.slug}`} className="flex flex-col gap-2 sm:gap-0 sm:h-full items-start">
-
-                  {/* Thumbnail Image */}
-                  <div className="relative w-full aspect-[4/3] sm:h-48 sm:aspect-auto bg-gray-100 overflow-hidden rounded-lg sm:rounded-xl mb-2 sm:mb-4 shadow-sm shrink-0">
-                    <img
-                      src={article.coverUrl || ''}
-                      alt={article.title}
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                    />
-                  </div>
-
-                  {/* Text Content */}
-                  <div className="flex flex-col w-full justify-start">
-                    <div className="text-gray-900 text-[10px] sm:text-xs font-bold uppercase tracking-wider mb-1 sm:mb-2">
-                      {article.category}
-                    </div>
-                    <h4 className="font-bold text-gray-900 group-hover:text-gray-600 transition-colors line-clamp-3 mb-1 sm:mb-3 text-sm sm:text-lg leading-snug sm:flex-grow">
-                      {article.title}
-                    </h4>
-                    <div className="text-[10px] sm:text-xs text-gray-500 font-medium sm:mt-auto">
-                      {article.publishedAt
-                        ? formatDistanceToNow(new Date(article.publishedAt), { addSuffix: true, locale: id })
-                        : ''}
-                    </div>
-                  </div>
-
-                </Link>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* Latest Articles Grid with Load More */}
+      <LatestNewsSection
+        initialArticles={initialLatestArticles}
+        initialHasMore={hasMore}
+        initialOffset={3 + rawLatestArticles.length}
+      />
     </div>
   );
 }
