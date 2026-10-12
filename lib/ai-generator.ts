@@ -2,6 +2,8 @@ export interface NewsSource {
   title: string;
   source: string;
   pubDate: string;
+  snippet?: string;
+  region?: 'ID' | 'GLOBAL';
 }
 
 export interface GeneratedArticleDraft {
@@ -25,19 +27,66 @@ export interface GenerateArticleOptions {
   enableWebSearch?: boolean;
 }
 
-export async function fetchGoogleNewsResearch(query: string, maxItems = 4): Promise<NewsSource[]> {
-  try {
-    const cleanQuery = query.slice(0, 80).replace(/[^\w\s-]/g, ' ').trim();
-    if (!cleanQuery) return [];
+function cleanHtml(html: string): string {
+  return html
+    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
 
-    const url = `https://news.google.com/rss/search?q=${encodeURIComponent(cleanQuery)}&hl=id&gl=ID&ceid=ID:id`;
+function extractKeywords(prompt: string, category = 'AI'): { localQuery: string; globalQuery: string } {
+  const stopWords = new Set([
+    'bahas', 'ulas', 'sorot', 'analisis', 'buatkan', 'tuliskan', 'berita', 'mendalam',
+    'tentang', 'terkait', 'bagaimana', 'perkembangan', 'terkini', 'terbaru', 'mutakhir',
+    'generasi', 'baru', 'inovasi', 'industri', 'masyarakat', 'berdasarkan', 'riset',
+    'data', 'faktual', 'fakta', 'saat', 'ini', 'dan', 'yang', 'di', 'dari', 'ke', 'untuk',
+    'dengan', 'pada', 'serta', 'bagi', 'para', 'adopsi', 'standar', 'ekosistem', 'tren'
+  ]);
+
+  const words = prompt
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, ' ')
+    .split(/\s+/)
+    .filter((w) => w.length > 2 && !stopWords.has(w));
+
+  const uniqueWords = Array.from(new Set(words));
+  const keywordSlice = uniqueWords.slice(0, 4).join(' ');
+
+  const categoryTerms: Record<string, { id: string; en: string }> = {
+    ai: { id: 'AI kecerdasan buatan', en: 'Artificial Intelligence AI' },
+    software: { id: 'software teknologi aplikasi', en: 'software engineering tools' },
+    hardware: { id: 'semikonduktor chipset hardware', en: 'semiconductor hardware chips' },
+    infrastruktur: { id: 'data center cloud keamanan siber', en: 'cloud data center cybersecurity' },
+    gadget: { id: 'smartphone gadget teknologi', en: 'smartphone consumer tech gadget' },
+  };
+
+  const defaultTerms = categoryTerms[category.toLowerCase()] || { id: 'teknologi terkini', en: 'technology news' };
+
+  const localQuery = keywordSlice ? `${keywordSlice} ${defaultTerms.id.split(' ')[0]}`.trim() : defaultTerms.id;
+  const globalQuery = keywordSlice ? `${keywordSlice} tech`.trim() : defaultTerms.en;
+
+  return {
+    localQuery: localQuery.slice(0, 60),
+    globalQuery: globalQuery.slice(0, 60),
+  };
+}
+
+async function fetchFromRssUrl(url: string, region: 'ID' | 'GLOBAL', maxItems = 3): Promise<NewsSource[]> {
+  try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 6000);
 
     const res = await fetch(url, {
       signal: controller.signal,
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
       },
     });
     clearTimeout(timeoutId);
@@ -53,20 +102,74 @@ export async function fetchGoogleNewsResearch(query: string, maxItems = 4): Prom
       const titleMatch = itemXml.match(/<title>([\s\S]*?)<\/title>/i);
       const pubDateMatch = itemXml.match(/<pubDate>([\s\S]*?)<\/pubDate>/i);
       const sourceMatch = itemXml.match(/<source[^>]*>([\s\S]*?)<\/source>/i);
+      const descMatch = itemXml.match(/<description>([\s\S]*?)<\/description>/i);
 
-      const rawTitle = (titleMatch ? titleMatch[1] : '').replace(/<!\[CDATA\[(.*?)\]\]>/g, '$1').trim();
-      const source = (sourceMatch ? sourceMatch[1] : 'Media Nasional').replace(/<!\[CDATA\[(.*?)\]\]>/g, '$1').trim();
+      const rawTitle = titleMatch ? cleanHtml(titleMatch[1]) : '';
+      const source = sourceMatch ? cleanHtml(sourceMatch[1]) : (region === 'ID' ? 'Media Nasional' : 'Global Tech Media');
       const pubDate = pubDateMatch ? pubDateMatch[1].trim() : '';
+      const rawSnippet = descMatch ? cleanHtml(descMatch[1]) : '';
+      // Potong snippet agar padat dan informatif
+      const snippet = rawSnippet.length > 250 ? `${rawSnippet.slice(0, 247)}...` : rawSnippet;
 
       if (rawTitle) {
         items.push({
           title: rawTitle,
           source,
           pubDate,
+          snippet: snippet || undefined,
+          region,
         });
       }
     }
     return items;
+  } catch (err) {
+    return [];
+  }
+}
+
+export async function fetchGoogleNewsResearch(
+  query: string,
+  maxItems = 6,
+  category = 'AI'
+): Promise<NewsSource[]> {
+  try {
+    const { localQuery, globalQuery } = extractKeywords(query, category);
+
+    const localUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(localQuery)}&hl=id&gl=ID&ceid=ID:id`;
+    const globalUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(globalQuery)}&hl=en-US&gl=US&ceid=US:en`;
+
+    // Eksekusi paralel 2 jalur (Lokal Indonesia & Global Dunia)
+    const [localResult, globalResult] = await Promise.allSettled([
+      fetchFromRssUrl(localUrl, 'ID', 3),
+      fetchFromRssUrl(globalUrl, 'GLOBAL', 3),
+    ]);
+
+    const localSources = localResult.status === 'fulfilled' ? localResult.value : [];
+    const globalSources = globalResult.status === 'fulfilled' ? globalResult.value : [];
+
+    let combined = [...localSources, ...globalSources];
+
+    // Fallback jika hasil query spesifik kosong: cari berdasarkan topik umum kategori
+    if (combined.length < 2) {
+      const fallbackUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(category + ' teknologi')}&hl=id&gl=ID&ceid=ID:id`;
+      const fallbackItems = await fetchFromRssUrl(fallbackUrl, 'ID', 3);
+      combined = [...combined, ...fallbackItems];
+    }
+
+    // Filter judul duplikat
+    const seenTitles = new Set<string>();
+    const uniqueSources: NewsSource[] = [];
+
+    for (const item of combined) {
+      const simplifiedTitle = item.title.slice(0, 35).toLowerCase();
+      if (!seenTitles.has(simplifiedTitle)) {
+        seenTitles.add(simplifiedTitle);
+        uniqueSources.push(item);
+      }
+      if (uniqueSources.length >= maxItems) break;
+    }
+
+    return uniqueSources;
   } catch (err) {
     console.warn('Google News search failed or timed out:', err);
     return [];
@@ -159,10 +262,13 @@ export async function requestArticleFromModelRouter(
 ): Promise<GeneratedArticleDraft & { modelUsed: string; providerUsed: string }> {
   const provider: AIProvider = options.provider || 'gemini';
 
-  // 1. Lakukan riset Google News secara gratis jika diaktifkan (Default: Aktif)
+  const wordCountTarget = options.length === 'mendalam' ? '1000 - 1400 kata' : '600 - 800 kata';
+  const targetCategory = options.category || 'AI';
+
+  // 1. Lakukan riset Google News secara mendalam (Dual Engine: Lokal & Global) jika diaktifkan (Default: Aktif)
   let researchSources: NewsSource[] = [];
   if (options.enableWebSearch !== false) {
-    researchSources = await fetchGoogleNewsResearch(options.prompt, 4);
+    researchSources = await fetchGoogleNewsResearch(options.prompt, 6, targetCategory);
   }
 
   let baseUrl = '';
@@ -194,9 +300,6 @@ export async function requestArticleFromModelRouter(
   baseUrl = baseUrl.replace(/\/+$/, '');
   const endpoint = `${baseUrl}/chat/completions`;
 
-  const wordCountTarget = options.length === 'mendalam' ? '1000 - 1400 kata' : '600 - 800 kata';
-  const targetCategory = options.category || 'AI';
-
   const systemPrompt = `Anda adalah jurnalis teknologi senior dan editor utama di portal media teknologi terkemuka "Naratif" (Indonesia).
 Tugas Anda adalah menulis artikel berita teknologi yang mendalam, berwawasan tajam, faktual, dan menarik untuk para antusias teknologi, developer, dan praktisi industri.
 
@@ -205,7 +308,8 @@ ATURAN PENULISAN:
 2. Format Konten: Gunakan Markdown murni yang rapi (Heading ##, ###, bullet points, penekanan bold, kutipan analitis >). JANGAN gunakan tag HTML mentah seperti <p>, <div>, <span>.
 3. Panjang konten: Target ${wordCountTarget}.
 4. Kategori artikel HARUS salah satu dari: ["AI", "Software", "Hardware", "Gadget", "Infrastruktur"].
-5. Output: WAJIB HANYA berupa objek JSON murni (VALID JSON) tanpa pembuka atau penutup obrolan apa pun di luar JSON.
+5. Validitas Riset & E-E-A-T: Manfaatkan entitas, narasumber, angka, dan fakta dari HASIL RISET RIIL yang disediakan. Di akhir konten (bagian paling bawah), WAJIB buatkan sub-heading "## Referensi Berita Terkait" berupa poin-poin yang menyebutkan media/sumber fakta yang Anda jadikan rujukan agar kredibilitas jurnalisme dan SEO E-E-A-T artikel terjamin.
+6. Output: WAJIB HANYA berupa objek JSON murni (VALID JSON) tanpa pembuka atau penutup obrolan apa pun di luar JSON.
 
 FORMAT STRUKTUR JSON YANG WAJIB ANDA HASILKAN:
 {
@@ -220,8 +324,16 @@ FORMAT STRUKTUR JSON YANG WAJIB ANDA HASILKAN:
 
   let newsContext = '';
   if (researchSources.length > 0) {
-    newsContext = `\n\nHASIL RISET GOOGLE NEWS INDONESIA TERKINI (Gunakan fakta, entitas, tanggal, dan data perkembangan industri berikut sebagai acuan utama artikel):
-${researchSources.map((item, idx) => `${idx + 1}. [${item.source} - ${item.pubDate}]: ${item.title}`).join('\n')}\n`;
+    newsContext = `\n\nHASIL RISET DUAL-ENGINE TERKINI (Google News Indonesia & Global):
+${researchSources.map((item, idx) => {
+  const regionLabel = item.region === 'GLOBAL' ? '[Media Global]' : '[Media Nasional]';
+  const snippetStr = item.snippet ? `\n   Konteks/Fakta: "${item.snippet}"` : '';
+  return `${idx + 1}. ${regionLabel} [${item.source} - ${item.pubDate}]: ${item.title}${snippetStr}`;
+}).join('\n')}\n
+PANDUAN PEMANFAATAN RISET:
+- Gunakan data, peristiwa, nama perusahaan, narasumber, dan tren dari hasil riset di atas sebagai inti tulisan.
+- Padukan konteks global dengan relevansi dan dampaknya bagi industri teknologi maupun pengguna di Indonesia.
+- Pada bagian akhir artikel berita, sertakan subjudul "## Referensi Berita Terkait" yang mencantumkan sumber/media di atas secara profesional.`;
   }
 
   const userPrompt = `Buatkan artikel berita teknologi profesional tentang topik berikut:

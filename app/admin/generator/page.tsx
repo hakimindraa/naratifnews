@@ -111,7 +111,7 @@ export default function GeneratorStudioPage() {
     category: string;
     status: string;
     durationMs: number;
-    researchSources?: { title: string; source: string; pubDate: string }[];
+    researchSources?: { title: string; source: string; pubDate: string; region?: 'ID' | 'GLOBAL' }[];
   } | null>(null);
 
   const steps = enableWebSearch
@@ -713,7 +713,9 @@ export default function GeneratorStudioPage() {
                       key={idx}
                       className="inline-flex items-center gap-1.5 text-xs bg-white/90 border border-emerald-300 text-emerald-950 px-2.5 py-1 rounded-lg shadow-2xs font-medium"
                     >
-                      <span className="font-bold text-emerald-700">[{item.source}]</span>
+                      <span className="font-bold text-emerald-700">
+                        [{item.region === 'GLOBAL' ? 'Global: ' : ''}{item.source}]
+                      </span>
                       <span className="truncate max-w-[280px] sm:max-w-[420px]">{item.title}</span>
                     </div>
                   ))}
