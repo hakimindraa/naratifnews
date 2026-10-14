@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans, Inter } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 
 const jakarta = Plus_Jakarta_Sans({
@@ -34,6 +35,14 @@ export default function RootLayout({
       lang="id"
       className={`${jakarta.variable} ${inter.variable} antialiased`}
     >
+      <head>
+        <Script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9829376296588403"
+          crossOrigin="anonymous"
+          strategy="afterInteractive"
+        />
+      </head>
       <body className="min-h-screen flex flex-col font-sans bg-gray-50 text-gray-900">
         <main className="flex-grow">
           {children}
@@ -42,3 +51,4 @@ export default function RootLayout({
     </html>
   );
 }
+

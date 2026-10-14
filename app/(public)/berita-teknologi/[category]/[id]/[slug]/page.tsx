@@ -11,6 +11,8 @@ import rehypeSanitize from 'rehype-sanitize';
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
 import ShareButtons from "./ShareButtons";
+import { getAdSettings } from "@/lib/ads";
+import AdSlot from "../../../../AdSlot";
 
 export const instant = false;
 
@@ -107,6 +109,21 @@ export default async function ArticlePage({
     .where(eq(articles.status, 'published'))
     .orderBy(desc(articles.publishedAt))
     .limit(5);
+
+  // Ambil pengaturan iklan dinamis
+  const adSettings = await getAdSettings();
+
+  // Split artikel untuk slot iklan tengah bacaan jika aktif
+  let contentPart1 = article.content;
+  let contentPart2 = '';
+  if (adSettings.inArticle?.enabled) {
+    const paragraphs = article.content.split(/\n\s*\n/);
+    if (paragraphs.length >= 4) {
+      const splitPoint = Math.min(3, Math.floor(paragraphs.length / 2));
+      contentPart1 = paragraphs.slice(0, splitPoint).join('\n\n');
+      contentPart2 = paragraphs.slice(splitPoint).join('\n\n');
+    }
+  }
 
   const plainTextExcerpt =
     article.excerpt ||
@@ -208,77 +225,99 @@ export default async function ArticlePage({
             </div>
           )}
 
-          <div className="article-content max-w-none text-gray-800 font-sans">
-            <ReactMarkdown
-              remarkPlugins={[remarkGfm]}
-              rehypePlugins={[rehypeSanitize]}
-              components={{
-                h1: ({ children }) => (
-                  <h2 className="text-2xl sm:text-3xl font-bold font-heading text-gray-900 mt-10 mb-4 pb-2 border-b border-gray-100 tracking-tight leading-snug">
-                    {children}
-                  </h2>
-                ),
-                h2: ({ children }) => (
-                  <h2 className="text-2xl sm:text-3xl font-bold font-heading text-gray-900 mt-10 mb-4 pb-2 border-b border-gray-100 tracking-tight leading-snug">
-                    {children}
-                  </h2>
-                ),
-                h3: ({ children }) => (
-                  <h3 className="text-xl sm:text-2xl font-bold font-heading text-gray-900 mt-8 mb-3 tracking-tight">
-                    {children}
-                  </h3>
-                ),
-                p: ({ children }) => (
-                  <p className="text-gray-800 text-base sm:text-lg leading-relaxed mb-6 font-normal">
-                    {children}
-                  </p>
-                ),
-                ul: ({ children }) => (
-                  <ul className="list-disc list-outside pl-6 mb-6 space-y-2 text-base sm:text-lg text-gray-800 leading-relaxed">
-                    {children}
-                  </ul>
-                ),
-                ol: ({ children }) => (
-                  <ol className="list-decimal list-outside pl-6 mb-6 space-y-2 text-base sm:text-lg text-gray-800 leading-relaxed">
-                    {children}
-                  </ol>
-                ),
-                li: ({ children }) => (
-                  <li className="pl-1 leading-relaxed">
-                    {children}
-                  </li>
-                ),
-                strong: ({ children }) => (
-                  <strong className="font-bold text-gray-900">
-                    {children}
-                  </strong>
-                ),
-                em: ({ children }) => (
-                  <em className="italic text-gray-600">
-                    {children}
-                  </em>
-                ),
-                blockquote: ({ children }) => (
-                  <blockquote className="border-l-4 border-gray-900 pl-4 py-2 my-6 italic text-gray-700 bg-gray-50 rounded-r-lg text-base sm:text-lg">
-                    {children}
-                  </blockquote>
-                ),
-                a: ({ children, href }) => (
-                  <a
-                    href={href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-gray-900 hover:text-gray-600 underline underline-offset-2 font-medium transition-colors"
+          {/* Markdown Components Definition */}
+          {(() => {
+            const markdownComponents = {
+              h1: ({ children }: any) => (
+                <h2 className="text-2xl sm:text-3xl font-bold font-heading text-gray-900 mt-10 mb-4 pb-2 border-b border-gray-100 tracking-tight leading-snug">
+                  {children}
+                </h2>
+              ),
+              h2: ({ children }: any) => (
+                <h2 className="text-2xl sm:text-3xl font-bold font-heading text-gray-900 mt-10 mb-4 pb-2 border-b border-gray-100 tracking-tight leading-snug">
+                  {children}
+                </h2>
+              ),
+              h3: ({ children }: any) => (
+                <h3 className="text-xl sm:text-2xl font-bold font-heading text-gray-900 mt-8 mb-3 tracking-tight">
+                  {children}
+                </h3>
+              ),
+              p: ({ children }: any) => (
+                <p className="text-gray-800 text-base sm:text-lg leading-relaxed mb-6 font-normal">
+                  {children}
+                </p>
+              ),
+              ul: ({ children }: any) => (
+                <ul className="list-disc list-outside pl-6 mb-6 space-y-2 text-base sm:text-lg text-gray-800 leading-relaxed">
+                  {children}
+                </ul>
+              ),
+              ol: ({ children }: any) => (
+                <ol className="list-decimal list-outside pl-6 mb-6 space-y-2 text-base sm:text-lg text-gray-800 leading-relaxed">
+                  {children}
+                </ol>
+              ),
+              li: ({ children }: any) => (
+                <li className="pl-1 leading-relaxed">
+                  {children}
+                </li>
+              ),
+              strong: ({ children }: any) => (
+                <strong className="font-bold text-gray-900">
+                  {children}
+                </strong>
+              ),
+              em: ({ children }: any) => (
+                <em className="italic text-gray-600">
+                  {children}
+                </em>
+              ),
+              blockquote: ({ children }: any) => (
+                <blockquote className="border-l-4 border-gray-900 pl-4 py-2 my-6 italic text-gray-700 bg-gray-50 rounded-r-lg text-base sm:text-lg">
+                  {children}
+                </blockquote>
+              ),
+              a: ({ children, href }: any) => (
+                <a
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-gray-900 hover:text-gray-600 underline underline-offset-2 font-medium transition-colors"
+                >
+                  {children}
+                </a>
+              ),
+              hr: () => <hr className="my-8 border-gray-200" />,
+            };
+
+            return (
+              <div className="article-content max-w-none text-gray-800 font-sans">
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  rehypePlugins={[rehypeSanitize]}
+                  components={markdownComponents}
+                >
+                  {contentPart1}
+                </ReactMarkdown>
+
+                {/* SLOT IKLAN TENGAH BACAAN (IN-ARTICLE) */}
+                {adSettings.inArticle?.enabled && contentPart2 && (
+                  <AdSlot config={adSettings.inArticle} clientId={adSettings.clientId} />
+                )}
+
+                {contentPart2 && (
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    rehypePlugins={[rehypeSanitize]}
+                    components={markdownComponents}
                   >
-                    {children}
-                  </a>
-                ),
-                hr: () => <hr className="my-8 border-gray-200" />,
-              }}
-            >
-              {article.content}
-            </ReactMarkdown>
-          </div>
+                    {contentPart2}
+                  </ReactMarkdown>
+                )}
+              </div>
+            );
+          })()}
           
           {/* Tags */}
           {article.tags && article.tags.length > 0 && (
@@ -291,11 +330,25 @@ export default async function ArticlePage({
                ))}
              </div>
           )}
+
+          {/* SLOT IKLAN BAWAH BACAAN (AFTER ARTICLE) */}
+          {adSettings.footer?.enabled && (
+            <div className="mt-8">
+              <AdSlot config={adSettings.footer} clientId={adSettings.clientId} />
+            </div>
+          )}
         </article>
 
         {/* Sidebar (Right Column) */}
         <aside className="lg:w-1/3">
           <div className="sticky top-24">
+            {/* SLOT IKLAN SIDEBAR DESKTOP */}
+            {adSettings.sidebar?.enabled && (
+              <div className="mb-6">
+                <AdSlot config={adSettings.sidebar} clientId={adSettings.clientId} />
+              </div>
+            )}
+
             {/* Widget Komunitas & Media Sosial Naratif */}
             <div className="mb-8 p-4 sm:p-5 bg-gradient-to-br from-gray-50 via-white to-gray-50 rounded-2xl border border-gray-200 shadow-sm space-y-3.5">
               <div>

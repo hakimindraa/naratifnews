@@ -2,6 +2,8 @@ import { db } from "@/db";
 import { articles } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
 import Link from "next/link";
+import { getAdSettings } from "@/lib/ads";
+import AdSlot from "./AdSlot";
 
 export const instant = false;
 
@@ -10,6 +12,9 @@ export default async function PublicLayout({
 }: {
   children: React.ReactNode;
 }) {
+  // Ambil pengaturan iklan dinamis
+  const adSettings = await getAdSettings();
+
   // Ambil data terbaru untuk konten dinamis di Navbar/Header
   const recentArticles = await db
     .select()
@@ -125,6 +130,13 @@ export default async function PublicLayout({
           </div>
         </div>
       </div>
+
+      {/* SLOT IKLAN ATAS (HEADER BANNER) */}
+      {adSettings.header?.enabled && (
+        <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-4">
+          <AdSlot config={adSettings.header} clientId={adSettings.clientId} />
+        </div>
+      )}
 
       {children}
 

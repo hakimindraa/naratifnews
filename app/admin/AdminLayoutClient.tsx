@@ -16,6 +16,7 @@ import {
   ChevronRight,
   Link2,
   Timer,
+  Coins,
 } from 'lucide-react';
 import { logoutAdmin } from './auth-actions';
 import VercelStatusBadge from './VercelStatusBadge';
@@ -62,6 +63,12 @@ export default function AdminLayoutClient({ children }: AdminLayoutClientProps) 
       href: '/admin/cron',
       icon: Timer,
       badge: 'Live',
+    },
+    {
+      label: 'Manajemen Iklan',
+      href: '/admin/iklan',
+      icon: Coins,
+      badge: 'Cuan',
     },
     {
       label: 'Pengaturan AI',
