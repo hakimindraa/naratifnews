@@ -281,3 +281,19 @@ NEXT_PUBLIC_SITE_URL=https://naratif.example
 - Beranda, kategori, dan artikel tampil rapi di mobile dan desktop.
 - Skor Lighthouse minimal 90 untuk Performance, Accessibility, dan SEO.
 - Sitemap dan metadata aktif, situs terdaftar di Search Console.
+
+## 15. Ekstensi: Pengaturan Dinamis AI Gateway & 9Router di Web Admin
+
+Fitur untuk mengatur koneksi AI Gateway (9Router, Gemini, Groq) langsung dari antarmuka Web Admin Naratif tanpa perlu mengubah `.env` atau redeploy di Vercel:
+
+1. **Konfigurasi yang Disimpan di Database (`system_settings`):**
+   - `ai_9router_base_url`: URL 9Router (misal: `http://node7.botkeep.cloud:40022/v1`).
+   - `ai_9router_api_key`: API key dari tab *Endpoint & Key* di 9Router.
+   - `ai_9router_model`: Nama Model ID (misal: `elf/deepseek-v4-flash`, `gpt-4o`).
+   - `ai_default_provider`: AI provider default (`gemini` / `groq` / `9router`).
+2. **Komponen yang Dibuat:**
+   - Tabel `system_settings` di Neon Postgres (dengan skrip *self-healing* aman).
+   - Server Actions `settings-actions.ts` untuk `getAISettings`, `saveAISettings`, `test9RouterConnection`, dan `fetchAvailableModels`.
+   - Fallback otomatis di `lib/ai-generator.ts` (DB Neon -> Fallback `.env`).
+   - Modal UI `⚙️ Pengaturan AI` di `/admin/generator` dengan fitur *Tes Koneksi* dan *Tarik Model Otomatis*.
+

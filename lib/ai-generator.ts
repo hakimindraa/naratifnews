@@ -209,6 +209,70 @@ function extractJSON(text: string): any {
   throw new Error('Gagal mengekstrak format JSON dari respons AI.');
 }
 
+function parseAIResponseContent(rawBody: string): string {
+  const trimmed = rawBody.trim();
+
+  // 1. Cek apakah ini response SSE streaming (mengandung baris yang diawali data:)
+  if (trimmed.startsWith('data:') || trimmed.includes('\ndata:') || trimmed.includes('\r\ndata:')) {
+    let accumulatedContent = '';
+    const lines = trimmed.split(/\r?\n/);
+    for (const line of lines) {
+      const lineTrimmed = line.trim();
+      if (!lineTrimmed.startsWith('data:')) continue;
+
+      const dataPayload = lineTrimmed.slice(5).trim();
+      if (!dataPayload || dataPayload === '[DONE]') continue;
+
+      try {
+        const parsedChunk = JSON.parse(dataPayload);
+        const choice = parsedChunk?.choices?.[0];
+        const piece =
+          choice?.delta?.content ??
+          choice?.delta?.text ??
+          choice?.message?.content ??
+          choice?.text ??
+          '';
+        accumulatedContent += piece;
+      } catch {
+        // Abaikan baris chunk yang bukan JSON
+      }
+    }
+
+    if (accumulatedContent.trim()) {
+      return accumulatedContent.trim();
+    }
+  }
+
+  // 2. Coba parse sebagai objek JSON standar
+  try {
+    const json = JSON.parse(trimmed);
+
+    if (json?.error?.message) {
+      throw new Error(`AI Gateway Error: ${json.error.message}`);
+    }
+
+    const choice = json?.choices?.[0];
+    const content =
+      choice?.message?.content ??
+      choice?.text ??
+      json?.content ??
+      json?.response ??
+      '';
+
+    if (content) {
+      return typeof content === 'string' ? content : JSON.stringify(content);
+    }
+  } catch (err: any) {
+    if (err?.message?.startsWith('AI Gateway Error:')) {
+      throw err;
+    }
+    // Bukan JSON standar, fallback ke string mentah
+  }
+
+  // 3. Jika bukan keduanya, kembalikan body mentah agar extractJSON yang menyaring
+  return trimmed;
+}
+
 function sanitizeSlug(rawSlug: string): string {
   let cleaned = rawSlug
     .toLowerCase()
@@ -364,6 +428,7 @@ Ingat, balas HANYA dengan dokumen JSON yang valid sesuai format yang ditentukan.
     ],
     temperature: 0.7,
     max_tokens: 3500,
+    stream: false,
   };
   if (useJsonFormat) {
     payload.response_format = { type: 'json_object' };
@@ -398,8 +463,8 @@ Ingat, balas HANYA dengan dokumen JSON yang valid sesuai format yang ditentukan.
     throw new Error(`AI Gateway Error (${response?.status || 'Unknown'}): ${lastErrorText || response?.statusText}`);
   }
 
-  const jsonResponse = await response.json();
-  const rawContent = jsonResponse?.choices?.[0]?.message?.content;
+  const rawBodyText = await response.text();
+  const rawContent = parseAIResponseContent(rawBodyText);
 
   if (!rawContent) {
     throw new Error('AI Gateway tidak mengembalikan konten artikel.');
