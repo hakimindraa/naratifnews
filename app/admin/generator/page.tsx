@@ -26,6 +26,7 @@ import {
   Globe,
   Wand2,
   Settings,
+  Building2,
 } from 'lucide-react';
 import { generateArticleAction, getGenerationDataAction, deleteGenerationLogAction, clearFailedLogsAction } from './actions';
 import { getAISettings } from '../pengaturan/actions';
@@ -82,6 +83,12 @@ const PRESET_TOPICS = [
     category: 'Gadget',
     prompt: 'Analisis tren inovasi perangkat pintar generasi terbaru, fitur-fitur mutakhir yang mulai diadopsi massal, dan arah masa depan ekosistem teknologi konsumen berdasarkan pembaruan industri terkini.',
   },
+  {
+    icon: Building2,
+    label: 'Kebijakan Daerah & Isu Publik',
+    category: 'Regional',
+    prompt: 'Bahas isu kebijakan pemerintah daerah, pelayanan fasilitas publik, atau dinamika sosial masyarakat terkini di daerah berdasarkan fakta dan laporan terkini.',
+  },
 ];
 
 export default function GeneratorStudioPage() {
@@ -115,6 +122,7 @@ export default function GeneratorStudioPage() {
     status: string;
     durationMs: number;
     researchSources?: { title: string; source: string; pubDate: string; region?: 'ID' | 'GLOBAL' }[];
+    similarityInfo?: any;
   } | null>(null);
 
   const steps = enableWebSearch
@@ -213,6 +221,7 @@ export default function GeneratorStudioPage() {
           status: res.article.status,
           durationMs: res.durationMs,
           researchSources: res.researchSources || [],
+          similarityInfo: res.similarityInfo || null,
         });
         // Kosongkan prompt & cover setelah sukses
         setPrompt('');
@@ -531,6 +540,7 @@ export default function GeneratorStudioPage() {
                 <option value="Hardware">Hardware</option>
                 <option value="Gadget">Gadget</option>
                 <option value="Infrastruktur">Infrastruktur</option>
+                <option value="Regional">Regional</option>
               </select>
             </div>
 
@@ -748,6 +758,23 @@ export default function GeneratorStudioPage() {
                       <span className="truncate max-w-[280px] sm:max-w-[420px]">{item.title}</span>
                     </div>
                   ))}
+                </div>
+              </div>
+            )}
+
+            {/* Advisory Similarity Info */}
+            {lastGenerated.similarityInfo?.hasSimilar && lastGenerated.similarityInfo.matchedArticle && (
+              <div className="pt-2">
+                <div className="p-3 bg-amber-50/90 rounded-xl border border-amber-200 text-amber-900 text-xs space-y-1">
+                  <div className="font-bold flex items-center gap-1.5 text-amber-800">
+                    <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span>Informasi Kemiripan Topik ({Math.round(lastGenerated.similarityInfo.matchedArticle.score * 100)}%):</span>
+                  </div>
+                  <p className="text-[11px] text-amber-800/90 pl-5">
+                    Artikel ini memiliki kemiripan topik dengan berita terdahulu:{' '}
+                    <b>&quot;{lastGenerated.similarityInfo.matchedArticle.title}&quot;</b>.
+                    Status artikel Anda tetap tersimpan sebagai <b>{lastGenerated.status}</b> sesuai pilihan Anda. Anda dapat membuka editor untuk meninjau atau menyesuaikan sudut pandang jika diperlukan.
+                  </p>
                 </div>
               </div>
             )}

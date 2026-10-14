@@ -66,7 +66,7 @@ export default async function PublicLayout({
           <div className="relative mb-2 md:mb-4">
             <nav className="bg-gray-900 text-white rounded-lg shadow-sm">
               <div className="px-4 sm:px-5 lg:px-6 overflow-x-auto scrollbar-hide flex items-center justify-start md:justify-center h-10 md:h-12 space-x-6 md:space-x-8">
-                {['Software', 'Hardware', 'AI', 'Infrastruktur', 'Gadget'].map((cat) => (
+                {['Software', 'Hardware', 'AI', 'Infrastruktur', 'Gadget', 'Regional'].map((cat) => (
                   <a key={cat} href={`/berita-teknologi/${cat.toLowerCase().replace(' ', '-')}`} className="text-xs md:text-sm font-bold whitespace-nowrap hover:text-gray-300 transition-colors uppercase tracking-wide">
                     {cat}
                   </a>

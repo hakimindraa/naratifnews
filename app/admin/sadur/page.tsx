@@ -22,6 +22,7 @@ import {
   Send,
   Eye,
   Check,
+  AlertTriangle,
 } from 'lucide-react';
 import {
   previewSourceUrlAction,
@@ -30,7 +31,7 @@ import {
 } from './actions';
 import { ScrapedSourceData } from '@/lib/url-scraper';
 
-const CATEGORIES = ['AI', 'Software', 'Hardware', 'Gadget', 'Infrastruktur'];
+const CATEGORIES = ['AI', 'Software', 'Hardware', 'Gadget', 'Infrastruktur', 'Regional'];
 
 const SAMPLE_URLS = [
   { label: 'The Verge', url: 'https://www.theverge.com' },
@@ -46,6 +47,13 @@ export default function SadurPage() {
 
   // Data sumber yang berhasil ditarik
   const [sourceData, setSourceData] = useState<ScrapedSourceData | null>(null);
+  const [urlHistory, setUrlHistory] = useState<{
+    isAlreadyScraped: boolean;
+    matchedTitle?: string;
+    matchedArticleId?: number;
+    matchedDate?: Date;
+  } | null>(null);
+  const [similarInitial, setSimilarInitial] = useState<any | null>(null);
 
   // Opsi redaksi
   const [provider, setProvider] = useState<'gemini' | 'groq' | '9router'>('groq');
@@ -63,6 +71,7 @@ export default function SadurPage() {
     category: string;
     status: string;
     durationMs: number;
+    similarityInfo?: any | null;
   } | null>(null);
 
   useEffect(() => {
@@ -101,6 +110,8 @@ export default function SadurPage() {
 
     if (res.success && res.data) {
       setSourceData(res.data);
+      setUrlHistory(res.urlHistory || null);
+      setSimilarInitial(res.similarInitial || null);
       // Auto-tebak kategori dari judul jika memungkinkan
       const lowerTitle = res.data.title.toLowerCase();
       if (lowerTitle.includes('ai') || lowerTitle.includes('model') || lowerTitle.includes('gpt') || lowerTitle.includes('intelligence')) {
@@ -149,6 +160,7 @@ export default function SadurPage() {
         category: res.category || category,
         status: res.status || status,
         durationMs: res.durationMs || 0,
+        similarityInfo: res.similarityInfo || null,
       });
     } else {
       setErrorMsg(res.message || 'Terjadi kesalahan saat menyadur artikel.');
@@ -159,6 +171,8 @@ export default function SadurPage() {
   const handleReset = () => {
     setUrlInput('');
     setSourceData(null);
+    setUrlHistory(null);
+    setSimilarInitial(null);
     setSadurResult(null);
     setErrorMsg(null);
   };
@@ -281,6 +295,36 @@ export default function SadurPage() {
           </div>
 
           <div className="p-5 sm:p-6 space-y-4">
+            {urlHistory?.isAlreadyScraped && (
+              <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 flex items-start gap-2.5 text-xs sm:text-sm">
+                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-bold">⚠️ Perhatian Redaksi:</span> Tautan berita ini tercatat pernah disadur sebelumnya menjadi artikel{' '}
+                  <b>&quot;{urlHistory.matchedTitle}&quot;</b>
+                  {urlHistory.matchedArticleId && (
+                    <Link
+                      href={`/admin/edit/${urlHistory.matchedArticleId}`}
+                      className="ml-1 text-indigo-600 underline font-semibold"
+                      target="_blank"
+                    >
+                      (Buka Artikel Lama)
+                    </Link>
+                  )}
+                  . Anda tetap dapat melanjutkan penyaduran jika ingin menulis sudut pandang baru.
+                </div>
+              </div>
+            )}
+
+            {similarInitial?.hasSimilar && similarInitial.matchedArticle && (
+              <div className="p-3.5 bg-sky-50 border border-sky-200 rounded-xl text-sky-950 flex items-start gap-2.5 text-xs sm:text-sm">
+                <Sparkles className="w-4 h-4 text-sky-600 shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-bold">💡 Deteksi Arsip Mirip:</span> Ditemukan artikel dengan kemiripan topik ~{Math.round(similarInitial.highestScore * 100)}%:{' '}
+                  <b>&quot;{similarInitial.matchedArticle.title}&quot;</b>. Memori anti-duplikasi AI otomatis diaktifkan untuk menyadur sudut pandang kelanjutan/berbeda.
+                </div>
+              </div>
+            )}
+
             <div>
               <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block mb-1">
                 Judul Asli Sumber:
@@ -332,7 +376,7 @@ export default function SadurPage() {
               <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">
                 Pilih AI Engine
               </label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-2">
                 <button
                   type="button"
                   onClick={() => setProvider('groq')}
@@ -342,11 +386,11 @@ export default function SadurPage() {
                       : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100/60'
                   }`}
                 >
-                  <div className="text-xs font-bold flex items-center justify-center gap-1">
-                    <Zap className="w-3.5 h-3.5 text-amber-500" />
-                    Groq Cloud
+                  <div className="text-xs font-bold flex items-center justify-center gap-1.5">
+                    <Zap className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                    <span>Groq Cloud</span>
                   </div>
-                  <span className="text-[10px] text-gray-500 block mt-0.5">&lt;15 Detik</span>
+                  <span className="text-[10px] text-gray-500 block mt-0.5">&lt;15 Detik • Cepat</span>
                 </button>
 
                 <button
@@ -358,9 +402,9 @@ export default function SadurPage() {
                       : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100/60'
                   }`}
                 >
-                  <div className="text-xs font-bold flex items-center justify-center gap-1">
-                    <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
-                    Gemini 3.8
+                  <div className="text-xs font-bold flex items-center justify-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                    <span>Gemini 3.8</span>
                   </div>
                   <span className="text-[10px] text-gray-500 block mt-0.5">Sangat Luwes</span>
                 </button>
@@ -374,9 +418,9 @@ export default function SadurPage() {
                       : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100/60'
                   }`}
                 >
-                  <div className="text-xs font-bold flex items-center justify-center gap-1">
-                    <Server className="w-3.5 h-3.5 text-emerald-500" />
-                    9Router
+                  <div className="text-xs font-bold flex items-center justify-center gap-1.5">
+                    <Server className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                    <span>9Router</span>
                   </div>
                   <span className="text-[10px] text-gray-500 block mt-0.5 truncate">
                     {active9RouterModel || 'Kustom'}
@@ -390,7 +434,7 @@ export default function SadurPage() {
               <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">
                 Panjang Naskah Saduran
               </label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <button
                   type="button"
                   onClick={() => setLength('standar')}
@@ -451,7 +495,7 @@ export default function SadurPage() {
               <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">
                 Status Publikasi
               </label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <button
                   type="button"
                   onClick={() => setStatus('published')}
@@ -487,7 +531,7 @@ export default function SadurPage() {
               type="button"
               onClick={handleExecuteSadur}
               disabled={generating}
-              className="px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white font-bold text-sm shadow-sm transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+              className="w-full sm:w-auto px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white font-bold text-sm shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
             >
               {generating ? (
                 <RefreshCw className="w-4 h-4 animate-spin" />
@@ -505,8 +549,8 @@ export default function SadurPage() {
         <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 sm:p-6 shadow-xs space-y-4 animate-in fade-in duration-300">
           <div className="flex items-start gap-3.5">
             <CheckCircle2 className="w-6 h-6 text-emerald-600 shrink-0 mt-0.5" />
-            <div className="space-y-1 flex-1">
-              <div className="flex items-center gap-2">
+            <div className="space-y-1 flex-1 min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
                 <h3 className="text-base font-bold text-emerald-950">
                   Artikel Berhasil Disadur & Dibuat!
                 </h3>
@@ -525,20 +569,32 @@ export default function SadurPage() {
             <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
               Judul Artikel Baru Naratif:
             </div>
-            <h4 className="text-base font-bold text-gray-900 leading-snug">
+            <h4 className="text-base font-bold text-gray-900 leading-snug break-words">
               📰 {sadurResult.title}
             </h4>
             <div className="flex flex-wrap items-center gap-3 text-xs text-gray-600 pt-1">
               <span>📂 Kategori: <b>{sadurResult.category}</b></span>
-              <span>🔗 Slug: <code className="font-mono text-gray-700">{sadurResult.slug}</code></span>
+              <span className="truncate max-w-full">🔗 Slug: <code className="font-mono text-gray-700">{sadurResult.slug}</code></span>
             </div>
           </div>
 
+          {/* Advisory Kemiripan Topik */}
+          {sadurResult.similarityInfo?.hasSimilar && sadurResult.similarityInfo.matchedArticle && (
+            <div className="p-3.5 bg-amber-100/70 border border-amber-300 rounded-xl text-amber-950 flex items-start gap-2.5 text-xs sm:text-sm">
+              <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+              <div>
+                <span className="font-bold">⚠️ Catatan Kemiripan Topik:</span> Naskah ini terdeteksi memiliki kemiripan kata kunci{' '}
+                <b>{Math.round(sadurResult.similarityInfo.highestScore * 100)}%</b> dengan arsip berita terdahulu{' '}
+                <b>&quot;{sadurResult.similarityInfo.matchedArticle.title}&quot;</b>. Status publikasi tetap dipertahankan sesuai pilihan Anda (<b>{sadurResult.status}</b>).
+              </div>
+            </div>
+          )}
+
           {/* Tombol Aksi */}
-          <div className="flex flex-wrap items-center gap-3 pt-1">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 pt-1">
             <Link
               href={`/admin/edit/${sadurResult.articleId}`}
-              className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-2xs transition-all flex items-center gap-1.5"
+              className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-2xs transition-all flex items-center justify-center gap-1.5 text-center"
             >
               <FileText className="w-3.5 h-3.5" />
               <span>Buka di Editor Dasbor</span>
@@ -549,7 +605,7 @@ export default function SadurPage() {
                 href={`/berita-teknologi/${sadurResult.category.toLowerCase()}/${sadurResult.articleId}/${sadurResult.slug}`}
                 target="_blank"
                 rel="noreferrer"
-                className="px-4 py-2 rounded-xl bg-white hover:bg-gray-50 text-gray-800 font-bold text-xs border border-gray-300 shadow-2xs transition-all flex items-center gap-1.5"
+                className="px-4 py-2.5 rounded-xl bg-white hover:bg-gray-50 text-gray-800 font-bold text-xs border border-gray-300 shadow-2xs transition-all flex items-center justify-center gap-1.5 text-center"
               >
                 <Eye className="w-3.5 h-3.5 text-indigo-600" />
                 <span>Lihat di Website</span>
@@ -560,7 +616,7 @@ export default function SadurPage() {
             <button
               type="button"
               onClick={handleReset}
-              className="px-4 py-2 rounded-xl bg-transparent hover:bg-emerald-100/60 text-emerald-900 font-bold text-xs transition-colors cursor-pointer"
+              className="px-4 py-2.5 rounded-xl bg-transparent hover:bg-emerald-100/60 text-emerald-900 font-bold text-xs transition-colors cursor-pointer text-center"
             >
               + Sadur Berita Lainnya
             </button>

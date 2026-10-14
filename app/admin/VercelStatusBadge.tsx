@@ -1,0 +1,343 @@
+'use client';
+
+import { useState, useEffect, useRef } from 'react';
+import {
+  RefreshCw,
+  CheckCircle2,
+  AlertTriangle,
+  ExternalLink,
+  GitCommit,
+  GitBranch,
+  Clock,
+  Zap,
+  Globe,
+  X,
+  ChevronDown,
+} from 'lucide-react';
+import { getVercelDeployStatusAction, triggerVercelRedeployAction } from './vercel-actions';
+import { VercelDeployment, VercelStatusResponse } from '@/lib/vercel';
+
+function formatTimeAgo(timestamp: number): string {
+  try {
+    const diffSec = Math.max(0, Math.floor((Date.now() - timestamp) / 1000));
+    if (diffSec < 60) return 'Baru saja';
+    const diffMin = Math.floor(diffSec / 60);
+    if (diffMin < 60) return `${diffMin} menit lalu`;
+    const diffHour = Math.floor(diffMin / 60);
+    if (diffHour < 24) return `${diffHour} jam lalu`;
+    const diffDays = Math.floor(diffHour / 24);
+    return `${diffDays} hari lalu`;
+  } catch {
+    return 'Beberapa waktu lalu';
+  }
+}
+
+export default function VercelStatusBadge() {
+  const [data, setData] = useState<VercelStatusResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [isOpen, setIsOpen] = useState(false);
+  const [redeploying, setRedeploying] = useState(false);
+  const [redeployNotice, setRedeployNotice] = useState<string | null>(null);
+
+  const popoverRef = useRef<HTMLDivElement>(null);
+
+  // Fetch status deploy
+  const fetchStatus = async (isManual = false) => {
+    if (isManual) setLoading(true);
+    try {
+      const res = await getVercelDeployStatusAction();
+      setData(res);
+    } catch (e) {
+      console.error('Error fetching Vercel status:', e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchStatus();
+
+    // Auto-polling interval:
+    // Jika sedang building/initializing: polling tiap 10 detik agar tahu saat selesai.
+    // Saat status normal (ready/idle): polling tiap 5 menit (300.000 ms) agar sangat hemat & tidak membebani.
+    const isBuilding =
+      data?.latest?.state === 'BUILDING' ||
+      data?.latest?.state === 'INITIALIZING' ||
+      data?.latest?.state === 'QUEUED';
+
+    const intervalTime = isBuilding ? 10000 : 5 * 60 * 1000; // 5 menit
+    const timer = setInterval(() => {
+      fetchStatus();
+    }, intervalTime);
+
+    return () => clearInterval(timer);
+  }, [data?.latest?.state]);
+
+  // Click outside listener untuk menutup popup
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (popoverRef.current && !popoverRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isOpen]);
+
+  const handleTriggerRedeploy = async () => {
+    if (!confirm('Deploy ulang build produksi Naratif di Vercel sekarang?')) return;
+    setRedeploying(true);
+    setRedeployNotice(null);
+
+    const res = await triggerVercelRedeployAction();
+    setRedeploying(false);
+
+    if (res.success) {
+      setRedeployNotice('🚀 Build baru berhasil dipicu di Vercel!');
+      // Refetch setelah 2 detik
+      setTimeout(() => fetchStatus(), 2000);
+    } else {
+      setRedeployNotice(`❌ Gagal: ${res.error || 'Terjadi kesalahan'}`);
+    }
+  };
+
+  const latest = data?.latest;
+  const isReady = latest?.state === 'READY';
+  const isBuilding = latest?.state === 'BUILDING' || latest?.state === 'INITIALIZING' || latest?.state === 'QUEUED';
+  const isError = latest?.state === 'ERROR' || latest?.state === 'CANCELED';
+
+  // Jika belum dikonfigurasi
+  if (data && !data.configured) {
+    return null;
+  }
+
+  return (
+    <div className="relative inline-block text-left" ref={popoverRef}>
+      {/* BADGE TRIGGER BUTTON */}
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className={`flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer border shadow-2xs ${
+          isReady
+            ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/20'
+            : isBuilding
+            ? 'bg-amber-500/10 text-amber-300 border-amber-500/30 hover:bg-amber-500/20 animate-pulse'
+            : isError
+            ? 'bg-rose-500/10 text-rose-300 border-rose-500/30 hover:bg-rose-500/20'
+            : 'bg-gray-800 text-gray-300 border-gray-700 hover:bg-gray-700'
+        }`}
+        title="Klik untuk melihat rincian deploy Vercel"
+      >
+        {/* State Indicator */}
+        {loading && !latest ? (
+          <RefreshCw className="w-3.5 h-3.5 animate-spin text-gray-400" />
+        ) : isReady ? (
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+          </span>
+        ) : isBuilding ? (
+          <RefreshCw className="w-3.5 h-3.5 animate-spin text-amber-400" />
+        ) : isError ? (
+          <AlertTriangle className="w-3.5 h-3.5 text-rose-400" />
+        ) : (
+          <span className="w-2 h-2 rounded-full bg-gray-400" />
+        )}
+
+        {/* Text Label */}
+        <span className="font-mono text-[11px] sm:text-xs">
+          {loading && !latest
+            ? 'Vercel...'
+            : isReady
+            ? 'Deploy: Ready'
+            : isBuilding
+            ? 'Building...'
+            : isError
+            ? 'Deploy: Failed'
+            : 'Vercel'}
+        </span>
+
+        <ChevronDown className={`w-3 h-3 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+      </button>
+
+      {/* FLOATING POPOVER DROPDOWN */}
+      {isOpen && (
+        <div className="absolute right-0 mt-2 w-[calc(100vw-2rem)] sm:w-96 max-w-sm rounded-2xl bg-gray-900 border border-gray-800 shadow-2xl p-4 sm:p-5 z-50 text-white animate-in fade-in zoom-in-95 duration-200">
+          {/* Header */}
+          <div className="flex items-center justify-between pb-3 border-b border-gray-800">
+            <div className="flex items-center gap-2">
+              <svg className="w-4 h-4 fill-white" viewBox="0 0 76 65" height="16">
+                <path d="M37.5274 0L75.0548 65H0L37.5274 0Z" />
+              </svg>
+              <h3 className="text-sm font-bold tracking-tight">Status Vercel Production</h3>
+            </div>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => fetchStatus(true)}
+                disabled={loading}
+                className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
+                title="Segarkan data sekarang"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsOpen(false)}
+                className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* Alert Error jika ada */}
+          {data?.error && (
+            <div className="my-3 p-2.5 rounded-xl bg-rose-950/40 border border-rose-800/60 text-rose-300 text-xs">
+              {data.error}
+            </div>
+          )}
+
+          {redeployNotice && (
+            <div className="my-3 p-2.5 rounded-xl bg-indigo-950/50 border border-indigo-700/60 text-indigo-200 text-xs">
+              {redeployNotice}
+            </div>
+          )}
+
+          {/* Kartu Status Deployment Terbaru */}
+          {latest ? (
+            <div className="mt-3.5 space-y-3.5">
+              <div className="p-3.5 rounded-xl bg-gray-800/80 border border-gray-700/60 space-y-2.5">
+                {/* Status & Time */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold uppercase tracking-wider ${
+                        isReady
+                          ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                          : isBuilding
+                          ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                          : isError
+                          ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                          : 'bg-gray-700 text-gray-300'
+                      }`}
+                    >
+                      {isReady && <CheckCircle2 className="w-3 h-3 text-emerald-400" />}
+                      {isBuilding && <RefreshCw className="w-3 h-3 animate-spin text-amber-400" />}
+                      {isError && <AlertTriangle className="w-3 h-3 text-rose-400" />}
+                      {latest.state}
+                    </span>
+                    <span className="text-[11px] text-gray-400 font-medium">Production</span>
+                  </div>
+
+                  <span className="text-[11px] text-gray-400 flex items-center gap-1">
+                    <Clock className="w-3 h-3" />
+                    {formatTimeAgo(latest.createdAt)}
+                  </span>
+                </div>
+
+                {/* Commit Message & Branch */}
+                <div>
+                  <p className="text-xs font-semibold text-gray-100 line-clamp-2">
+                    {latest.commit?.message || 'Manual Deployment'}
+                  </p>
+                  <div className="flex items-center gap-3 text-[11px] text-gray-400 pt-1">
+                    <span className="flex items-center gap-1 font-mono text-gray-300">
+                      <GitCommit className="w-3 h-3 text-indigo-400" />
+                      {latest.commit?.sha}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <GitBranch className="w-3 h-3 text-gray-500" />
+                      {latest.commit?.branch || 'main'}
+                    </span>
+                    <span>Oleh: <b>{latest.creator}</b></span>
+                  </div>
+                </div>
+
+                {/* Quick Links */}
+                <div className="pt-2 border-t border-gray-700/60 flex items-center justify-between text-xs">
+                  <a
+                    href={latest.inspectorUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-indigo-400 hover:text-indigo-300 font-semibold inline-flex items-center gap-1 hover:underline"
+                  >
+                    <span>Buka Log Build</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+
+                  <a
+                    href="https://www.naratif.web.id"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-emerald-400 hover:text-emerald-300 font-semibold inline-flex items-center gap-1 hover:underline"
+                  >
+                    <span>Domain Publik</span>
+                    <Globe className="w-3 h-3" />
+                  </a>
+                </div>
+              </div>
+
+              {/* Tombol Aksi: Deploy Ulang */}
+              <div className="pt-1">
+                <button
+                  type="button"
+                  onClick={handleTriggerRedeploy}
+                  disabled={redeploying || isBuilding}
+                  className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white font-bold text-xs shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  <Zap className={`w-3.5 h-3.5 text-amber-300 ${redeploying ? 'animate-bounce' : ''}`} />
+                  <span>{redeploying ? 'Memicu Deploy Ulang...' : isBuilding ? 'Sedang Building...' : '⚡ Trigger Deploy Ulang'}</span>
+                </button>
+              </div>
+
+              {/* Riwayat 3 Deploy Terakhir */}
+              {data && data.deployments.length > 1 && (
+                <div className="pt-2 border-t border-gray-800 space-y-1.5">
+                  <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                    Riwayat Deploy Sebelumnya:
+                  </div>
+                  <div className="space-y-1.5">
+                    {data.deployments.slice(1, 4).map((d) => (
+                      <div
+                        key={d.id}
+                        className="flex items-center justify-between text-[11px] p-2 rounded-lg bg-gray-800/40 hover:bg-gray-800 transition-colors"
+                      >
+                        <div className="truncate max-w-[200px] text-gray-300">
+                          <span className="font-mono text-gray-400 mr-1.5">[{d.commit?.sha}]</span>
+                          <span>{d.commit?.message}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                          <span
+                            className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${
+                              d.state === 'READY'
+                                ? 'text-emerald-400 bg-emerald-950/40'
+                                : d.state === 'ERROR'
+                                ? 'text-rose-400 bg-rose-950/40'
+                                : 'text-gray-400 bg-gray-800'
+                            }`}
+                          >
+                            {d.state}
+                          </span>
+                          <span className="text-[10px] text-gray-500">{formatTimeAgo(d.createdAt)}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="py-6 text-center text-xs text-gray-400">
+              {loading ? 'Memuat data dari Vercel...' : 'Belum ada data deployment.'}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}

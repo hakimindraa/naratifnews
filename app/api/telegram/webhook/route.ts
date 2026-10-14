@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { sendTelegramMessage, answerCallbackQuery } from '@/lib/telegram';
 import { requestArticleFromModelRouter, requestSadurArticleFromSource } from '@/lib/ai-generator';
 import { scrapeArticleFromUrl } from '@/lib/url-scraper';
+import { findSimilarArticles, checkSourceUrlHistory } from '@/lib/duplicate-detector';
 import { db } from '@/db';
 import { articles, aiGenerationLogs } from '@/db/schema';
 import { revalidatePath } from 'next/cache';
@@ -28,6 +29,10 @@ const PRESET_TOPICS: Record<string, { label: string; prompt: string }> = {
   Gadget: {
     label: '📱 Inovasi Gadget & Konsumen',
     prompt: 'Inovasi gadget konsumen, smartphone flagship, dan tren perangkat pintar terkini',
+  },
+  Regional: {
+    label: '🏛️ Berita Regional & Daerah',
+    prompt: 'Dinamika kebijakan publik pemerintah daerah, fasilitas publik, dan isu masyarakat regional terkini',
   },
 };
 
@@ -118,6 +123,15 @@ async function runArticleGeneration({
       errorMessage: null,
     });
 
+    // Pengecekan kemiripan artikel arsip (Advisory)
+    const similarityInfo = await findSimilarArticles(newArticle.title, newArticle.excerpt || undefined, 0.55);
+    const similarityNote =
+      similarityInfo.hasSimilar && similarityInfo.matchedArticle
+        ? `\n⚠️ <i>Catatan Kemiripan: Mirip ~${Math.round(
+            similarityInfo.highestScore * 100
+          )}% dengan arsip: "${similarityInfo.matchedArticle.title}"</i>\n`
+        : '';
+
     // Revalidasi cache web
     revalidatePath('/', 'layout');
 
@@ -131,7 +145,7 @@ async function runArticleGeneration({
 📂 Kategori: <b>${newArticle.category}</b>
 🏷️ Tags: <i>${(newArticle.tags || []).map((t: string) => '#' + t).join(' ')}</i>
 🌐 Riset Berita: <b>${enableWebSearch ? 'Google News Aktif' : 'Murni AI'}</b>
-⏱️ Waktu Proses: <b>${(durationMs / 1000).toFixed(1)}s</b>
+⏱️ Waktu Proses: <b>${(durationMs / 1000).toFixed(1)}s</b>${similarityNote}
 ━━━━━━━━━━━━━━━━━━━━
 Artikel sudah langsung tayang di portal Naratif! Anda bisa menambahkan foto sampul lewat editor web di bawah.`;
 
@@ -147,7 +161,7 @@ Artikel sudah langsung tayang di portal Naratif! Anda bisa menambahkan foto samp
 📰 <b>${newArticle.title}</b>
 📂 Kategori: <b>${newArticle.category}</b>
 🌐 Riset Berita: <b>${enableWebSearch ? 'Google News Aktif' : 'Murni AI'}</b>
-⏱️ Waktu Proses: <b>${(durationMs / 1000).toFixed(1)}s</b>
+⏱️ Waktu Proses: <b>${(durationMs / 1000).toFixed(1)}s</b>${similarityNote}
 ━━━━━━━━━━━━━━━━━━━━
 Artikel siap ditinjau di Dasbor Redaksi sebelum diterbitkan. Silakan tambahkan foto sampul lewat tombol di bawah.`;
 
@@ -184,11 +198,18 @@ async function runSadurArticleGeneration({
       `🔍 <b>Membaca Berita Sumber...</b>\n\nSedang mengekstrak teks berita dari:\n<code>${targetUrl}</code>\n\n<i>Mohon tunggu sebentar...</i>`
     );
 
-    const sourceData = await scrapeArticleFromUrl(targetUrl);
+    const [sourceData, urlHistory] = await Promise.all([
+      scrapeArticleFromUrl(targetUrl),
+      checkSourceUrlHistory(targetUrl),
+    ]);
+
+    const historyNotice = urlHistory.isAlreadyScraped
+      ? `\n\n⚠️ <i>Perhatian: Link ini tercatat pernah disadur sebelumnya ("${urlHistory.matchedTitle}"). Sistem tetap memproses saduran baru dengan sudut pandang segar...</i>`
+      : '';
 
     await sendTelegramMessage(
       chatId,
-      `✨ <b>Sumber Ditemukan!</b>\n\n📰 <b>${sourceData.title}</b>\n🌐 Media: <b>${sourceData.domain}</b> (~${sourceData.wordCount} kata)\n\n<i>Sedang meracik ulang menjadi naskah orisinal Naratif dalam Bahasa Indonesia via Groq Cloud...</i>`
+      `✨ <b>Sumber Ditemukan!</b>\n\n📰 <b>${sourceData.title}</b>\n🌐 Media: <b>${sourceData.domain}</b> (~${sourceData.wordCount} kata)${historyNotice}\n\n<i>Sedang meracik ulang menjadi naskah orisinal Naratif dalam Bahasa Indonesia via Groq Cloud...</i>`
     );
 
     const startTime = performance.now();
@@ -235,6 +256,15 @@ async function runSadurArticleGeneration({
       createdAt: now,
     });
 
+    // Pengecekan kemiripan artikel arsip (Advisory)
+    const similarityInfo = await findSimilarArticles(newArticle.title, newArticle.excerpt || undefined, 0.55);
+    const similarityNote =
+      similarityInfo.hasSimilar && similarityInfo.matchedArticle
+        ? `\n⚠️ <i>Catatan Kemiripan: Mirip ~${Math.round(
+            similarityInfo.highestScore * 100
+          )}% dengan arsip: "${similarityInfo.matchedArticle.title}"</i>\n`
+        : '';
+
     revalidatePath('/', 'layout');
     revalidatePath('/admin');
     revalidatePath('/admin/sadur');
@@ -248,7 +278,7 @@ async function runSadurArticleGeneration({
 📂 Kategori: <b>${newArticle.category}</b>
 🌐 Sumber: <b>${sourceData.domain}</b>
 ⏱️ Waktu: <b>${(durationMs / 1000).toFixed(1)}s</b>
-🚀 Status: <b>Langsung Terbit (Published)</b>
+🚀 Status: <b>Langsung Terbit (Published)</b>${similarityNote}
 ━━━━━━━━━━━━━━━━━━━━
 <i>Artikel orisinal telah tayang di portal Naratif dengan atribusi etis.</i>`;
 
@@ -367,6 +397,7 @@ Pilih salah satu topik liputan cepat di bawah ini (atau ketik topik sendiri):`;
             [{ text: '⚙️ Dinamika Semikonduktor & Hardware', callback_data: 'cat:Hardware' }],
             [{ text: '☁️ Infrastruktur Cloud & Keamanan', callback_data: 'cat:Infrastruktur' }],
             [{ text: '📱 Inovasi Gadget & Konsumen', callback_data: 'cat:Gadget' }],
+            [{ text: '🏛️ Berita Regional & Daerah', callback_data: 'cat:Regional' }],
             [{ text: '✍️ Ketik Topik Sendiri...', callback_data: 'cat:CUSTOM' }],
           ],
         });
@@ -585,6 +616,7 @@ Pilih salah satu topik liputan cepat di bawah ini (atau balas chat ini dengan pe
           [{ text: '⚙️ Dinamika Semikonduktor & Hardware', callback_data: 'cat:Hardware' }],
           [{ text: '☁️ Infrastruktur Cloud & Keamanan', callback_data: 'cat:Infrastruktur' }],
           [{ text: '📱 Inovasi Gadget & Konsumen', callback_data: 'cat:Gadget' }],
+          [{ text: '🏛️ Berita Regional & Daerah', callback_data: 'cat:Regional' }],
           [{ text: '✍️ Ketik Topik Sendiri...', callback_data: 'cat:CUSTOM' }],
         ],
       });

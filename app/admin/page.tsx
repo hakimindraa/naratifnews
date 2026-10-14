@@ -223,7 +223,7 @@ Konten lengkap berita kedua Anda di sini...`}
               category (Kategori Resmi)
             </span>
             <p className="text-[11px] text-gray-600 leading-relaxed">
-              Wajib salah satu dari: <strong className="text-gray-800">Software, Hardware, AI, Gadget, Infrastruktur</strong>.
+              Wajib salah satu dari: <strong className="text-gray-800">Software, Hardware, AI, Gadget, Infrastruktur, Regional</strong>.
             </p>
           </div>
 

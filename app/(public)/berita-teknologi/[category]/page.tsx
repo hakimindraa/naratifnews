@@ -6,7 +6,44 @@ import { eq, desc, and, ilike } from "drizzle-orm";
 import { formatDistanceToNow } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 
+import type { Metadata } from "next";
+
 export const instant = false;
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ category: string }>;
+}): Promise<Metadata> {
+  const { category } = await params;
+  const rawCat = decodeURIComponent(category).trim().toLowerCase();
+  const categoryMap: Record<string, string> = {
+    'ai': 'AI',
+    'software': 'Software',
+    'hardware': 'Hardware',
+    'infrastruktur': 'Infrastruktur',
+    'gadget': 'Gadget',
+    'regional': 'Regional',
+  };
+  const categoryName = categoryMap[rawCat] || (category.charAt(0).toUpperCase() + category.slice(1));
+  const isRegional = rawCat === 'regional';
+  const title = isRegional
+    ? `Berita Regional Terkini & Kebijakan Daerah - Naratif`
+    : `Berita ${categoryName} Terkini - Naratif Tekno`;
+  const description = isRegional
+    ? `Kumpulan berita regional terkini, dinamika pemerintahan daerah, dan isu fasilitas publik di Naratif.`
+    : `Kumpulan berita, analisis, dan informasi terkini seputar ${categoryName} di Naratif.`;
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: 'website',
+    },
+  };
+}
 
 export default async function CategoryPage({
   params,
@@ -21,6 +58,7 @@ export default async function CategoryPage({
     'hardware': 'Hardware',
     'infrastruktur': 'Infrastruktur',
     'gadget': 'Gadget',
+    'regional': 'Regional',
   };
   const categoryName = categoryMap[rawCat] || (category.charAt(0).toUpperCase() + category.slice(1));
 

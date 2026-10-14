@@ -207,7 +207,7 @@ export async function getAutopilotSettings(): Promise<AutopilotSettingsData> {
     const length = (map.get('autopilot_length') as any) || 'standar';
     const telegramNotify = map.get('autopilot_telegram_notify') !== 'false';
 
-    let categories = ['AI', 'Software', 'Hardware', 'Gadget', 'Infrastruktur'];
+    let categories = ['AI', 'Software', 'Hardware', 'Gadget', 'Infrastruktur', 'Regional'];
     try {
       const parsed = JSON.parse(map.get('autopilot_categories') || '[]');
       if (Array.isArray(parsed) && parsed.length > 0) {
@@ -232,7 +232,7 @@ export async function getAutopilotSettings(): Promise<AutopilotSettingsData> {
       provider: 'groq',
       status: 'published',
       length: 'standar',
-      categories: ['AI', 'Software', 'Hardware', 'Gadget', 'Infrastruktur'],
+      categories: ['AI', 'Software', 'Hardware', 'Gadget', 'Infrastruktur', 'Regional'],
       telegramNotify: true,
     };
   }

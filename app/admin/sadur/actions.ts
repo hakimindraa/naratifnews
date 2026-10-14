@@ -5,6 +5,7 @@ import { db } from '@/db';
 import { articles, aiGenerationLogs } from '@/db/schema';
 import { scrapeArticleFromUrl, ScrapedSourceData } from '@/lib/url-scraper';
 import { requestSadurArticleFromSource, AIProvider } from '@/lib/ai-generator';
+import { findSimilarArticles, checkSourceUrlHistory, SimilarityCheckResult } from '@/lib/duplicate-detector';
 import { getAISettings } from '../pengaturan/actions';
 import { revalidatePath } from 'next/cache';
 
@@ -20,11 +21,18 @@ export interface GenerateSadurParams {
 }
 
 /**
- * 1. Ambil dan pratinjau isi artikel sumber dari URL
+ * 1. Ambil dan pratinjau isi artikel sumber dari URL (disertai cek riwayat URL dan artikel serupa)
  */
 export async function previewSourceUrlAction(targetUrl: string): Promise<{
   success: boolean;
   data?: ScrapedSourceData;
+  urlHistory?: {
+    isAlreadyScraped: boolean;
+    matchedTitle?: string;
+    matchedArticleId?: number;
+    matchedDate?: Date;
+  };
+  similarInitial?: SimilarityCheckResult | null;
   message?: string;
 }> {
   try {
@@ -34,9 +42,18 @@ export async function previewSourceUrlAction(targetUrl: string): Promise<{
     }
 
     const data = await scrapeArticleFromUrl(cleanUrl);
+
+    // Cek riwayat URL dan kemiripan judul di database (sebagai advisor)
+    const [urlHistory, similarCheck] = await Promise.all([
+      checkSourceUrlHistory(cleanUrl),
+      findSimilarArticles(data.title, undefined, 0.6),
+    ]);
+
     return {
       success: true,
       data,
+      urlHistory,
+      similarInitial: similarCheck.hasSimilar ? similarCheck : null,
     };
   } catch (err: any) {
     return {
@@ -107,6 +124,9 @@ export async function generateSadurArticleAction(params: GenerateSadurParams) {
       createdAt: now,
     });
 
+    // Cek kemiripan dengan artikel terdahulu di database (Advisory Detector)
+    const similarityInfo = await findSimilarArticles(result.title, result.excerpt, 0.55);
+
     // Revalidasi cache
     revalidatePath('/', 'layout');
     revalidatePath('/admin');
@@ -120,6 +140,7 @@ export async function generateSadurArticleAction(params: GenerateSadurParams) {
       category: newArticle.category,
       status: newArticle.status,
       durationMs,
+      similarityInfo: similarityInfo.hasSimilar ? similarityInfo : null,
     };
   } catch (error: any) {
     console.error('Error saat menyadur artikel:', error);

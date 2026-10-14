@@ -74,7 +74,7 @@ export default function EditForm({ article }: { article: any }) {
             defaultValue={article.category}
             className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-gray-900 focus:border-gray-900"
           >
-            {['Software', 'Hardware', 'AI', 'Infrastruktur', 'Gadget'].map(cat => (
+            {['Software', 'Hardware', 'AI', 'Infrastruktur', 'Gadget', 'Regional'].map(cat => (
               <option key={cat} value={cat}>{cat}</option>
             ))}
           </select>

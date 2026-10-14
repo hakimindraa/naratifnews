@@ -3,6 +3,7 @@
 import { db } from '@/db';
 import { articles, aiGenerationLogs } from '@/db/schema';
 import { requestArticleFromModelRouter } from '@/lib/ai-generator';
+import { findSimilarArticles, SimilarityCheckResult } from '@/lib/duplicate-detector';
 import { revalidatePath } from 'next/cache';
 import { desc, eq } from 'drizzle-orm';
 
@@ -71,7 +72,10 @@ export async function generateArticleAction(payload: GeneratePayload) {
       })
       .returning();
 
-    // 4. Revalidate cache halaman
+    // 4. Cek kemiripan dengan artikel terdahulu di database (Advisory Detector)
+    const similarityInfo = await findSimilarArticles(draft.title, draft.excerpt, 0.55);
+
+    // 5. Revalidate cache halaman
     revalidatePath('/');
     revalidatePath('/admin');
     revalidatePath('/admin/generator');
@@ -82,6 +86,7 @@ export async function generateArticleAction(payload: GeneratePayload) {
       log: newLog,
       researchSources: draft.researchSources || [],
       durationMs,
+      similarityInfo: similarityInfo.hasSimilar ? similarityInfo : null,
     };
   } catch (error: any) {
     const durationMs = Math.round(performance.now() - startTime);

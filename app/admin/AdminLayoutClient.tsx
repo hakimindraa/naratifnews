@@ -17,6 +17,7 @@ import {
   Link2,
 } from 'lucide-react';
 import { logoutAdmin } from './auth-actions';
+import VercelStatusBadge from './VercelStatusBadge';
 
 interface AdminLayoutClientProps {
   children: React.ReactNode;
@@ -173,13 +174,16 @@ export default function AdminLayoutClient({ children }: AdminLayoutClientProps) 
           <span>Naratif Admin</span>
         </Link>
 
-        <button
-          onClick={() => setMobileOpen(true)}
-          className="p-2 rounded-lg bg-gray-800 text-gray-300 hover:text-white"
-          aria-label="Buka Menu"
-        >
-          <Menu className="w-5 h-5" />
-        </button>
+        <div className="flex items-center gap-2">
+          <VercelStatusBadge />
+          <button
+            onClick={() => setMobileOpen(true)}
+            className="p-2 rounded-lg bg-gray-800 text-gray-300 hover:text-white"
+            aria-label="Buka Menu"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+        </div>
       </header>
 
       {/* Mobile Drawer (Slide Over) */}
@@ -257,6 +261,29 @@ export default function AdminLayoutClient({ children }: AdminLayoutClientProps) 
 
       {/* Main Content Area (Offset for Desktop Sidebar) */}
       <div className="flex-1 md:pl-64 flex flex-col min-w-0">
+        {/* Desktop Sticky Header Bar */}
+        <header className="hidden md:flex h-16 items-center justify-between px-6 lg:px-8 border-b border-gray-200/80 bg-white/95 backdrop-blur-sm sticky top-0 z-20">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+              Portal Redaksi Naratif
+            </span>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <VercelStatusBadge />
+
+            <a
+              href="/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-gray-200 text-xs font-semibold text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-colors shadow-2xs"
+            >
+              <ExternalLink className="w-3.5 h-3.5 text-gray-500" />
+              <span>Kunjungi Web</span>
+            </a>
+          </div>
+        </header>
+
         <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
           {children}
         </main>

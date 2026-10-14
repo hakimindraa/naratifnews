@@ -36,7 +36,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     console.error('Error fetching articles for sitemap:', error);
   }
 
-  const categories = ['software', 'hardware', 'ai', 'infrastruktur', 'gadget'];
+  const categories = ['software', 'hardware', 'ai', 'infrastruktur', 'gadget', 'regional'];
   const categoryUrls: MetadataRoute.Sitemap = categories.map((cat) => ({
     url: `${siteUrl}/berita-teknologi/${cat}`,
     lastModified: new Date(),

@@ -44,7 +44,7 @@ export async function uploadMarkdownFile(formData: FormData) {
           continue;
         }
 
-        const categoryAllowed = ['Software', 'Hardware', 'AI', 'Infrastruktur', 'Gadget'];
+        const categoryAllowed = ['Software', 'Hardware', 'AI', 'Infrastruktur', 'Gadget', 'Regional'];
         const rawCategory = String(data.category || '').trim().toLowerCase();
         const categoryMap: Record<string, string> = {
           'ai': 'AI',
@@ -52,6 +52,7 @@ export async function uploadMarkdownFile(formData: FormData) {
           'hardware': 'Hardware',
           'infrastruktur': 'Infrastruktur',
           'gadget': 'Gadget',
+          'regional': 'Regional',
         };
         const catFormatted = categoryMap[rawCategory] || (data.category.charAt(0).toUpperCase() + data.category.slice(1));
         
@@ -240,7 +241,7 @@ export async function createArticle(formData: FormData) {
     if (!coverUrl) return { error: 'Link cover gambar wajib diisi.' };
 
     // Format category
-    const categoryAllowed = ['Software', 'Hardware', 'AI', 'Infrastruktur', 'Gadget'];
+    const categoryAllowed = ['Software', 'Hardware', 'AI', 'Infrastruktur', 'Gadget', 'Regional'];
     const rawCategory = category.toLowerCase();
     const categoryMap: Record<string, string> = {
       'ai': 'AI',
@@ -248,6 +249,7 @@ export async function createArticle(formData: FormData) {
       'hardware': 'Hardware',
       'infrastruktur': 'Infrastruktur',
       'gadget': 'Gadget',
+      'regional': 'Regional',
     };
     const catFormatted = categoryMap[rawCategory] || 'Software';
 

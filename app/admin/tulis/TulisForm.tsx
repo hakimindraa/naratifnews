@@ -134,7 +134,7 @@ export default function TulisForm() {
             onChange={(e) => setCategory(e.target.value)}
             className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-gray-900 text-sm bg-white font-medium"
           >
-            {['Software', 'Hardware', 'AI', 'Infrastruktur', 'Gadget'].map(cat => (
+            {['Software', 'Hardware', 'AI', 'Infrastruktur', 'Gadget', 'Regional'].map(cat => (
               <option key={cat} value={cat}>{cat}</option>
             ))}
           </select>

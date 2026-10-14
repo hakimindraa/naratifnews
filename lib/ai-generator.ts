@@ -1,8 +1,8 @@
 import fs from 'fs';
 import path from 'path';
 import { db } from '@/db';
-import { systemSettings } from '@/db/schema';
-import { eq } from 'drizzle-orm';
+import { articles, systemSettings } from '@/db/schema';
+import { eq, desc } from 'drizzle-orm';
 
 export interface NewsSource {
   title: string;
@@ -71,6 +71,7 @@ function extractKeywords(prompt: string, category = 'AI'): { localQuery: string;
     hardware: { id: 'semikonduktor chipset hardware', en: 'semiconductor hardware chips' },
     infrastruktur: { id: 'data center cloud keamanan siber', en: 'cloud data center cybersecurity' },
     gadget: { id: 'smartphone gadget teknologi', en: 'smartphone consumer tech gadget' },
+    regional: { id: 'berita daerah pemda kebijakan daerah peristiwa', en: 'regional local government news' },
   };
 
   const defaultTerms = categoryTerms[category.toLowerCase()] || { id: 'teknologi terkini', en: 'technology news' };
@@ -378,6 +379,64 @@ async function getDbConfig(key: string): Promise<string | null> {
   }
 }
 
+/**
+ * Membersihkan heading pertama jika mengulang judul artikel
+ */
+function cleanContentHeading(content: string, title: string): string {
+  let cleaned = content.trim();
+  const firstLineMatch = cleaned.match(/^(?:#+\s*)([^\n\r]+)/);
+  if (firstLineMatch && firstLineMatch[1]) {
+    const headingText = firstLineMatch[1].trim().toLowerCase();
+    const titleText = title.trim().toLowerCase();
+    if (
+      headingText === titleText ||
+      titleText.includes(headingText.slice(0, 20)) ||
+      headingText.includes(titleText.slice(0, 20))
+    ) {
+      cleaned = cleaned.replace(/^(?:#+\s*)[^\n\r]+(?:\r?\n)+/, '').trim();
+    }
+  }
+  return cleaned;
+}
+
+/**
+ * Mengambil 20 artikel terakhir dari database untuk disuntikkan ke AI sebagai memori redaksi
+ */
+async function getRecentArticlesMemory(limit = 20): Promise<string> {
+  try {
+    const rows = await db
+      .select({
+        title: articles.title,
+        category: articles.category,
+        publishedAt: articles.publishedAt,
+        createdAt: articles.createdAt,
+      })
+      .from(articles)
+      .orderBy(desc(articles.id))
+      .limit(limit);
+
+    if (!rows || rows.length === 0) return '';
+
+    const list = rows
+      .map((r, i) => {
+        const d = r.publishedAt ? new Date(r.publishedAt) : new Date(r.createdAt);
+        const dateStr = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+        return `${i + 1}. [${r.category}] "${r.title}" (${dateStr})`;
+      })
+      .join('\n');
+
+    return `\n\nARSIP 20 BERITA TERBARU DI PORTAL NARATIF (MEMORI REDAKSI - CEK ANTI-DUPLIKASI):
+${list}
+
+PANDUAN ANTI-DUPLIKASI REDAKSI:
+- JANGAN PERNAH mengulang fakta, peristiwa, atau topik yang sudah dibahas pada daftar berita di atas!
+- Jika topik yang diminta berkaitan dengan salah satu berita di atas, kamu WAJIB menulisnya sebagai 'LIPUTAN KELANJUTAN' (Follow-up / Perkembangan Terbaru / Dampak Baru) dengan sudut pandang yang berbeda, BUKAN mengulang isi berita lama.`;
+  } catch (err) {
+    console.warn('Gagal memuat memori artikel terdahulu:', err);
+    return '';
+  }
+}
+
 export async function requestArticleFromModelRouter(
   options: GenerateArticleOptions
 ): Promise<GeneratedArticleDraft & { modelUsed: string; providerUsed: string }> {
@@ -396,6 +455,9 @@ export async function requestArticleFromModelRouter(
   if (options.enableWebSearch !== false) {
     researchSources = await fetchGoogleNewsResearch(options.prompt, 6, targetCategory);
   }
+
+  // 1.1 Ambil 20 artikel terbaru dari database secara dinamis sebagai Memori Anti-Duplikasi
+  const memoryContext = await getRecentArticlesMemory(20);
 
   let baseUrl = '';
   let apiKey = '';
@@ -437,9 +499,10 @@ ATURAN PENULISAN:
 1. Bahasa: Bahasa Indonesia baku, modern, dan bergaya jurnalisme teknologi berbobot (5W + 1H, dengan analisis dampak industri).
 2. Format Konten: Gunakan Markdown murni yang rapi (Heading ##, ###, bullet points, penekanan bold, kutipan analitis >). JANGAN gunakan tag HTML mentah seperti <p>, <div>, <span>.
 3. Panjang konten: Target ${wordCountTarget}.
-4. Kategori artikel HARUS salah satu dari: ["AI", "Software", "Hardware", "Gadget", "Infrastruktur"].
+4. Kategori artikel HARUS salah satu dari: ["AI", "Software", "Hardware", "Gadget", "Infrastruktur", "Regional"]. Khusus kategori "Regional", fokuskan narasi pada fakta peristiwa daerah, kebijakan/pernyataan kepala daerah (Pemda/Gubernur/Walikota), pelayanan fasilitas publik, dan dampaknya bagi warga.
 5. Validitas Riset & E-E-A-T: Manfaatkan entitas, narasumber, angka, dan fakta dari HASIL RISET RIIL yang disediakan. Di akhir konten (bagian paling bawah), WAJIB buatkan sub-heading "## Referensi Berita Terkait" berupa poin-poin yang menyebutkan media/sumber fakta yang Anda jadikan rujukan agar kredibilitas jurnalisme dan SEO E-E-A-T artikel terjamin.
-6. Output: WAJIB HANYA berupa objek JSON murni (VALID JSON) tanpa pembuka atau penutup obrolan apa pun di luar JSON.
+6. Larangan Judul Ganda: DILARANG mengulang judul berita sebagai Heading (# atau ##) di baris pertama 'content'. Bagian 'content' WAJIB langsung dimulai dengan paragraf teks pembuka artikel berita.
+7. Output: WAJIB HANYA berupa objek JSON murni (VALID JSON) tanpa pembuka atau penutup obrolan apa pun di luar JSON.
 
 FORMAT STRUKTUR JSON YANG WAJIB ANDA HASILKAN:
 {
@@ -469,6 +532,7 @@ PANDUAN PEMANFAATAN RISET:
   const userPrompt = `Buatkan artikel berita teknologi profesional tentang topik berikut:
 "${options.prompt}"
 ${newsContext}
+${memoryContext}
 Target Kategori yang diutamakan: ${targetCategory}
 Panjang artikel: ${wordCountTarget}
 
@@ -540,7 +604,7 @@ Ingat, balas HANYA dengan dokumen JSON yang valid sesuai format yang ditentukan.
     throw new Error('Respons AI tidak memiliki judul atau konten yang lengkap.');
   }
 
-  const validCategories = ['AI', 'Software', 'Hardware', 'Gadget', 'Infrastruktur'];
+  const validCategories = ['AI', 'Software', 'Hardware', 'Gadget', 'Infrastruktur', 'Regional'];
   let finalCategory = targetCategory;
   if (parsed.category && validCategories.includes(parsed.category)) {
     finalCategory = parsed.category;
@@ -554,7 +618,7 @@ Ingat, balas HANYA dengan dokumen JSON yang valid sesuai format yang ditentukan.
     title: String(parsed.title).trim(),
     slug: sanitizeSlug(parsed.slug || parsed.title),
     excerpt: String(parsed.excerpt || parsed.title).slice(0, 500).trim(),
-    content: String(parsed.content).trim(),
+    content: cleanContentHeading(String(parsed.content).trim(), String(parsed.title).trim()),
     category: finalCategory,
     tags,
     coverCaption: String(parsed.coverCaption || `Ilustrasi liputan ${parsed.title}`).trim(),
@@ -617,6 +681,9 @@ export async function requestSadurArticleFromSource(
     throw new Error(`API Key untuk ${provider} belum disetel di Environment Variables`);
   }
 
+  // Ambil 20 artikel terbaru dari database secara dinamis sebagai Memori Anti-Duplikasi
+  const memoryContext = await getRecentArticlesMemory(20);
+
   baseUrl = baseUrl.replace(/\/+$/, '');
   const endpoint = `${baseUrl}/chat/completions`;
 
@@ -629,11 +696,12 @@ ATURAN PENULISAN:
 3. Faktual & Akurat: Pertahankan semua fakta riil, angka, data teknis, kronologi peristiwa, nama perusahaan, serta nama narasumber dan kutipannya dari artikel sumber.
 4. Format Konten: Gunakan Markdown murni (Heading ##, ###, bullet points, penekanan bold, kutipan analitis >). JANGAN gunakan tag HTML mentah seperti <p>, <div>, <span>.
 5. Panjang konten: Target ${wordCountTarget}.
-6. Kategori artikel HARUS salah satu dari: ["AI", "Software", "Hardware", "Gadget", "Infrastruktur"].
+6. Kategori artikel HARUS salah satu dari: ["AI", "Software", "Hardware", "Gadget", "Infrastruktur", "Regional"].
 7. Atribusi Sumber Wajib: Pada bagian paling bawah artikel (baris terakhir), WAJIB sertakan baris atribusi etis:
    ---
    *Dikutip dan disadur berdasarkan laporan dari ${options.domain || 'sumber terkait'} (${options.sourceUrl}).*
-8. Output: WAJIB HANYA berupa objek JSON murni (VALID JSON) tanpa teks obrolan apa pun di luar JSON.
+8. Larangan Judul Ganda: DILARANG mengulang judul berita sebagai Heading (# atau ##) di baris pertama 'content'. Bagian 'content' WAJIB langsung dimulai dengan paragraf teks narasi liputan.
+9. Output: WAJIB HANYA berupa objek JSON murni (VALID JSON) tanpa teks obrolan apa pun di luar JSON.
 
 FORMAT STRUKTUR JSON YANG WAJIB ANDA HASILKAN:
 {
@@ -657,6 +725,7 @@ ISI TEKS SUMBER:
 """
 ${options.sourceContent}
 """
+${memoryContext}
 
 Target Kategori yang diutamakan: ${targetCategory}
 Panjang artikel target: ${wordCountTarget}
@@ -727,7 +796,7 @@ Ingat, balas HANYA dengan dokumen JSON yang valid sesuai format yang ditentukan.
     throw new Error('Respons AI tidak memiliki judul atau konten yang lengkap.');
   }
 
-  const validCategories = ['AI', 'Software', 'Hardware', 'Gadget', 'Infrastruktur'];
+  const validCategories = ['AI', 'Software', 'Hardware', 'Gadget', 'Infrastruktur', 'Regional'];
   let finalCategory = targetCategory;
   if (parsed.category && validCategories.includes(parsed.category)) {
     finalCategory = parsed.category;
@@ -741,7 +810,7 @@ Ingat, balas HANYA dengan dokumen JSON yang valid sesuai format yang ditentukan.
     title: String(parsed.title).trim(),
     slug: sanitizeSlug(parsed.slug || parsed.title),
     excerpt: String(parsed.excerpt || parsed.title).slice(0, 500).trim(),
-    content: String(parsed.content).trim(),
+    content: cleanContentHeading(String(parsed.content).trim(), String(parsed.title).trim()),
     category: finalCategory,
     tags,
     coverCaption: String(parsed.coverCaption || `Ilustrasi liputan ${parsed.title}`).trim(),

@@ -41,7 +41,7 @@ export async function GET(request: Request) {
     const articleLength = (settingsMap.get('autopilot_length') as 'ringkas' | 'standar' | 'mendalam') || 'standar';
     const telegramNotify = settingsMap.get('autopilot_telegram_notify') !== 'false';
 
-    let rawCategories: string[] = ['AI', 'Software', 'Hardware', 'Gadget', 'Infrastruktur'];
+    let rawCategories: string[] = ['AI', 'Software', 'Hardware', 'Gadget', 'Infrastruktur', 'Regional'];
     try {
       const parsedCat = JSON.parse(settingsMap.get('autopilot_categories') || '[]');
       if (Array.isArray(parsedCat) && parsedCat.length > 0) {
