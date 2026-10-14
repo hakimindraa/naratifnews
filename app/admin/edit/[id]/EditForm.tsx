@@ -3,11 +3,15 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { updateArticle } from '../../actions';
+import { Link2 } from 'lucide-react';
+import BacaJugaPickerModal from '../../BacaJugaPickerModal';
 
 export default function EditForm({ article }: { article: any }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState('');
+  const [content, setContent] = useState(article.content || '');
+  const [showBacaJugaModal, setShowBacaJugaModal] = useState(false);
 
   // Format date for datetime-local input (YYYY-MM-DDTHH:mm) in Local Time
   const formatForInput = (dateString: string | Date | null) => {
@@ -28,6 +32,7 @@ export default function EditForm({ article }: { article: any }) {
     e.preventDefault();
     setError('');
     const formData = new FormData(e.currentTarget);
+    formData.set('content', content);
     
     startTransition(async () => {
       const result = await updateArticle(article.id, formData);
@@ -114,10 +119,22 @@ export default function EditForm({ article }: { article: any }) {
       </div>
 
       <div className="space-y-2">
-        <label className="block text-sm font-medium text-gray-700">Konten Artikel (Markdown)</label>
+        <div className="flex items-center justify-between">
+          <label className="block text-sm font-medium text-gray-700">Konten Artikel (Markdown)</label>
+          <button
+            type="button"
+            onClick={() => setShowBacaJugaModal(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition-all shadow-2xs active:scale-95"
+            title="Pilih dan sisipkan tautan artikel lain ke berita ini"
+          >
+            <Link2 className="w-3.5 h-3.5" />
+            <span>🔗 Sisipkan "Baca Juga"</span>
+          </button>
+        </div>
         <textarea 
           name="content" 
-          defaultValue={article.content} 
+          value={content}
+          onChange={(e) => setContent(e.target.value)}
           required 
           rows={15}
           className="w-full px-4 py-2 border border-gray-300 rounded-md font-mono text-sm focus:ring-gray-900 focus:border-gray-900"
@@ -140,6 +157,14 @@ export default function EditForm({ article }: { article: any }) {
           {isPending ? 'Menyimpan...' : 'Simpan Perubahan'}
         </button>
       </div>
+
+      <BacaJugaPickerModal
+        isOpen={showBacaJugaModal}
+        onClose={() => setShowBacaJugaModal(false)}
+        onInsert={(snippet) => {
+          setContent((prev: string) => (prev ? `${prev.trimEnd()}${snippet}` : snippet.trim()));
+        }}
+      />
     </form>
   );
 }

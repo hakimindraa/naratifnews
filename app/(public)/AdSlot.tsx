@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { AdSlotConfig } from '@/lib/ads';
 
 interface AdSlotProps {
@@ -10,10 +10,15 @@ interface AdSlotProps {
 }
 
 export default function AdSlot({ config, clientId, className = '' }: AdSlotProps) {
+  const [mounted, setMounted] = useState(false);
   const pushedRef = useRef(false);
 
   useEffect(() => {
-    if (config?.enabled && config.type === 'adsense' && !pushedRef.current) {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (mounted && config?.enabled && config.type === 'adsense' && config.slotId && !pushedRef.current) {
       try {
         if (typeof window !== 'undefined') {
           ((window as any).adsbygoogle = (window as any).adsbygoogle || []).push({});
@@ -23,7 +28,7 @@ export default function AdSlot({ config, clientId, className = '' }: AdSlotProps
         console.debug('AdSense unit push note:', err);
       }
     }
-  }, [config]);
+  }, [mounted, config]);
 
   if (!config || !config.enabled) {
     return null;
@@ -55,17 +60,39 @@ export default function AdSlot({ config, clientId, className = '' }: AdSlotProps
     );
   }
 
-  // Tipe 2: Google AdSense Unit
+  // Tipe 2: Google AdSense Unit (Manual Slot)
+  // Hanya render jika slotId sudah diisi (jika kosong, biarkan Auto Ads Google yang mengisi)
+  if (!config.slotId) {
+    return null;
+  }
+
+  if (!mounted) {
+    return (
+      <div
+        suppressHydrationWarning
+        className={`w-full my-6 text-center overflow-hidden bg-gray-50/50 rounded-xl p-2 border border-dashed border-gray-200 min-h-[90px] ${className}`}
+      >
+        <div className="text-[10px] text-gray-400 uppercase tracking-widest mb-1.5 font-medium">
+          Iklan
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className={`w-full my-6 text-center overflow-hidden bg-gray-50/50 rounded-xl p-2 border border-dashed border-gray-200 ${className}`}>
+    <div
+      suppressHydrationWarning
+      className={`w-full my-6 text-center overflow-hidden bg-gray-50/50 rounded-xl p-2 border border-dashed border-gray-200 ${className}`}
+    >
       <div className="text-[10px] text-gray-400 uppercase tracking-widest mb-1.5 font-medium">
         Iklan
       </div>
       <ins
+        suppressHydrationWarning
         className="adsbygoogle"
         style={{ display: 'block' }}
         data-ad-client={clientId}
-        data-ad-slot={config.slotId || ''}
+        data-ad-slot={config.slotId}
         data-ad-format="auto"
         data-full-width-responsive="true"
       />

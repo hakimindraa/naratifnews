@@ -3,14 +3,16 @@
 import { useState, useTransition, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createArticle } from '../actions';
-import { Eye, Edit3, Image as ImageIcon, Sparkles, AlertCircle } from 'lucide-react';
+import { Eye, Edit3, Image as ImageIcon, Sparkles, AlertCircle, Link2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import BacaJugaPickerModal from '../BacaJugaPickerModal';
 
 export default function TulisForm() {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState('');
+  const [showBacaJugaModal, setShowBacaJugaModal] = useState(false);
 
   // Form states
   const [title, setTitle] = useState('');
@@ -248,27 +250,39 @@ export default function TulisForm() {
           <label className="block text-sm font-bold text-gray-900">
             Konten Berita (Markdown) <span className="text-red-500">*</span>
           </label>
-          <div className="flex bg-gray-100 p-1 rounded-lg">
+          <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => setActiveTab('edit')}
-              className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-bold transition-all ${
-                activeTab === 'edit' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-900'
-              }`}
+              onClick={() => setShowBacaJugaModal(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition-all shadow-2xs active:scale-95"
+              title="Pilih dan sisipkan tautan artikel lain ke berita ini"
             >
-              <Edit3 className="w-3.5 h-3.5" />
-              Tulis
+              <Link2 className="w-3.5 h-3.5" />
+              <span>🔗 Sisipkan "Baca Juga"</span>
             </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('preview')}
-              className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-bold transition-all ${
-                activeTab === 'preview' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-900'
-              }`}
-            >
-              <Eye className="w-3.5 h-3.5" />
-              Pratinjau
-            </button>
+
+            <div className="flex bg-gray-100 p-1 rounded-lg">
+              <button
+                type="button"
+                onClick={() => setActiveTab('edit')}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-bold transition-all ${
+                  activeTab === 'edit' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-900'
+                }`}
+              >
+                <Edit3 className="w-3.5 h-3.5" />
+                Tulis
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('preview')}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-bold transition-all ${
+                  activeTab === 'preview' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-900'
+                }`}
+              >
+                <Eye className="w-3.5 h-3.5" />
+                Pratinjau
+              </button>
+            </div>
           </div>
         </div>
 
@@ -278,7 +292,7 @@ export default function TulisForm() {
             onChange={(e) => setContent(e.target.value)}
             required 
             rows={14}
-            placeholder={`Tulis isi berita dalam format Markdown di sini...\n\nContoh:\n## Sub-judul Pembahasan\nParagraf penjelasan berita...\n\n> Kutipan penting narasumber...\n\n- Poin pertama\n- Poin kedua`}
+            placeholder={`Tulis isi berita dalam format Markdown di sini...\n\nContoh:\n## Sub-judul Pembahasan\nParagraf penjelasan berita...\n\n> **Baca Juga:** [Judul Artikel Lain](/berita-teknologi/...)\n\n> Kutipan penting narasumber...\n\n- Poin pertama\n- Poin kedua`}
             className="w-full p-4 border border-gray-300 rounded-xl font-mono text-sm focus:ring-2 focus:ring-gray-900 focus:border-gray-900 leading-relaxed"
           />
         ) : (
@@ -312,6 +326,17 @@ export default function TulisForm() {
           {isPending ? 'Menyimpan Berita...' : 'Terbitkan Artikel'}
         </button>
       </div>
+
+      <BacaJugaPickerModal
+        isOpen={showBacaJugaModal}
+        onClose={() => setShowBacaJugaModal(false)}
+        onInsert={(snippet) => {
+          setContent((prev) => {
+            if (!prev) return snippet.trim();
+            return `${prev.trimEnd()}${snippet}`;
+          });
+        }}
+      />
     </form>
   );
 }

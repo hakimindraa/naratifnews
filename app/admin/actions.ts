@@ -4,7 +4,7 @@ import matter from 'gray-matter';
 import { db } from '@/db';
 import { articles } from '@/db/schema';
 import { revalidatePath } from 'next/cache';
-import { eq } from 'drizzle-orm';
+import { eq, desc, like, sql } from 'drizzle-orm';
 import { cookies } from 'next/headers';
 import { encrypt } from '@/lib/auth';
 import { redirect } from 'next/navigation';
@@ -329,3 +329,58 @@ export async function createArticle(formData: FormData) {
     return { error: error.message || 'Gagal menyimpan artikel baru.' };
   }
 }
+
+export interface InternalLinkItem {
+  id: number;
+  title: string;
+  slug: string;
+  category: string;
+  url: string;
+  publishedAt: string | null;
+}
+
+export async function getInternalLinkArticles(query?: string): Promise<InternalLinkItem[]> {
+  try {
+    let rows;
+    if (query && query.trim()) {
+      const q = `%${query.trim().toLowerCase()}%`;
+      rows = await db
+        .select({
+          id: articles.id,
+          title: articles.title,
+          slug: articles.slug,
+          category: articles.category,
+          publishedAt: articles.publishedAt,
+        })
+        .from(articles)
+        .where(like(sql`LOWER(${articles.title})`, q))
+        .orderBy(desc(articles.id))
+        .limit(20);
+    } else {
+      rows = await db
+        .select({
+          id: articles.id,
+          title: articles.title,
+          slug: articles.slug,
+          category: articles.category,
+          publishedAt: articles.publishedAt,
+        })
+        .from(articles)
+        .orderBy(desc(articles.id))
+        .limit(30);
+    }
+
+    return rows.map((r) => ({
+      id: r.id,
+      title: r.title,
+      slug: r.slug,
+      category: r.category,
+      url: `/berita-teknologi/${r.category.toLowerCase().replace(/\s+/g, '-')}/${r.id}/${r.slug}`,
+      publishedAt: r.publishedAt ? new Date(r.publishedAt).toISOString() : null,
+    }));
+  } catch (error) {
+    console.error('Failed to get internal link articles:', error);
+    return [];
+  }
+}
+

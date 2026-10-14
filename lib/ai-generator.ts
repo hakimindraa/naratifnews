@@ -402,11 +402,27 @@ function cleanContentHeading(content: string, title: string): string {
 /**
  * Mengambil 20 artikel terakhir dari database untuk disuntikkan ke AI sebagai memori redaksi
  */
-async function getRecentArticlesMemory(limit = 20): Promise<string> {
+export interface InternalLinkCandidate {
+  id: number;
+  title: string;
+  slug: string;
+  category: string;
+  url: string;
+}
+
+/**
+ * Mengambil 20 artikel terakhir dari database untuk memori anti-duplikasi dan smart internal linking
+ */
+async function getRecentArticlesForInternalLinking(limit = 20): Promise<{
+  memoryText: string;
+  candidates: InternalLinkCandidate[];
+}> {
   try {
     const rows = await db
       .select({
+        id: articles.id,
         title: articles.title,
+        slug: articles.slug,
         category: articles.category,
         publishedAt: articles.publishedAt,
         createdAt: articles.createdAt,
@@ -415,9 +431,19 @@ async function getRecentArticlesMemory(limit = 20): Promise<string> {
       .orderBy(desc(articles.id))
       .limit(limit);
 
-    if (!rows || rows.length === 0) return '';
+    if (!rows || rows.length === 0) {
+      return { memoryText: '', candidates: [] };
+    }
 
-    const list = rows
+    const candidates: InternalLinkCandidate[] = rows.map((r) => ({
+      id: r.id,
+      title: r.title,
+      slug: r.slug,
+      category: r.category,
+      url: `/berita-teknologi/${r.category.toLowerCase().replace(/\s+/g, '-')}/${r.id}/${r.slug}`,
+    }));
+
+    const antiDupList = rows
       .map((r, i) => {
         const d = r.publishedAt ? new Date(r.publishedAt) : new Date(r.createdAt);
         const dateStr = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
@@ -425,15 +451,70 @@ async function getRecentArticlesMemory(limit = 20): Promise<string> {
       })
       .join('\n');
 
-    return `\n\nARSIP 20 BERITA TERBARU DI PORTAL NARATIF (MEMORI REDAKSI - CEK ANTI-DUPLIKASI):
-${list}
+    const internalLinksList = candidates
+      .slice(0, 10)
+      .map((c, i) => `${i + 1}. [${c.category}] Judul: "${c.title}" -> URL: ${c.url}`)
+      .join('\n');
+
+    const memoryText = `\n\nARSIP 20 BERITA TERBARU DI PORTAL NARATIF (MEMORI REDAKSI & TAUTAN INTERNAL):
+${antiDupList}
+
+DAFTAR ARTIKEL PILIHAN UNTUK INTERNAL LINKING ("BACA JUGA"):
+${internalLinksList}
 
 PANDUAN ANTI-DUPLIKASI REDAKSI:
 - JANGAN PERNAH mengulang fakta, peristiwa, atau topik yang sudah dibahas pada daftar berita di atas!
-- Jika topik yang diminta berkaitan dengan salah satu berita di atas, kamu WAJIB menulisnya sebagai 'LIPUTAN KELANJUTAN' (Follow-up / Perkembangan Terbaru / Dampak Baru) dengan sudut pandang yang berbeda, BUKAN mengulang isi berita lama.`;
+- Jika topik yang diminta berkaitan dengan salah satu berita di atas, kamu WAJIB menulisnya sebagai 'LIPUTAN KELANJUTAN' (Follow-up / Perkembangan Terbaru / Dampak Baru) dengan sudut pandang yang berbeda, BUKAN mengulang isi berita lama.
+
+PANDUAN SMART INTERNAL LINKING ("BACA JUGA"):
+- Anda WAJIB menyisipkan 1 atau 2 tautan internal "Baca Juga" di tengah artikel (antara paragraf ke-3 sampai paragraf ke-5).
+- Format penulisan WAJIB tepat seperti ini:
+> **Baca Juga:** [Judul Artikel yang Dipilih](url_artikel_yang_dipilih)
+- Pilih artikel dari daftar di atas yang paling relevan, ATAU artikel menarik mana saja dari daftar di atas (semua artikel boleh ditautkan).`;
+
+    return { memoryText, candidates };
   } catch (err) {
     console.warn('Gagal memuat memori artikel terdahulu:', err);
-    return '';
+    return { memoryText: '', candidates: [] };
+  }
+}
+
+/**
+ * Menyisipkan tautan internal otomatis jika AI belum menuliskannya di konten
+ */
+function injectInternalLinkIfMissing(
+  content: string,
+  candidates: InternalLinkCandidate[],
+  currentCategory = ''
+): string {
+  if (!candidates || candidates.length === 0) return content;
+
+  // Cek apakah konten sudah memiliki format "Baca Juga:"
+  if (/baca juga\s*:/i.test(content)) {
+    return content;
+  }
+
+  // Prioritaskan kategori yang sama, jika tidak ada gunakan semua kandidat
+  const sameCategoryCandidates = candidates.filter(
+    (c) => c.category.toLowerCase() === currentCategory.toLowerCase()
+  );
+  const pool = sameCategoryCandidates.length > 0 ? sameCategoryCandidates : candidates;
+  const picked = pool[Math.floor(Math.random() * pool.length)];
+
+  if (!picked) return content;
+
+  const bacaJugaSnippet = `\n\n> **Baca Juga:** [${picked.title}](${picked.url})\n\n`;
+
+  // Sisipkan di tengah artikel (sekitar paragraf ke-3 atau separuh artikel)
+  const paragraphs = content.split(/\n\s*\n/);
+  if (paragraphs.length >= 4) {
+    const splitIndex = Math.min(3, Math.floor(paragraphs.length / 2));
+    const before = paragraphs.slice(0, splitIndex).join('\n\n');
+    const after = paragraphs.slice(splitIndex).join('\n\n');
+    return `${before}${bacaJugaSnippet}${after}`;
+  } else {
+    // Jika artikel pendek, taruh sebelum bagian akhir
+    return `${content.trimEnd()}${bacaJugaSnippet}`;
   }
 }
 
@@ -456,8 +537,9 @@ export async function requestArticleFromModelRouter(
     researchSources = await fetchGoogleNewsResearch(options.prompt, 6, targetCategory);
   }
 
-  // 1.1 Ambil 20 artikel terbaru dari database secara dinamis sebagai Memori Anti-Duplikasi
-  const memoryContext = await getRecentArticlesMemory(20);
+  // 1.1 Ambil 20 artikel terbaru dari database secara dinamis sebagai Memori Anti-Duplikasi & Smart Internal Linking
+  const { memoryText: memoryContext, candidates: internalCandidates } =
+    await getRecentArticlesForInternalLinking(20);
 
   let baseUrl = '';
   let apiKey = '';
@@ -614,11 +696,14 @@ Ingat, balas HANYA dengan dokumen JSON yang valid sesuai format yang ditentukan.
     ? parsed.tags.map((t: any) => String(t).trim()).filter(Boolean)
     : [finalCategory, 'Teknologi', 'Naratif'];
 
+  const cleanedContent = cleanContentHeading(String(parsed.content).trim(), String(parsed.title).trim());
+  const finalContent = injectInternalLinkIfMissing(cleanedContent, internalCandidates, finalCategory);
+
   return {
     title: String(parsed.title).trim(),
     slug: sanitizeSlug(parsed.slug || parsed.title),
     excerpt: String(parsed.excerpt || parsed.title).slice(0, 500).trim(),
-    content: cleanContentHeading(String(parsed.content).trim(), String(parsed.title).trim()),
+    content: finalContent,
     category: finalCategory,
     tags,
     coverCaption: String(parsed.coverCaption || `Ilustrasi liputan ${parsed.title}`).trim(),
@@ -681,8 +766,9 @@ export async function requestSadurArticleFromSource(
     throw new Error(`API Key untuk ${provider} belum disetel di Environment Variables`);
   }
 
-  // Ambil 20 artikel terbaru dari database secara dinamis sebagai Memori Anti-Duplikasi
-  const memoryContext = await getRecentArticlesMemory(20);
+  // Ambil 20 artikel terbaru dari database secara dinamis sebagai Memori Anti-Duplikasi & Smart Internal Linking
+  const { memoryText: memoryContext, candidates: internalCandidates } =
+    await getRecentArticlesForInternalLinking(20);
 
   baseUrl = baseUrl.replace(/\/+$/, '');
   const endpoint = `${baseUrl}/chat/completions`;
@@ -806,11 +892,14 @@ Ingat, balas HANYA dengan dokumen JSON yang valid sesuai format yang ditentukan.
     ? parsed.tags.map((t: any) => String(t).trim()).filter(Boolean)
     : [finalCategory, 'Teknologi', options.domain || 'Naratif'];
 
+  const cleanedContent = cleanContentHeading(String(parsed.content).trim(), String(parsed.title).trim());
+  const finalContent = injectInternalLinkIfMissing(cleanedContent, internalCandidates, finalCategory);
+
   return {
     title: String(parsed.title).trim(),
     slug: sanitizeSlug(parsed.slug || parsed.title),
     excerpt: String(parsed.excerpt || parsed.title).slice(0, 500).trim(),
-    content: cleanContentHeading(String(parsed.content).trim(), String(parsed.title).trim()),
+    content: finalContent,
     category: finalCategory,
     tags,
     coverCaption: String(parsed.coverCaption || `Ilustrasi liputan ${parsed.title}`).trim(),

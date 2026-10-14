@@ -113,11 +113,34 @@ export default async function ArticlePage({
   // Ambil pengaturan iklan dinamis
   const adSettings = await getAdSettings();
 
+  // JAMINAN SMART INTERNAL LINKING:
+  // Jika artikel lama belum memiliki kutipan "Baca Juga:", sisipkan otomatis 1 artikel relevan/populer dari DB
+  let processedContent = article.content;
+  if (!/baca juga\s*:/i.test(processedContent)) {
+    const relatedCandidate = popularArticles.find((p) => p.id !== article.id);
+    if (relatedCandidate) {
+      const relatedUrl = `/berita-teknologi/${relatedCandidate.category.toLowerCase().replace(/\s+/g, '-')}/${relatedCandidate.id}/${relatedCandidate.slug}`;
+      const bacaJugaSnippet = `> **Baca Juga:** [${relatedCandidate.title}](${relatedUrl})`;
+
+      const parts = processedContent.split(/\n\s*\n/);
+      if (parts.length >= 4) {
+        const insertIdx = Math.min(2, Math.floor(parts.length / 2));
+        processedContent = [
+          ...parts.slice(0, insertIdx),
+          bacaJugaSnippet,
+          ...parts.slice(insertIdx),
+        ].join('\n\n');
+      } else {
+        processedContent = `${processedContent.trimEnd()}\n\n${bacaJugaSnippet}\n\n`;
+      }
+    }
+  }
+
   // Split artikel untuk slot iklan tengah bacaan jika aktif
-  let contentPart1 = article.content;
+  let contentPart1 = processedContent;
   let contentPart2 = '';
   if (adSettings.inArticle?.enabled) {
-    const paragraphs = article.content.split(/\n\s*\n/);
+    const paragraphs = processedContent.split(/\n\s*\n/);
     if (paragraphs.length >= 4) {
       const splitPoint = Math.min(3, Math.floor(paragraphs.length / 2));
       contentPart1 = paragraphs.slice(0, splitPoint).join('\n\n');
@@ -273,11 +296,39 @@ export default async function ArticlePage({
                   {children}
                 </em>
               ),
-              blockquote: ({ children }: any) => (
-                <blockquote className="border-l-4 border-gray-900 pl-4 py-2 my-6 italic text-gray-700 bg-gray-50 rounded-r-lg text-base sm:text-lg">
-                  {children}
-                </blockquote>
-              ),
+              blockquote: ({ children }: any) => {
+                let rawText = '';
+                const extractText = (node: any) => {
+                  if (typeof node === 'string') rawText += node;
+                  else if (Array.isArray(node)) node.forEach(extractText);
+                  else if (node?.props?.children) extractText(node.props.children);
+                };
+                extractText(children);
+
+                const isBacaJuga = /baca juga\s*:/i.test(rawText);
+
+                if (isBacaJuga) {
+                  return (
+                    <div className="my-6 p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-indigo-50/80 via-white to-indigo-50/30 border border-indigo-100 border-l-4 border-l-indigo-600 shadow-xs hover:border-indigo-300 hover:shadow-sm transition-all group not-italic">
+                      <div className="flex items-center gap-1.5 mb-1.5">
+                        <span className="inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-black uppercase tracking-wider bg-indigo-600 text-white px-2 py-0.5 rounded-md shadow-2xs">
+                          <Link2 className="w-3 h-3" />
+                          Baca Juga
+                        </span>
+                      </div>
+                      <div className="text-base sm:text-lg font-bold text-gray-900 group-hover:text-indigo-600 transition-colors leading-snug [&>p]:mb-0 [&>p>strong]:hidden">
+                        {children}
+                      </div>
+                    </div>
+                  );
+                }
+
+                return (
+                  <blockquote className="border-l-4 border-gray-900 pl-4 py-2 my-6 italic text-gray-700 bg-gray-50 rounded-r-lg text-base sm:text-lg">
+                    {children}
+                  </blockquote>
+                );
+              },
               a: ({ children, href }: any) => (
                 <a
                   href={href}
