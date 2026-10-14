@@ -297,3 +297,24 @@ Fitur untuk mengatur koneksi AI Gateway (9Router, Gemini, Groq) langsung dari an
    - Fallback otomatis di `lib/ai-generator.ts` (DB Neon -> Fallback `.env`).
    - Modal UI `⚙️ Pengaturan AI` di `/admin/generator` dengan fitur *Tes Koneksi* dan *Tarik Model Otomatis*.
 
+## 16. Ekstensi: Mode Autopilot Redaksi (Jadwal Terbit Otomatis Harian)
+
+Fitur penerbitan berita harian otomatis secara mandiri menggunakan riset Google News dan AI Engine terintegrasi dengan cron-job.org:
+
+1. **Endpoint Cron:** `GET /api/cron/autopilot` dengan otorisasi `Bearer CRON_SECRET`.
+2. **Logika Eksekusi:**
+   - Cek sakelar `autopilot_enabled` di tabel `system_settings`.
+   - Rotasi kategori teratur (`AI` -> `Software` -> `Hardware` -> `Gadget` -> `Infrastruktur`).
+   - Riset Google News terkini untuk kategori aktif.
+   - Pengecekan anti-duplikasi judul/topik dalam 3 hari terakhir.
+   - Pembuatan draf berita via `requestArticleFromModelRouter()`.
+   - Simpan artikel ke database Neon (`published` atau `draft`).
+   - Kirim laporan notifikasi tayang real-time ke bot Telegram redaksi.
+3. **Pengaturan di Web Admin (`/admin/pengaturan`):**
+   - Sakelar ON / OFF Autopilot.
+   - Pilihan AI Engine (Groq / Gemini / 9Router).
+   - Target status publikasi (Published / Draft).
+   - Checkbox kategori yang diikutsertakan dalam rotasi.
+   - Petunjuk integrasi URL dan header cron-job.org.
+
+

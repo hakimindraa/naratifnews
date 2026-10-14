@@ -24,9 +24,11 @@ import {
   Trash2,
   Search,
   Globe,
-  Wand2
+  Wand2,
+  Settings,
 } from 'lucide-react';
 import { generateArticleAction, getGenerationDataAction, deleteGenerationLogAction, clearFailedLogsAction } from './actions';
+import { getAISettings } from '../pengaturan/actions';
 
 interface LogItem {
   id: number;
@@ -86,6 +88,7 @@ export default function GeneratorStudioPage() {
   const [prompt, setPrompt] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('AI');
   const [selectedProvider, setSelectedProvider] = useState<'gemini' | 'groq' | '9router'>('gemini');
+  const [active9RouterModel, setActive9RouterModel] = useState<string>('');
   const [enableWebSearch, setEnableWebSearch] = useState(true);
   const [coverUrl, setCoverUrl] = useState('');
   const [publishStatus, setPublishStatus] = useState<'published' | 'draft'>('draft');
@@ -158,6 +161,12 @@ export default function GeneratorStudioPage() {
 
   useEffect(() => {
     loadInitialData();
+    getAISettings()
+      .then((cfg) => {
+        if (cfg.model) setActive9RouterModel(cfg.model);
+        if (cfg.defaultProvider) setSelectedProvider(cfg.defaultProvider);
+      })
+      .catch(() => {});
   }, []);
 
   const handleSelectPreset = (preset: typeof PRESET_TOPICS[0]) => {
@@ -262,7 +271,15 @@ export default function GeneratorStudioPage() {
               <div className="text-[11px] sm:text-xs text-gray-400 font-medium">AI Engine Aktif</div>
               <div className="text-xs sm:text-sm font-bold text-white flex items-center gap-1.5 mt-0.5">
                 <span className={`w-2 h-2 rounded-full ${selectedProvider === 'gemini' ? 'bg-amber-400' : selectedProvider === 'groq' ? 'bg-cyan-400' : 'bg-emerald-400'} animate-pulse`} />
-                <span>{selectedProvider === 'gemini' ? 'Google Gemini 3.8 Flash' : selectedProvider === 'groq' ? 'Groq (GPT-OSS 120B)' : '9Router (Muse Spark)'}</span>
+                <span>
+                  {selectedProvider === 'gemini'
+                    ? 'Google Gemini 3.8 Flash'
+                    : selectedProvider === 'groq'
+                    ? 'Groq (GPT-OSS 120B)'
+                    : active9RouterModel
+                    ? `9Router (${active9RouterModel})`
+                    : '9Router Gateway'}
+                </span>
               </div>
             </div>
             <div className="w-px h-7 sm:h-8 bg-white/10" />
@@ -449,7 +466,17 @@ export default function GeneratorStudioPage() {
             <div className="flex items-center gap-2 bg-indigo-50/90 px-3.5 py-2.5 rounded-xl border border-indigo-200">
               <Bot className="w-4 h-4 text-indigo-600 shrink-0" />
               <div className="flex flex-col min-w-0 flex-1">
-                <span className="text-[10px] font-semibold text-indigo-900 uppercase tracking-wider">AI Engine</span>
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-semibold text-indigo-900 uppercase tracking-wider">AI Engine</span>
+                  <Link
+                    href="/admin/pengaturan"
+                    title="Buka Pengaturan AI Gateway (9Router)"
+                    className="text-[10px] text-indigo-600 hover:text-indigo-800 font-bold flex items-center gap-0.5 transition-colors"
+                  >
+                    <Settings className="w-2.5 h-2.5" />
+                    <span>Atur</span>
+                  </Link>
+                </div>
                 <select
                   value={selectedProvider}
                   onChange={(e) => setSelectedProvider(e.target.value as 'gemini' | 'groq' | '9router')}
@@ -458,7 +485,9 @@ export default function GeneratorStudioPage() {
                 >
                   <option value="gemini">Google Gemini 3.8 Flash (Rekomendasi)</option>
                   <option value="groq">Groq Cloud (GPT-OSS 120B)</option>
-                  <option value="9router">9Router Lokal (Muse Spark)</option>
+                  <option value="9router">
+                    {active9RouterModel ? `9Router (${active9RouterModel})` : '9Router Gateway'}
+                  </option>
                 </select>
               </div>
             </div>

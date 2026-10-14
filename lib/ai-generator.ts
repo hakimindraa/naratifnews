@@ -177,33 +177,74 @@ export async function fetchGoogleNewsResearch(
 }
 
 function extractJSON(text: string): any {
-  // 1. Coba parse langsung
-  try {
-    return JSON.parse(text);
-  } catch (e) {
-    // Lanjut ke pembersihan
-  }
+  let str = text.trim();
 
-  // 2. Bersihkan blok ```json ... ``` atau ``` ... ```
-  const codeBlockMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+  // 1. Bersihkan blok ```json ... ``` atau ``` ... ```
+  const codeBlockMatch = str.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
   if (codeBlockMatch && codeBlockMatch[1]) {
-    try {
-      return JSON.parse(codeBlockMatch[1].trim());
-    } catch (e) {
-      // lanjut ke pencarian kurung kurawal
-    }
+    str = codeBlockMatch[1].trim();
   }
 
-  // 3. Ambil dari { pertama sampai } terakhir
-  const firstBrace = text.indexOf('{');
-  const lastBrace = text.lastIndexOf('}');
+  // 2. Ambil dari { pertama sampai } terakhir
+  const firstBrace = str.indexOf('{');
+  const lastBrace = str.lastIndexOf('}');
   if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-    const jsonSubstring = text.substring(firstBrace, lastBrace + 1);
-    try {
-      return JSON.parse(jsonSubstring);
-    } catch (e) {
-      // gagal
+    str = str.substring(firstBrace, lastBrace + 1);
+  }
+
+  // 3. Coba parse standar dulu
+  try {
+    return JSON.parse(str);
+  } catch (e) {
+    // gagal, lanjut ke sanitasi
+  }
+
+  // 4. Perbaiki unescaped newlines/tabs di dalam string literals JSON (penyebab Bad control character)
+  try {
+    const fixedControlChars = str.replace(/"((?:\\.|[^"\\])*)"/g, (match) => {
+      return match
+        .replace(/\n/g, '\\n')
+        .replace(/\r/g, '\\r')
+        .replace(/\t/g, '\\t');
+    });
+    return JSON.parse(fixedControlChars);
+  } catch (e) {
+    // lanjut
+  }
+
+  // 5. Perbaiki jika JSON terpotong di akhir
+  try {
+    let repaired = str.trim();
+    if (!repaired.endsWith('}')) {
+      const quoteCount = (repaired.match(/(?<!\\)"/g) || []).length;
+      if (quoteCount % 2 !== 0) {
+        repaired += '"';
+      }
+      repaired += '\n}';
+      return JSON.parse(repaired);
     }
+  } catch (e) {
+    // lanjut
+  }
+
+  // 6. Fallback Ekstraksi Properti Menggunakan Regex (Anti-Gagal Total)
+  const titleMatch = str.match(/"title"\s*:\s*"((?:\\.|[^"\\])*)"/);
+  const slugMatch = str.match(/"slug"\s*:\s*"((?:\\.|[^"\\])*)"/);
+  const excerptMatch = str.match(/"excerpt"\s*:\s*"((?:\\.|[^"\\])*)"/);
+  const categoryMatch = str.match(/"category"\s*:\s*"((?:\\.|[^"\\])*)"/);
+  const coverCaptionMatch = str.match(/"coverCaption"\s*:\s*"((?:\\.|[^"\\])*)"/);
+  const contentMatch = str.match(/"content"\s*:\s*"([\s\S]*?)"(?:\s*,\s*"|\s*})/);
+
+  if (titleMatch || contentMatch) {
+    return {
+      title: titleMatch ? titleMatch[1].replace(/\\"/g, '"').replace(/\\n/g, '\n') : '',
+      slug: slugMatch ? slugMatch[1] : '',
+      excerpt: excerptMatch ? excerptMatch[1].replace(/\\"/g, '"').replace(/\\n/g, '\n') : '',
+      category: categoryMatch ? categoryMatch[1] : '',
+      coverCaption: coverCaptionMatch ? coverCaptionMatch[1] : '',
+      content: contentMatch ? contentMatch[1].replace(/\\"/g, '"').replace(/\\n/g, '\n') : '',
+      tags: [],
+    };
   }
 
   throw new Error('Gagal mengekstrak format JSON dari respons AI.');
@@ -321,6 +362,23 @@ function getEnvVar(key: string, defaultValue = ''): string {
   return defaultValue;
 }
 
+import { db } from '@/db';
+import { systemSettings } from '@/db/schema';
+import { eq } from 'drizzle-orm';
+
+async function getDbConfig(key: string): Promise<string | null> {
+  try {
+    const [row] = await db
+      .select({ value: systemSettings.value })
+      .from(systemSettings)
+      .where(eq(systemSettings.key, key))
+      .limit(1);
+    return row?.value?.trim() || null;
+  } catch {
+    return null;
+  }
+}
+
 export async function requestArticleFromModelRouter(
   options: GenerateArticleOptions
 ): Promise<GeneratedArticleDraft & { modelUsed: string; providerUsed: string }> {
@@ -356,9 +414,13 @@ export async function requestArticleFromModelRouter(
     modelName = getEnvVar('GROQ_MODEL', 'openai/gpt-oss-120b');
     useJsonFormat = true;
   } else {
-    baseUrl = getEnvVar('LOCAL_9ROUTER_BASE_URL', 'http://localhost:20128/v1');
-    apiKey = getEnvVar('LOCAL_9ROUTER_KEY');
-    modelName = getEnvVar('LOCAL_9ROUTER_MODEL', 'oc/muse-spark-1.3-contributor-free');
+    const dbBaseUrl = await getDbConfig('ai_9router_base_url');
+    const dbApiKey = await getDbConfig('ai_9router_api_key');
+    const dbModel = await getDbConfig('ai_9router_model');
+
+    baseUrl = dbBaseUrl || getEnvVar('LOCAL_9ROUTER_BASE_URL', 'http://localhost:20128/v1');
+    apiKey = dbApiKey !== null && dbApiKey !== undefined ? dbApiKey : getEnvVar('LOCAL_9ROUTER_KEY');
+    modelName = dbModel || getEnvVar('LOCAL_9ROUTER_MODEL', 'oc/muse-spark-1.3-contributor-free');
     useJsonFormat = false;
   }
 
@@ -427,9 +489,11 @@ Ingat, balas HANYA dengan dokumen JSON yang valid sesuai format yang ditentukan.
       { role: 'user', content: userPrompt },
     ],
     temperature: 0.7,
-    max_tokens: 3500,
-    stream: false,
+    max_tokens: 4500,
   };
+  if (provider === '9router') {
+    payload.stream = false;
+  }
   if (useJsonFormat) {
     payload.response_format = { type: 'json_object' };
   }

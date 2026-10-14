@@ -35,6 +35,7 @@ interface ArticleRunParams {
   topic: string;
   category?: string;
   length: 'ringkas' | 'standar' | 'mendalam';
+  provider?: 'gemini' | 'groq' | '9router';
   enableWebSearch: boolean;
   isPublish: boolean;
   siteUrl: string;
@@ -45,6 +46,7 @@ async function runArticleGeneration({
   topic,
   category,
   length,
+  provider = 'gemini',
   enableWebSearch,
   isPublish,
   siteUrl,
@@ -53,14 +55,20 @@ async function runArticleGeneration({
     length === 'ringkas' ? 'Ringkas (~400 kata)' : length === 'mendalam' ? 'Mendalam (~1200 kata)' : 'Standar (~700 kata)';
   const statusLabel = isPublish ? '🚀 Terbit Langsung (Published)' : '📝 Simpan Draf (Draft)';
   const researchLabel = enableWebSearch ? '🌐 Aktif (Faktual Real-time)' : '⚡ Nonaktif (Murni Analisis AI)';
+  const providerLabel =
+    provider === 'groq'
+      ? '🚀 Groq Cloud (GPT-OSS 120B)'
+      : provider === '9router'
+      ? '🌐 9Router Gateway (Custom)'
+      : '⚡ Google Gemini 3.8 Flash';
 
   // Kirim feedback awal ke Telegram
   await sendTelegramMessage(
     chatId,
     `⏳ <b>Memulai Liputan AI...</b>\n\nSedang ${
       enableWebSearch ? 'melacak fakta Google News (Lokal & Global) serta ' : ''
-    }meracik naskah jurnalistik untuk topik:\n<i>"${topic}"</i>\n\n🎯 Target: <b>${statusLabel}</b>\n📏 Panjang: <b>${lengthLabel}</b>\n🔍 Riset Google News: <b>${researchLabel}</b>\n\n<i>Mohon tunggu sekitar ${
-      enableWebSearch ? '15–25' : '8–15'
+    }meracik naskah jurnalistik untuk topik:\n<i>"${topic}"</i>\n\n🎯 Target: <b>${statusLabel}</b>\n🤖 AI Engine: <b>${providerLabel}</b>\n📏 Panjang: <b>${lengthLabel}</b>\n🔍 Riset Google News: <b>${researchLabel}</b>\n\n<i>Mohon tunggu sekitar ${
+      provider === 'groq' ? '5–10' : enableWebSearch ? '15–30' : '10–20'
     } detik...</i>`
   );
 
@@ -71,7 +79,7 @@ async function runArticleGeneration({
       prompt: topic,
       category,
       length,
-      provider: 'gemini',
+      provider: provider || 'gemini',
       enableWebSearch,
     });
 
@@ -104,7 +112,7 @@ async function runArticleGeneration({
       articleTitle: newArticle.title,
       category: newArticle.category,
       status: newArticle.status,
-      model: draftArticle.modelUsed || 'Gemini Flash',
+      model: draftArticle.modelUsed || providerLabel,
       durationMs,
       errorMessage: null,
     });
@@ -168,12 +176,14 @@ Halo, <b>${firstName}</b>! Saya adalah asisten AI resmi redaksi portal media tek
 Gunakan menu interaktif di bawah atau ketik perintah cepat:
 
 📋 <b>PANDUAN PEMBUATAN BERITA:</b>
-1️⃣ <b>Menu Bertahap:</b> Klik tombol <b>"✍️ Mulai Buat Berita"</b> di bawah untuk memilih topik, riset, panjang artikel, dan status secara klik-klik.
+1️⃣ <b>Menu Bertahap:</b> Klik tombol <b>"✍️ Mulai Buat Berita"</b> di bawah untuk memilih topik, riset, panjang artikel, AI Engine (Gemini / Groq / 9Router), dan status publikasi.
 2️⃣ <b>Perintah Cepat (Satu Baris):</b>
-   • <code>/tulis [topik]</code> ➔ Riset Aktif, langsung Terbit (~700 kata)
-   • <code>/draft [topik]</code> ➔ Riset Aktif, simpan Draf (~700 kata)
-   • <code>/panjang [topik]</code> ➔ Riset Aktif, artikel mendalam (~1200 kata)
-   • <code>/ringkas [topik]</code> ➔ Riset Aktif, artikel kilat (~400 kata)
+   • <code>/tulis [topik]</code> ➔ Gemini (Riset Aktif, Terbit)
+   • <code>/groq [topik]</code> ➔ Groq Cloud Super Cepat (~5s)
+   • <code>/9router [topik]</code> ➔ 9Router Gateway (Model Custom)
+   • <code>/draft [topik]</code> ➔ Gemini Simpan Draf (~700 kata)
+   • <code>/panjang [topik]</code> ➔ Artikel mendalam (~1200 kata)
+   • <code>/ringkas [topik]</code> ➔ Artikel kilat (~400 kata)
    • <code>/opini [topik]</code> ➔ Murni Analisis AI (Riset Nonaktif)
 ━━━━━━━━━━━━━━━━━━━━
 👤 <b>ID Telegram Anda:</b> <code>${userId}</code> <i>(Aman)</i>`;
@@ -338,27 +348,73 @@ Pilih target panjang naskah artikel berita:`;
         const lengthLabel =
           length === 'ringkas' ? 'Ringkas (~400 kata)' : length === 'mendalam' ? 'Mendalam (~1200 kata)' : 'Standar (~700 kata)';
 
-        const step4Text = `🎯 <b>LANGKAH 4 DARI 4: STATUS PUBLIKASI</b>
+        const step4Text = `🤖 <b>LANGKAH 4 DARI 5: PILIH AI ENGINE</b>
 ━━━━━━━━━━━━━━━━━━━━
 Topik: <b>${preset.label}</b>
 Riset Google News: <b>${researchLabel}</b>
 Panjang: <b>${lengthLabel}</b>
 
-Pilih tindakan akhir publikasi artikel ke website:`;
+Pilih model kecerdasan buatan untuk meracik berita:`;
 
         await sendTelegramMessage(chatId, step4Text, {
           inlineKeyboard: [
-            [{ text: '🚀 Langsung Terbitkan ke Web', callback_data: `gen:pub:${length}:${isResearch}:${category}` }],
-            [{ text: '📝 Simpan Sebagai Draf (Review)', callback_data: `gen:drf:${length}:${isResearch}:${category}` }],
+            [{ text: '⚡ Google Gemini 3.8 Flash (Rekomendasi)', callback_data: `eng:gemini:${length}:${isResearch}:${category}` }],
+            [{ text: '🚀 Groq Cloud (Super Cepat ~5s)', callback_data: `eng:groq:${length}:${isResearch}:${category}` }],
+            [{ text: '🌐 9Router Gateway (DeepSeek/Custom)', callback_data: `eng:9router:${length}:${isResearch}:${category}` }],
             [{ text: '⬅️ Kembali ke Panjang', callback_data: `rs:${isResearch}:${category}` }],
           ],
         });
         return NextResponse.json({ ok: true });
       }
 
-      // Langkah 4: Eksekusi Generator AI
+      // Langkah 4: Pemilihan AI Engine -> Pindah ke Langkah 5: Status Publikasi
+      if (data.startsWith('eng:')) {
+        const [, provider, length, isResearch, category] = data.split(':');
+        const preset = PRESET_TOPICS[category] || { label: category, prompt: category };
+        const researchLabel = isResearch === '1' ? 'Aktif' : 'Nonaktif';
+        const lengthLabel =
+          length === 'ringkas' ? 'Ringkas (~400 kata)' : length === 'mendalam' ? 'Mendalam (~1200 kata)' : 'Standar (~700 kata)';
+        const providerLabel =
+          provider === 'groq'
+            ? '🚀 Groq Cloud'
+            : provider === '9router'
+            ? '🌐 9Router Gateway'
+            : '⚡ Google Gemini';
+
+        const step5Text = `🎯 <b>LANGKAH 5 DARI 5: STATUS PUBLIKASI</b>
+━━━━━━━━━━━━━━━━━━━━
+Topik: <b>${preset.label}</b>
+AI Engine: <b>${providerLabel}</b>
+Riset Google News: <b>${researchLabel}</b>
+Panjang: <b>${lengthLabel}</b>
+
+Pilih tindakan akhir publikasi artikel ke website:`;
+
+        await sendTelegramMessage(chatId, step5Text, {
+          inlineKeyboard: [
+            [{ text: '🚀 Langsung Terbitkan ke Web', callback_data: `gen:pub:${provider}:${length}:${isResearch}:${category}` }],
+            [{ text: '📝 Simpan Sebagai Draf (Review)', callback_data: `gen:drf:${provider}:${length}:${isResearch}:${category}` }],
+            [{ text: '⬅️ Kembali ke AI Engine', callback_data: `len:${length}:${isResearch}:${category}` }],
+          ],
+        });
+        return NextResponse.json({ ok: true });
+      }
+
+      // Langkah 5: Eksekusi Generator AI
       if (data.startsWith('gen:')) {
-        const [, statusStr, lengthStr, isResearchStr, category] = data.split(':');
+        const parts = data.split(':');
+        let statusStr = '';
+        let provider: 'gemini' | 'groq' | '9router' = 'gemini';
+        let lengthStr = 'standar';
+        let isResearchStr = '1';
+        let category = 'AI';
+
+        if (parts.length >= 6) {
+          [, statusStr, provider, lengthStr, isResearchStr, category] = parts as any;
+        } else {
+          [, statusStr, lengthStr, isResearchStr, category] = parts;
+        }
+
         const preset = PRESET_TOPICS[category] || { label: category, prompt: category };
         const isPublish = statusStr === 'pub';
         const enableWebSearch = isResearchStr === '1';
@@ -369,6 +425,7 @@ Pilih tindakan akhir publikasi artikel ke website:`;
           topic: preset.prompt,
           category,
           length,
+          provider,
           enableWebSearch,
           isPublish,
           siteUrl,
@@ -447,6 +504,9 @@ Pilih salah satu topik liputan cepat di bawah ini (atau balas chat ini dengan pe
     const matchDraftRingkas = rawText.match(/^\/draft-ringkas(@\w+)?\s*([\s\S]*)$/i);
     const matchOpini = rawText.match(/^\/(?:opini|cepat)(?:@\w+)?\s*([\s\S]*)$/i);
     const matchDraftOpini = rawText.match(/^\/draft-opini(@\w+)?\s*([\s\S]*)$/i);
+    const matchGroq = rawText.match(/^\/groq(?:-draft)?(@\w+)?\s*([\s\S]*)$/i);
+    const match9Router = rawText.match(/^\/(?:9router|router)(?:-draft)?(@\w+)?\s*([\s\S]*)$/i);
+    const matchGemini = rawText.match(/^\/gemini(?:-draft)?(@\w+)?\s*([\s\S]*)$/i);
 
     if (
       matchTulis ||
@@ -456,51 +516,81 @@ Pilih salah satu topik liputan cepat di bawah ini (atau balas chat ini dengan pe
       matchRingkas ||
       matchDraftRingkas ||
       matchOpini ||
-      matchDraftOpini
+      matchDraftOpini ||
+      matchGroq ||
+      match9Router ||
+      matchGemini
     ) {
       let topic = '';
       let length: 'ringkas' | 'standar' | 'mendalam' = 'standar';
+      let provider: 'gemini' | 'groq' | '9router' = 'gemini';
       let enableWebSearch = true;
       let isPublish = true;
 
-      if (matchTulis) {
+      if (matchGroq) {
+        topic = matchGroq[2]?.trim() || '';
+        length = 'standar';
+        provider = 'groq';
+        enableWebSearch = true;
+        isPublish = !rawText.toLowerCase().includes('draft');
+      } else if (match9Router) {
+        topic = match9Router[2]?.trim() || '';
+        length = 'standar';
+        provider = '9router';
+        enableWebSearch = true;
+        isPublish = !rawText.toLowerCase().includes('draft');
+      } else if (matchGemini) {
+        topic = matchGemini[2]?.trim() || '';
+        length = 'standar';
+        provider = 'gemini';
+        enableWebSearch = true;
+        isPublish = !rawText.toLowerCase().includes('draft');
+      } else if (matchTulis) {
         topic = matchTulis[2]?.trim() || '';
         length = 'standar';
+        provider = 'gemini';
         enableWebSearch = true;
         isPublish = true;
       } else if (matchDraft) {
         topic = matchDraft[2]?.trim() || '';
         length = 'standar';
+        provider = 'gemini';
         enableWebSearch = true;
         isPublish = false;
       } else if (matchPanjang) {
         topic = matchPanjang[2]?.trim() || '';
         length = 'mendalam';
+        provider = 'gemini';
         enableWebSearch = true;
         isPublish = true;
       } else if (matchDraftPanjang) {
         topic = matchDraftPanjang[2]?.trim() || '';
         length = 'mendalam';
+        provider = 'gemini';
         enableWebSearch = true;
         isPublish = false;
       } else if (matchRingkas) {
         topic = matchRingkas[2]?.trim() || '';
         length = 'ringkas';
+        provider = 'gemini';
         enableWebSearch = true;
         isPublish = true;
       } else if (matchDraftRingkas) {
         topic = matchDraftRingkas[2]?.trim() || '';
         length = 'ringkas';
+        provider = 'gemini';
         enableWebSearch = true;
         isPublish = false;
       } else if (matchOpini) {
         topic = matchOpini[1]?.trim() || '';
         length = 'standar';
+        provider = 'gemini';
         enableWebSearch = false;
         isPublish = true;
       } else if (matchDraftOpini) {
         topic = matchDraftOpini[1]?.trim() || '';
         length = 'standar';
+        provider = 'gemini';
         enableWebSearch = false;
         isPublish = false;
       }
@@ -517,6 +607,7 @@ Pilih salah satu topik liputan cepat di bawah ini (atau balas chat ini dengan pe
         chatId,
         topic,
         length,
+        provider,
         enableWebSearch,
         isPublish,
         siteUrl,
