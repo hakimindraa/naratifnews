@@ -36,11 +36,10 @@ export default function RootLayout({
       className={`${jakarta.variable} ${inter.variable} antialiased`}
     >
       <head>
-        <Script
+        <script
           async
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9829376296588403"
           crossOrigin="anonymous"
-          strategy="afterInteractive"
         />
       </head>
       <body className="min-h-screen flex flex-col font-sans bg-gray-50 text-gray-900">
