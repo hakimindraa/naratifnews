@@ -181,3 +181,121 @@ export async function fetch9RouterModels(baseUrl: string, apiKey: string) {
     return { success: false, message: err.message, models: [] };
   }
 }
+
+export interface AutopilotSettingsData {
+  enabled: boolean;
+  provider: 'gemini' | 'groq' | '9router';
+  status: 'published' | 'draft';
+  length: 'ringkas' | 'standar' | 'mendalam';
+  categories: string[];
+  telegramNotify: boolean;
+}
+
+export async function getAutopilotSettings(): Promise<AutopilotSettingsData> {
+  await ensureSettingsTableExists();
+
+  try {
+    const rows = await db.select().from(systemSettings);
+    const map = new Map<string, string>();
+    for (const r of rows) {
+      map.set(r.key, r.value);
+    }
+
+    const enabled = map.get('autopilot_enabled') === 'true';
+    const provider = (map.get('autopilot_provider') as any) || 'groq';
+    const status = (map.get('autopilot_status') as any) || 'published';
+    const length = (map.get('autopilot_length') as any) || 'standar';
+    const telegramNotify = map.get('autopilot_telegram_notify') !== 'false';
+
+    let categories = ['AI', 'Software', 'Hardware', 'Gadget', 'Infrastruktur'];
+    try {
+      const parsed = JSON.parse(map.get('autopilot_categories') || '[]');
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        categories = parsed;
+      }
+    } catch {
+      // default
+    }
+
+    return {
+      enabled,
+      provider,
+      status,
+      length,
+      categories,
+      telegramNotify,
+    };
+  } catch (error) {
+    console.error('Failed to get autopilot settings:', error);
+    return {
+      enabled: false,
+      provider: 'groq',
+      status: 'published',
+      length: 'standar',
+      categories: ['AI', 'Software', 'Hardware', 'Gadget', 'Infrastruktur'],
+      telegramNotify: true,
+    };
+  }
+}
+
+export async function saveAutopilotSettings(data: AutopilotSettingsData) {
+  await ensureSettingsTableExists();
+
+  const entries: [string, string][] = [
+    ['autopilot_enabled', String(data.enabled)],
+    ['autopilot_provider', data.provider],
+    ['autopilot_status', data.status],
+    ['autopilot_length', data.length],
+    ['autopilot_categories', JSON.stringify(data.categories)],
+    ['autopilot_telegram_notify', String(data.telegramNotify)],
+  ];
+
+  for (const [key, value] of entries) {
+    await db
+      .insert(systemSettings)
+      .values({ key, value, updatedAt: new Date() })
+      .onConflictDoUpdate({
+        target: systemSettings.key,
+        set: { value, updatedAt: new Date() },
+      });
+  }
+
+  revalidatePath('/admin/pengaturan');
+
+  return { success: true, message: 'Pengaturan Autopilot berhasil disimpan!' };
+}
+
+export async function triggerAutopilotNowAction() {
+  try {
+    const cronSecret = process.env.CRON_SECRET || '';
+    const req = new Request('http://localhost/api/cron/autopilot', {
+      headers: {
+        authorization: `Bearer ${cronSecret}`,
+        'x-manual-trigger': 'true',
+      },
+    });
+
+    const routeModule = await import('@/app/api/cron/autopilot/route');
+    const response = await routeModule.GET(req);
+    const data = await response.json();
+
+    revalidatePath('/');
+    revalidatePath('/admin');
+    revalidatePath('/admin/generator');
+
+    return { success: response.ok, ...data };
+  } catch (error: any) {
+    return { success: false, message: error.message || 'Gagal menjalankan Autopilot' };
+  }
+}
+
+export async function getCronConfigInfo() {
+  const secret = process.env.CRON_SECRET || '';
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.naratif.web.id';
+  return {
+    cronUrl: `${siteUrl}/api/cron/autopilot`,
+    cronSecret: secret,
+    siteUrl,
+  };
+}
+
