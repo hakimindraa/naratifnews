@@ -8,6 +8,7 @@ import { eq } from 'drizzle-orm';
 import { cookies } from 'next/headers';
 import { encrypt } from '@/lib/auth';
 import { redirect } from 'next/navigation';
+import { notifySearchEngines } from '@/lib/indexing';
 
 export async function uploadMarkdownFile(formData: FormData) {
   try {
@@ -216,6 +217,12 @@ export async function updateArticle(id: number, formData: FormData) {
       })
       .where(eq(articles.id, id));
 
+    if (status === 'published') {
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.naratif.web.id';
+      const articleUrl = `${siteUrl}/berita-teknologi/${(category || 'software').toLowerCase()}/${id}/${slug}`;
+      notifySearchEngines(articleUrl).catch((err) => console.warn('Update Article Indexing Error:', err));
+    }
+
     revalidatePath('/', 'layout');
     return { success: true };
   } catch (error) {
@@ -308,6 +315,12 @@ export async function createArticle(formData: FormData) {
       publishAt,
       publishedAt,
     }).returning({ id: articles.id, slug: articles.slug });
+
+    if (status === 'published') {
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.naratif.web.id';
+      const articleUrl = `${siteUrl}/berita-teknologi/${catFormatted.toLowerCase()}/${newArticle.id}/${newArticle.slug}`;
+      notifySearchEngines(articleUrl).catch((err) => console.warn('Create Article Indexing Error:', err));
+    }
 
     revalidatePath('/', 'layout');
     return { success: true, id: newArticle.id };

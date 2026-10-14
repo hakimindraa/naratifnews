@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/db';
-import { articles } from '@/db/schema';
+import { articles, aiGenerationLogs } from '@/db/schema';
 import { lte, eq, and } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
+import { notifySearchEngines } from '@/lib/indexing';
 
 export const maxDuration = 20; // 20 seconds, below cron-job.org's 30s timeout
 
@@ -13,6 +14,8 @@ export async function GET(request: Request) {
     if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.naratif.web.id';
 
     // 2. Cari semua artikel yang statusnya "scheduled" dan waktunya sudah lewat atau sama dengan sekarang
     const now = new Date();
@@ -31,10 +34,29 @@ export async function GET(request: Request) {
           lte(articles.publishAt, now)
         )
       )
-      .returning({ id: articles.id, slug: articles.slug });
+      .returning({ id: articles.id, slug: articles.slug, title: articles.title, category: articles.category });
 
-    // 4. Jika ada artikel yang diterbitkan, revalidate cache
+    // 4. Jika ada artikel yang diterbitkan, revalidate cache & catat log
     if (updatedArticles.length > 0) {
+      await db.insert(aiGenerationLogs).values({
+        prompt: `[Publish Scheduled] ${updatedArticles.length} artikel diterbitkan otomatis`,
+        articleId: updatedArticles[0]?.id || null,
+        articleTitle: `${updatedArticles.length} artikel terjadwal terbit`,
+        category: 'Scheduler',
+        status: 'published',
+        model: 'system-scheduler',
+        durationMs: 50,
+        createdAt: now,
+      }).catch((err) => console.warn('Gagal catat log cron publish:', err));
+
+      // Instant Indexing: Kirim URL artikel yang baru terbit ke Google & Bing (IndexNow)
+      const publishedUrls = updatedArticles.map(
+        (art) => `${siteUrl}/berita-teknologi/${(art.category || 'ai').toLowerCase()}/${art.id}/${art.slug}`
+      );
+      notifySearchEngines(publishedUrls).catch((err) =>
+        console.warn('Publish Cron Indexing Notification Error:', err)
+      );
+
       revalidatePath('/', 'layout'); // Revalidate seluruh situs agar data baru muncul
     }
 

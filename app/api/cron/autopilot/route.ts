@@ -5,6 +5,7 @@ import { eq, desc } from 'drizzle-orm';
 import { fetchGoogleNewsResearch, requestArticleFromModelRouter, AIProvider } from '@/lib/ai-generator';
 import { sendTelegramMessage } from '@/lib/telegram';
 import { revalidatePath } from 'next/cache';
+import { notifySearchEngines } from '@/lib/indexing';
 
 export const maxDuration = 60; // Timeout 60 detik untuk operasi AI & riset berita
 
@@ -173,6 +174,14 @@ ${
       }).catch((err) => console.warn('Telegram notify error:', err));
     }
 
+    // 11. Instant Indexing: Beritahu Google & Bing (IndexNow) secara instan di latar belakang
+    if (isPublish) {
+      const fullArticleUrl = `${siteUrl}/berita-teknologi/${newArticle.category.toLowerCase()}/${newArticle.id}/${newArticle.slug}`;
+      notifySearchEngines(fullArticleUrl).catch((err) =>
+        console.warn('Autopilot Search Engine Indexing Notification Error:', err)
+      );
+    }
+
     return NextResponse.json({
       success: true,
       message: 'Artikel Autopilot berhasil dibuat dan diproses!',
@@ -188,6 +197,21 @@ ${
       throw error;
     }
     console.error('Autopilot Cron Error:', error);
+
+    // Catat log error ke ai_generation_logs agar muncul di dasbor cron admin
+    try {
+      await db.insert(aiGenerationLogs).values({
+        prompt: `[Autopilot Error]`,
+        articleTitle: 'Eksekusi Autopilot Gagal',
+        category: 'AI',
+        status: 'failed',
+        model: 'error',
+        errorMessage: error?.message || 'Error tidak dikenal',
+        createdAt: new Date(),
+      });
+    } catch (logErr) {
+      console.warn('Gagal mencatat log error autopilot:', logErr);
+    }
 
     // Kirim peringatan error ke Telegram jika gagal
     const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID?.trim();

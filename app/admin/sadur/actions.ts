@@ -8,6 +8,7 @@ import { requestSadurArticleFromSource, AIProvider } from '@/lib/ai-generator';
 import { findSimilarArticles, checkSourceUrlHistory, SimilarityCheckResult } from '@/lib/duplicate-detector';
 import { getAISettings } from '../pengaturan/actions';
 import { revalidatePath } from 'next/cache';
+import { notifySearchEngines } from '@/lib/indexing';
 
 export interface GenerateSadurParams {
   sourceUrl: string;
@@ -131,6 +132,13 @@ export async function generateSadurArticleAction(params: GenerateSadurParams) {
     revalidatePath('/', 'layout');
     revalidatePath('/admin');
     revalidatePath('/admin/sadur');
+
+    // Instant Indexing: Beritahu Google & Bing jika artikel langsung diterbitkan
+    if (params.status === 'published') {
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.naratif.web.id';
+      const articleUrl = `${siteUrl}/berita-teknologi/${newArticle.category.toLowerCase()}/${newArticle.id}/${newArticle.slug}`;
+      notifySearchEngines(articleUrl).catch((err) => console.warn('Sadur Indexing Error:', err));
+    }
 
     return {
       success: true,

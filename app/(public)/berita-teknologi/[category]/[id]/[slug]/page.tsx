@@ -108,8 +108,60 @@ export default async function ArticlePage({
     .orderBy(desc(articles.publishedAt))
     .limit(5);
 
+  const plainTextExcerpt =
+    article.excerpt ||
+    article.content
+      .replace(/[#*`_\[\]()]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .substring(0, 160)
+      .trim() + '...';
+
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'NewsArticle',
+    mainEntityOfPage: {
+      '@type': 'WebPage',
+      '@id': articleUrl,
+    },
+    headline: article.title,
+    description: plainTextExcerpt,
+    image: article.coverUrl ? [article.coverUrl] : [`${siteUrl}/favicon.ico`],
+    datePublished: article.publishedAt
+      ? new Date(article.publishedAt).toISOString()
+      : new Date(article.createdAt).toISOString(),
+    dateModified: article.updatedAt
+      ? new Date(article.updatedAt).toISOString()
+      : article.publishedAt
+      ? new Date(article.publishedAt).toISOString()
+      : new Date().toISOString(),
+    author: [
+      {
+        '@type': 'Person',
+        name: article.author || 'Redaksi Naratif',
+        url: `${siteUrl}/redaksi`,
+      },
+    ],
+    publisher: {
+      '@type': 'NewsMediaOrganization',
+      name: 'Naratif Tekno',
+      url: siteUrl,
+      logo: {
+        '@type': 'ImageObject',
+        url: `${siteUrl}/favicon.ico`,
+      },
+    },
+    articleSection: article.category,
+    keywords: Array.isArray(article.tags) ? article.tags.join(', ') : article.category,
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* Schema.org NewsArticle JSON-LD Structured Data */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+
       {/* Breadcrumbs */}
       <nav className="flex text-sm text-gray-500 mb-6 items-center">
         <Link href="/" className="hover:text-gray-900 transition-colors">Home</Link>
