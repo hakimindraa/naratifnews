@@ -14,6 +14,7 @@ import {
   X,
   Radio,
   ChevronRight,
+  Link2,
 } from 'lucide-react';
 import { logoutAdmin } from './auth-actions';
 
@@ -47,6 +48,12 @@ export default function AdminLayoutClient({ children }: AdminLayoutClientProps) 
       href: '/admin/generator',
       icon: Sparkles,
       badge: 'Pro AI',
+    },
+    {
+      label: 'Sadur Berita URL',
+      href: '/admin/sadur',
+      icon: Link2,
+      badge: 'Baru',
     },
     {
       label: 'Pengaturan AI',
@@ -90,7 +97,7 @@ export default function AdminLayoutClient({ children }: AdminLayoutClientProps) 
             <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-3 mb-2">
               Menu Utama
             </div>
-            <nav className="space-y-1">
+            <nav className="space-y-1" suppressHydrationWarning>
               {navItems.map((item) => {
                 const active = isLinkActive(item);
                 const Icon = item.icon;
@@ -196,7 +203,7 @@ export default function AdminLayoutClient({ children }: AdminLayoutClientProps) 
               </button>
             </div>
 
-            <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+            <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto" suppressHydrationWarning>
               {navItems.map((item) => {
                 const active = isLinkActive(item);
                 const Icon = item.icon;

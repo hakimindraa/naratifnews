@@ -1,3 +1,9 @@
+import fs from 'fs';
+import path from 'path';
+import { db } from '@/db';
+import { systemSettings } from '@/db/schema';
+import { eq } from 'drizzle-orm';
+
 export interface NewsSource {
   title: string;
   source: string;
@@ -330,9 +336,6 @@ function sanitizeSlug(rawSlug: string): string {
   return cleaned;
 }
 
-import fs from 'fs';
-import path from 'path';
-
 function getEnvVar(key: string, defaultValue = ''): string {
   // 1. Cek process.env dulu (terutama saat di Vercel / serverless production)
   if (process.env[key]) {
@@ -361,10 +364,6 @@ function getEnvVar(key: string, defaultValue = ''): string {
   }
   return defaultValue;
 }
-
-import { db } from '@/db';
-import { systemSettings } from '@/db/schema';
-import { eq } from 'drizzle-orm';
 
 async function getDbConfig(key: string): Promise<string | null> {
   try {
@@ -564,3 +563,190 @@ Ingat, balas HANYA dengan dokumen JSON yang valid sesuai format yang ditentukan.
     providerUsed: provider,
   };
 }
+
+export interface SadurArticleOptions {
+  sourceUrl: string;
+  sourceTitle: string;
+  sourceContent: string;
+  domain: string;
+  category?: string;
+  length?: 'ringkas' | 'standar' | 'mendalam';
+  provider?: AIProvider;
+}
+
+export async function requestSadurArticleFromSource(
+  options: SadurArticleOptions
+): Promise<GeneratedArticleDraft & { modelUsed: string; providerUsed: string }> {
+  const provider: AIProvider = options.provider || 'groq';
+
+  const wordCountTarget =
+    options.length === 'ringkas'
+      ? '350 - 500 kata'
+      : options.length === 'mendalam'
+      ? '1000 - 1400 kata'
+      : '600 - 800 kata';
+  const targetCategory = options.category || 'AI';
+
+  let baseUrl = '';
+  let apiKey = '';
+  let modelName = '';
+  let useJsonFormat = false;
+
+  if (provider === 'gemini') {
+    baseUrl = getEnvVar('GEMINI_BASE_URL', 'https://generativelanguage.googleapis.com/v1beta/openai');
+    apiKey = getEnvVar('GEMINI_API_KEY');
+    modelName = getEnvVar('GEMINI_MODEL', 'gemini-3.8-flash');
+    useJsonFormat = true;
+  } else if (provider === 'groq') {
+    baseUrl = getEnvVar('GROQ_BASE_URL', 'https://api.groq.com/openai/v1');
+    apiKey = getEnvVar('GROQ_API_KEY');
+    modelName = getEnvVar('GROQ_MODEL', 'openai/gpt-oss-120b');
+    useJsonFormat = true;
+  } else {
+    const dbBaseUrl = await getDbConfig('ai_9router_base_url');
+    const dbApiKey = await getDbConfig('ai_9router_api_key');
+    const dbModel = await getDbConfig('ai_9router_model');
+
+    baseUrl = dbBaseUrl || getEnvVar('LOCAL_9ROUTER_BASE_URL', 'http://localhost:20128/v1');
+    apiKey = dbApiKey !== null && dbApiKey !== undefined ? dbApiKey : getEnvVar('LOCAL_9ROUTER_KEY');
+    modelName = dbModel || getEnvVar('LOCAL_9ROUTER_MODEL', 'oc/muse-spark-1.3-contributor-free');
+    useJsonFormat = false;
+  }
+
+  if (!apiKey && provider !== '9router') {
+    throw new Error(`API Key untuk ${provider} belum disetel di Environment Variables`);
+  }
+
+  baseUrl = baseUrl.replace(/\/+$/, '');
+  const endpoint = `${baseUrl}/chat/completions`;
+
+  const systemPrompt = `Anda adalah jurnalis teknologi senior dan editor penyadur berita di portal media teknologi "Naratif" (Indonesia).
+Tugas Anda adalah membaca laporan berita sumber asli, mengekstrak fakta-fakta kunci, dan MENULIS ULANG (REWRITE / SADUR) menjadi naskah berita orisinal berbahasa Indonesia yang segar, berwawasan tajam, dan memenuhi standar jurnalisme piramida terbalik.
+
+ATURAN PENULISAN:
+1. Bahasa: Bahasa Indonesia baku, modern, dan bergaya jurnalisme teknologi berbobot.
+2. Anti-Plagiarisme: JANGAN melakukan terjemahan harfiah kata demi kata. Susun kembali struktur kalimat dan alur paragraf dengan gaya narasi redaksi Naratif yang mengalir dan dinamis.
+3. Faktual & Akurat: Pertahankan semua fakta riil, angka, data teknis, kronologi peristiwa, nama perusahaan, serta nama narasumber dan kutipannya dari artikel sumber.
+4. Format Konten: Gunakan Markdown murni (Heading ##, ###, bullet points, penekanan bold, kutipan analitis >). JANGAN gunakan tag HTML mentah seperti <p>, <div>, <span>.
+5. Panjang konten: Target ${wordCountTarget}.
+6. Kategori artikel HARUS salah satu dari: ["AI", "Software", "Hardware", "Gadget", "Infrastruktur"].
+7. Atribusi Sumber Wajib: Pada bagian paling bawah artikel (baris terakhir), WAJIB sertakan baris atribusi etis:
+   ---
+   *Dikutip dan disadur berdasarkan laporan dari ${options.domain || 'sumber terkait'} (${options.sourceUrl}).*
+8. Output: WAJIB HANYA berupa objek JSON murni (VALID JSON) tanpa teks obrolan apa pun di luar JSON.
+
+FORMAT STRUKTUR JSON YANG WAJIB ANDA HASILKAN:
+{
+  "title": "Judul Berita Baru yang Menarik, Faktual, dan Orisinal (Maks 15 kata)",
+  "slug": "slug-url-ramah-seo-berdasarkan-judul-baru",
+  "excerpt": "Ringkasan tajam 2-3 kalimat yang menggambarkan inti berita (maksimal 250 karakter)",
+  "category": "${targetCategory}",
+  "tags": ["Tag1", "Tag2", "Tag3", "Tag4"],
+  "coverCaption": "Deskripsi singkat foto/ilustrasi berita (maksimal 100 karakter)",
+  "content": "Isi lengkap berita dalam format Markdown..."
+}`;
+
+  const userPrompt = `Silakan sadur dan tulis ulang laporan berita sumber berikut menjadi artikel berita Naratif yang orisinal:
+
+SUMBER ASLI:
+- Judul Sumber: "${options.sourceTitle}"
+- Media / Domain: ${options.domain}
+- URL Sumber: ${options.sourceUrl}
+
+ISI TEKS SUMBER:
+"""
+${options.sourceContent}
+"""
+
+Target Kategori yang diutamakan: ${targetCategory}
+Panjang artikel target: ${wordCountTarget}
+
+Ingat, balas HANYA dengan dokumen JSON yang valid sesuai format yang ditentukan.`;
+
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  if (apiKey) {
+    headers['Authorization'] = `Bearer ${apiKey}`;
+  }
+
+  const payload: any = {
+    model: modelName,
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt },
+    ],
+    temperature: 0.7,
+    max_tokens: 4500,
+  };
+  if (provider === '9router') {
+    payload.stream = false;
+  }
+  if (useJsonFormat) {
+    payload.response_format = { type: 'json_object' };
+  }
+
+  let response: Response | null = null;
+  let lastErrorText = '';
+
+  const maxAttempts = 3;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    response = await fetch(endpoint, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload),
+    });
+
+    if (response.ok) {
+      break;
+    }
+
+    lastErrorText = await response.text();
+    if ((response.status === 503 || response.status === 429) && attempt < maxAttempts) {
+      const waitMs = attempt * 2000;
+      await new Promise((r) => setTimeout(r, waitMs));
+      continue;
+    }
+    break;
+  }
+
+  if (!response || !response.ok) {
+    throw new Error(`AI Gateway Error (${response?.status || 'Unknown'}): ${lastErrorText || response?.statusText}`);
+  }
+
+  const rawBodyText = await response.text();
+  const rawContent = parseAIResponseContent(rawBodyText);
+
+  if (!rawContent) {
+    throw new Error('AI Gateway tidak mengembalikan konten artikel.');
+  }
+
+  const parsed = extractJSON(rawContent);
+
+  if (!parsed.title || !parsed.content) {
+    throw new Error('Respons AI tidak memiliki judul atau konten yang lengkap.');
+  }
+
+  const validCategories = ['AI', 'Software', 'Hardware', 'Gadget', 'Infrastruktur'];
+  let finalCategory = targetCategory;
+  if (parsed.category && validCategories.includes(parsed.category)) {
+    finalCategory = parsed.category;
+  }
+
+  const tags = Array.isArray(parsed.tags) && parsed.tags.length > 0
+    ? parsed.tags.map((t: any) => String(t).trim()).filter(Boolean)
+    : [finalCategory, 'Teknologi', options.domain || 'Naratif'];
+
+  return {
+    title: String(parsed.title).trim(),
+    slug: sanitizeSlug(parsed.slug || parsed.title),
+    excerpt: String(parsed.excerpt || parsed.title).slice(0, 500).trim(),
+    content: String(parsed.content).trim(),
+    category: finalCategory,
+    tags,
+    coverCaption: String(parsed.coverCaption || `Ilustrasi liputan ${parsed.title}`).trim(),
+    modelUsed: modelName,
+    providerUsed: provider,
+  };
+}
+

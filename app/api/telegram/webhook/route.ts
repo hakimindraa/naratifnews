@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sendTelegramMessage, answerCallbackQuery } from '@/lib/telegram';
-import { requestArticleFromModelRouter } from '@/lib/ai-generator';
+import { requestArticleFromModelRouter, requestSadurArticleFromSource } from '@/lib/ai-generator';
+import { scrapeArticleFromUrl } from '@/lib/url-scraper';
 import { db } from '@/db';
 import { articles, aiGenerationLogs } from '@/db/schema';
 import { revalidatePath } from 'next/cache';
@@ -168,6 +169,106 @@ Artikel siap ditinjau di Dasbor Redaksi sebelum diterbitkan. Silakan tambahkan f
   }
 }
 
+async function runSadurArticleGeneration({
+  chatId,
+  targetUrl,
+  siteUrl,
+}: {
+  chatId: number | string;
+  targetUrl: string;
+  siteUrl: string;
+}) {
+  try {
+    await sendTelegramMessage(
+      chatId,
+      `🔍 <b>Membaca Berita Sumber...</b>\n\nSedang mengekstrak teks berita dari:\n<code>${targetUrl}</code>\n\n<i>Mohon tunggu sebentar...</i>`
+    );
+
+    const sourceData = await scrapeArticleFromUrl(targetUrl);
+
+    await sendTelegramMessage(
+      chatId,
+      `✨ <b>Sumber Ditemukan!</b>\n\n📰 <b>${sourceData.title}</b>\n🌐 Media: <b>${sourceData.domain}</b> (~${sourceData.wordCount} kata)\n\n<i>Sedang meracik ulang menjadi naskah orisinal Naratif dalam Bahasa Indonesia via Groq Cloud...</i>`
+    );
+
+    const startTime = performance.now();
+    const result = await requestSadurArticleFromSource({
+      sourceUrl: sourceData.sourceUrl,
+      sourceTitle: sourceData.title,
+      sourceContent: sourceData.content,
+      domain: sourceData.domain,
+      provider: 'groq',
+      length: 'standar',
+    });
+
+    const now = new Date();
+    const [newArticle] = await db
+      .insert(articles)
+      .values({
+        title: result.title,
+        slug: result.slug,
+        excerpt: result.excerpt,
+        content: result.content,
+        category: result.category,
+        author: 'Redaksi Naratif (Saduran AI)',
+        tags: result.tags,
+        coverUrl: null,
+        coverCaption: result.coverCaption,
+        status: 'published',
+        publishedAt: now,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning();
+
+    const durationMs = Math.round(performance.now() - startTime);
+
+    await db.insert(aiGenerationLogs).values({
+      prompt: `[Sadur Telegram] ${targetUrl}`,
+      articleId: newArticle.id,
+      articleTitle: newArticle.title,
+      category: newArticle.category,
+      status: newArticle.status,
+      model: result.modelUsed || 'groq',
+      durationMs,
+      errorMessage: null,
+      createdAt: now,
+    });
+
+    revalidatePath('/', 'layout');
+    revalidatePath('/admin');
+    revalidatePath('/admin/sadur');
+
+    const articleUrl = `${siteUrl}/berita-teknologi/${newArticle.category.toLowerCase()}/${newArticle.id}/${newArticle.slug}`;
+    const editUrl = `${siteUrl}/admin/edit/${newArticle.id}`;
+
+    const successMessage = `✅ <b>BERITA BERHASIL DISADUR!</b>
+━━━━━━━━━━━━━━━━━━━━
+📰 <b>${newArticle.title}</b>
+📂 Kategori: <b>${newArticle.category}</b>
+🌐 Sumber: <b>${sourceData.domain}</b>
+⏱️ Waktu: <b>${(durationMs / 1000).toFixed(1)}s</b>
+🚀 Status: <b>Langsung Terbit (Published)</b>
+━━━━━━━━━━━━━━━━━━━━
+<i>Artikel orisinal telah tayang di portal Naratif dengan atribusi etis.</i>`;
+
+    await sendTelegramMessage(chatId, successMessage, {
+      inlineKeyboard: [
+        [
+          { text: '🌐 Baca di Web', url: articleUrl },
+          { text: '✏️ Edit di Admin', url: editUrl },
+        ],
+      ],
+    });
+  } catch (err: any) {
+    console.error('Error saat menyadur berita via Telegram:', err);
+    await sendTelegramMessage(
+      chatId,
+      `❌ <b>Gagal Menyadur Berita</b>\n\nKendala: <code>${err.message || 'Gagal membaca URL'}</code>\n\nPastikan link dapat diakses publik.`
+    );
+  }
+}
+
 async function sendWelcomeMessage(chatId: number | string, firstName: string, userId: number | string, siteUrl: string) {
   const welcomeText = `🤖 <b>Selamat Datang di Naratif Redaksi Bot!</b>
 
@@ -177,7 +278,8 @@ Gunakan menu interaktif di bawah atau ketik perintah cepat:
 
 📋 <b>PANDUAN PEMBUATAN BERITA:</b>
 1️⃣ <b>Menu Bertahap:</b> Klik tombol <b>"✍️ Mulai Buat Berita"</b> di bawah untuk memilih topik, riset, panjang artikel, AI Engine (Gemini / Groq / 9Router), dan status publikasi.
-2️⃣ <b>Perintah Cepat (Satu Baris):</b>
+2️⃣ <b>Perintah Cepat:</b>
+   • <code>/sadur [url]</code> ➔ Sadur berita dari link media luar (atau cukup kirim link)
    • <code>/tulis [topik]</code> ➔ Gemini (Riset Aktif, Terbit)
    • <code>/groq [topik]</code> ➔ Groq Cloud Super Cepat (~5s)
    • <code>/9router [topik]</code> ➔ 9Router Gateway (Model Custom)
@@ -492,6 +594,30 @@ Pilih salah satu topik liputan cepat di bawah ini (atau balas chat ini dengan pe
     // 3. COMMAND: /stats
     if (rawText === '/stats') {
       await sendStatsMessage(chatId, siteUrl);
+      return NextResponse.json({ ok: true });
+    }
+
+    // 3.1 COMMAND SADUR BERITA DARI URL (/sadur, /rewrite, atau tempel link langsung)
+    const matchSadur = rawText.match(/^\/(?:sadur|rewrite|url)(?:@\w+)?\s*(https?:\/\/[^\s]+)/i);
+    const matchDirectUrl = rawText.match(/^(https?:\/\/[^\s]+)$/i);
+
+    if (matchSadur || matchDirectUrl) {
+      const targetUrl = (matchSadur ? matchSadur[1] : matchDirectUrl ? matchDirectUrl[1] : '').trim();
+      if (targetUrl) {
+        await runSadurArticleGeneration({
+          chatId,
+          targetUrl,
+          siteUrl,
+        });
+        return NextResponse.json({ ok: true });
+      }
+    }
+
+    if (rawText === '/sadur' || rawText === '/rewrite') {
+      await sendTelegramMessage(
+        chatId,
+        `🔗 <b>Format Perintah Sadur Berita:</b>\n\nKetik <code>/sadur [link_url]</code> atau cukup kirimkan link beritanya langsung ke bot ini.\n\n💡 <i>Contoh:</i>\n<code>/sadur https://www.theverge.com/...</code>`
+      );
       return NextResponse.json({ ok: true });
     }
 
