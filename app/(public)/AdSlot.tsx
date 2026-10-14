@@ -60,42 +60,27 @@ export default function AdSlot({ config, clientId, className = '' }: AdSlotProps
     );
   }
 
-  // Tipe 2: Google AdSense Unit (Manual Slot)
-  // Hanya render jika slotId sudah diisi (jika kosong, biarkan Auto Ads Google yang mengisi)
-  if (!config.slotId) {
-    return null;
-  }
-
-  if (!mounted) {
-    return (
-      <div
-        suppressHydrationWarning
-        className={`w-full my-6 text-center overflow-hidden bg-gray-50/50 rounded-xl p-2 border border-dashed border-gray-200 min-h-[90px] ${className}`}
-      >
-        <div className="text-[10px] text-gray-400 uppercase tracking-widest mb-1.5 font-medium">
-          Iklan
-        </div>
-      </div>
-    );
-  }
-
+  // Tipe 2: Google AdSense Unit
   return (
     <div
       suppressHydrationWarning
-      className={`w-full my-6 text-center overflow-hidden bg-gray-50/50 rounded-xl p-2 border border-dashed border-gray-200 ${className}`}
+      className={`w-full my-6 text-center overflow-hidden bg-gray-50/50 rounded-xl p-3 border border-dashed border-gray-200 min-h-[72px] flex flex-col justify-center items-center ${className}`}
     >
-      <div className="text-[10px] text-gray-400 uppercase tracking-widest mb-1.5 font-medium">
+      <div className="text-[10px] text-gray-400 uppercase tracking-widest font-medium">
         Iklan
       </div>
-      <ins
-        suppressHydrationWarning
-        className="adsbygoogle"
-        style={{ display: 'block' }}
-        data-ad-client={clientId}
-        data-ad-slot={config.slotId}
-        data-ad-format="auto"
-        data-full-width-responsive="true"
-      />
+
+      {mounted && config.slotId && (
+        <ins
+          suppressHydrationWarning
+          className="adsbygoogle w-full mt-2"
+          style={{ display: 'block' }}
+          data-ad-client={clientId}
+          data-ad-slot={config.slotId}
+          data-ad-format="auto"
+          data-full-width-responsive="true"
+        />
+      )}
     </div>
   );
 }
