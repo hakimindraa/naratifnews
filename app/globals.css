@@ -32,11 +32,19 @@ body {
   font-size: 1.125rem;
   line-height: 1.85;
   color: #1f2937;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .article-content p {
   margin-bottom: 1.5rem;
   line-height: 1.85;
+  overflow-wrap: anywhere;
+}
+
+.article-content a {
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .article-content h2,

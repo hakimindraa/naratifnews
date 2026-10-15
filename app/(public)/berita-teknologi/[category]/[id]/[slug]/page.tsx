@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, ChevronRight, Link2, MessageCircle } from "lucide-react";
+import { ArrowLeft, ChevronRight, Link2, MessageCircle, Globe, ExternalLink } from "lucide-react";
 import { db } from "@/db";
 import { articles } from "@/db/schema";
 import { eq, desc, and } from "drizzle-orm";
@@ -266,11 +266,91 @@ export default async function ArticlePage({
                   {children}
                 </h3>
               ),
-              p: ({ children }: any) => (
-                <p className="text-gray-800 text-base sm:text-lg leading-relaxed mb-6 font-normal">
-                  {children}
-                </p>
-              ),
+              p: ({ children }: any) => {
+                let rawText = '';
+                const extractText = (node: any) => {
+                  if (typeof node === 'string') rawText += node;
+                  else if (Array.isArray(node)) node.forEach(extractText);
+                  else if (node?.props?.children) extractText(node.props.children);
+                };
+                extractText(children);
+
+                // 1. Cek apakah ini format sumber ringkas (cth: "Sumber: Kompas Tekno" atau "Sumber: Cult of Mac, Finder...")
+                const isSimpleSource = /^\s*sumber\s*:/i.test(rawText.trim());
+                if (isSimpleSource) {
+                  return (
+                    <p className="text-gray-600 text-sm sm:text-base italic leading-relaxed my-5 font-normal break-words [overflow-wrap:anywhere]">
+                      {children}
+                    </p>
+                  );
+                }
+
+                // 2. Cek apakah ini format Baca Juga di dalam paragraf
+                const isBacaJuga = /^\s*(?:>\s*)?(?:\*\*)?baca juga\s*:/i.test(rawText.trim());
+                if (isBacaJuga) {
+                  return (
+                    <p className="my-5 text-base sm:text-lg leading-relaxed not-italic text-gray-700 font-normal break-words [overflow-wrap:anywhere] [&>strong]:text-gray-800 [&>strong]:font-semibold [&_a]:text-sky-600 [&_a]:hover:text-sky-700 [&_a]:font-medium [&_a]:hover:underline [&_a]:underline-offset-2">
+                      {children}
+                    </p>
+                  );
+                }
+
+                // 3. Cek apakah ini baris atribusi sumber berita lama (legacy format)
+                const isSourceAttribution = /dikutip dan disadur/i.test(rawText);
+
+                if (isSourceAttribution) {
+                  // Ekstrak URL asli
+                  const urlMatch = rawText.match(/https?:\/\/[^\s\)\"\'\]]+/i);
+                  const sourceUrl = urlMatch ? urlMatch[0] : null;
+
+                  // Ambil nama sumber/domain
+                  let sourceDomain = 'Sumber Berita';
+                  const domainMatch = rawText.match(/laporan dari\s+([^\s\(\)\[\]]+)/i);
+                  if (domainMatch && domainMatch[1]) {
+                    sourceDomain = domainMatch[1].replace(/\[|\]/g, '').trim();
+                  } else if (sourceUrl) {
+                    try {
+                      sourceDomain = new URL(sourceUrl).hostname.replace(/^www\./, '');
+                    } catch {}
+                  }
+
+                  return (
+                    <div className="my-6 p-4 sm:p-5 rounded-2xl bg-gray-50/90 border border-gray-200 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs sm:text-sm text-gray-700 not-italic">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-9 h-9 rounded-xl bg-white border border-gray-200 text-indigo-600 flex items-center justify-center shrink-0 shadow-2xs">
+                          <Globe className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-gray-400 block">
+                            Atribusi Sumber Berita
+                          </span>
+                          <p className="font-bold text-gray-900 truncate text-xs sm:text-sm mt-0.5">
+                            Dikutip &amp; disadur dari <span className="text-indigo-600 font-bold">{sourceDomain}</span>
+                          </p>
+                        </div>
+                      </div>
+
+                      {sourceUrl && (
+                        <a
+                          href={sourceUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-gray-300 text-xs font-semibold text-gray-700 hover:text-indigo-600 hover:border-indigo-300 hover:bg-indigo-50/50 transition-all shadow-2xs shrink-0 self-start sm:self-auto no-underline"
+                        >
+                          <span>Buka Laporan Asli</span>
+                          <ExternalLink className="w-3.5 h-3.5 text-gray-500" />
+                        </a>
+                      )}
+                    </div>
+                  );
+                }
+
+                return (
+                  <p className="text-gray-800 text-base sm:text-lg leading-relaxed mb-6 font-normal break-words [overflow-wrap:anywhere]">
+                    {children}
+                  </p>
+                );
+              },
               ul: ({ children }: any) => (
                 <ul className="list-disc list-outside pl-6 mb-6 space-y-2 text-base sm:text-lg text-gray-800 leading-relaxed">
                   {children}
@@ -309,17 +389,9 @@ export default async function ArticlePage({
 
                 if (isBacaJuga) {
                   return (
-                    <div className="my-6 p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-indigo-50/80 via-white to-indigo-50/30 border border-indigo-100 border-l-4 border-l-indigo-600 shadow-xs hover:border-indigo-300 hover:shadow-sm transition-all group not-italic">
-                      <div className="flex items-center gap-1.5 mb-1.5">
-                        <span className="inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-black uppercase tracking-wider bg-indigo-600 text-white px-2 py-0.5 rounded-md shadow-2xs">
-                          <Link2 className="w-3 h-3" />
-                          Baca Juga
-                        </span>
-                      </div>
-                      <div className="text-base sm:text-lg font-bold text-gray-900 group-hover:text-indigo-600 transition-colors leading-snug [&>p]:mb-0 [&>p>strong]:hidden">
-                        {children}
-                      </div>
-                    </div>
+                    <p className="my-5 text-base sm:text-lg leading-relaxed not-italic text-gray-700 font-normal break-words [overflow-wrap:anywhere] [&>strong]:text-gray-800 [&>strong]:font-semibold [&_a]:text-sky-600 [&_a]:hover:text-sky-700 [&_a]:font-medium [&_a]:hover:underline [&_a]:underline-offset-2">
+                      {children}
+                    </p>
                   );
                 }
 
@@ -334,16 +406,16 @@ export default async function ArticlePage({
                   href={href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-gray-900 hover:text-gray-600 underline underline-offset-2 font-medium transition-colors"
+                  className="text-gray-900 hover:text-indigo-600 underline underline-offset-2 font-medium transition-colors break-words [overflow-wrap:anywhere]"
                 >
                   {children}
                 </a>
               ),
-              hr: () => <hr className="my-8 border-gray-200" />,
+              hr: () => <hr className="my-6 border-gray-200/80" />,
             };
 
             return (
-              <div className="article-content max-w-none text-gray-800 font-sans">
+              <div className="article-content max-w-none text-gray-800 font-sans break-words [overflow-wrap:anywhere]">
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm]}
                   rehypePlugins={[rehypeSanitize]}

@@ -53,7 +53,7 @@ export default function BacaJugaPickerModal({
   }
 
   function handleSelect(item: InternalLinkItem) {
-    const snippet = `\n\n> **Baca Juga:** [${item.title}](${item.url})\n\n`;
+    const snippet = `\n\n**Baca juga:** [${item.title}](${item.url})\n\n`;
     onInsert(snippet);
     onClose();
   }

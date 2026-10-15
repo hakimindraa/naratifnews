@@ -177,6 +177,34 @@ export async function deleteArticle(id: number) {
   }
 }
 
+export async function quickPublishArticleAction(id: number) {
+  try {
+    const now = new Date();
+    const [updated] = await db
+      .update(articles)
+      .set({
+        status: 'published',
+        publishedAt: now,
+        publishAt: now,
+        updatedAt: now,
+      })
+      .where(eq(articles.id, id))
+      .returning();
+
+    if (updated) {
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.naratif.web.id';
+      const articleUrl = `${siteUrl}/berita-teknologi/${(updated.category || 'software').toLowerCase()}/${updated.id}/${updated.slug}`;
+      notifySearchEngines(articleUrl).catch((err) => console.warn('Quick Publish Indexing Error:', err));
+    }
+
+    revalidatePath('/', 'layout');
+    revalidatePath('/admin');
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message || 'Gagal mempublikasikan artikel' };
+  }
+}
+
 export async function updateArticle(id: number, formData: FormData) {
   try {
     const title = formData.get('title') as string;

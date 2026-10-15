@@ -591,7 +591,7 @@ function injectInternalLinkIfMissing(
 
   if (!picked) return content;
 
-  const bacaJugaSnippet = `\n\n> **Baca Juga:** [${picked.title}](${picked.url})\n\n`;
+  const bacaJugaSnippet = `\n\n**Baca juga:** [${picked.title}](${picked.url})\n\n`;
 
   // Sisipkan di tengah artikel (sekitar paragraf ke-3 atau separuh artikel)
   const paragraphs = content.split(/\n\s*\n/);
@@ -677,7 +677,7 @@ ATURAN PENULISAN:
 3. Format Konten: Gunakan Markdown murni yang rapi (Heading ##, ###, bullet points, penekanan bold, kutipan analitis >). JANGAN gunakan tag HTML mentah seperti <p>, <div>, <span>.
 4. Panjang konten: Target ${wordCountTarget}.
 5. Kategori: WAJIB bernilai "Regional".
-6. Validitas Riset & E-E-A-T: Manfaatkan nama pejabat daerah, nama dinas, angka anggaran/statistik, dan fakta dari HASIL RISET RIIL yang disediakan. Di akhir konten (bagian paling bawah), WAJIB buatkan sub-heading "## Referensi Berita Terkait" berupa poin-poin yang menyebutkan media/sumber fakta yang Anda jadikan rujukan.
+6. Atribusi Sumber Riset: Di akhir naskah berita (baris terakhir), WAJIB sertakan garis pembatas (---) diikuti satu baris sumber ringkas: "*Sumber: [Nama-nama media/dinas rujukan, dipisahkan koma].*". Contoh: "*Sumber: Antara, Detik, Pemprov Jatim.*". DILARANG mencantumkan link URL panjang atau teks bertele-tele.
 7. Larangan Judul Ganda: DILARANG mengulang judul berita sebagai Heading (# atau ##) di baris pertama 'content'. Bagian 'content' WAJIB langsung dimulai dengan paragraf teks narasi pembuka.
 8. Output: WAJIB HANYA berupa objek JSON murni (VALID JSON) tanpa pembuka atau penutup obrolan apa pun di luar JSON.
 
@@ -699,7 +699,7 @@ ATURAN PENULISAN:
 2. Format Konten: Gunakan Markdown murni yang rapi (Heading ##, ###, bullet points, penekanan bold, kutipan analitis >). JANGAN gunakan tag HTML mentah seperti <p>, <div>, <span>.
 3. Panjang konten: Target ${wordCountTarget}.
 4. Kategori artikel HARUS salah satu dari: ["AI", "Software", "Hardware", "Gadget", "Infrastruktur"].
-5. Validitas Riset & E-E-A-T: Manfaatkan entitas, narasumber, angka, dan fakta dari HASIL RISET RIIL yang disediakan. Di akhir konten (bagian paling bawah), WAJIB buatkan sub-heading "## Referensi Berita Terkait" berupa poin-poin yang menyebutkan media/sumber fakta yang Anda jadikan rujukan agar kredibilitas jurnalisme dan SEO E-E-A-T artikel terjamin.
+5. Atribusi Sumber Riset: Di akhir naskah berita (baris terakhir), WAJIB sertakan garis pembatas (---) diikuti satu baris sumber ringkas: "*Sumber: [Nama-nama media berita rujukan, dipisahkan koma].*". Contoh: "*Sumber: Cult of Mac, Finder Australia, TelecomTalk.*". DILARANG mencantumkan link URL panjang atau teks bertele-tele.
 6. Larangan Judul Ganda: DILARANG mengulang judul berita sebagai Heading (# atau ##) di baris pertama 'content'. Bagian 'content' WAJIB langsung dimulai dengan paragraf teks pembuka artikel berita.
 7. Output: WAJIB HANYA berupa objek JSON murni (VALID JSON) tanpa pembuka atau penutup obrolan apa pun di luar JSON.
 
@@ -725,7 +725,7 @@ ${researchSources.map((item, idx) => {
 PANDUAN PEMANFAATAN RISET:
 - Gunakan data, peristiwa, nama perusahaan, narasumber, dan tren dari hasil riset di atas sebagai inti tulisan.
 - Padukan konteks global dengan relevansi dan dampaknya bagi industri teknologi maupun pengguna di Indonesia.
-- Pada bagian akhir artikel berita, sertakan subjudul "## Referensi Berita Terkait" yang mencantumkan sumber/media di atas secara profesional.`;
+- Pada bagian paling akhir artikel, sertakan garis pembatas (---) dan satu baris ringkas: "*Sumber: [Daftar nama media berita yang menjadi referensi di atas dipisahkan koma].*" (Contoh: "*Sumber: Reuters, TechCrunch, The Verge.*"). JANGAN mencantumkan link URL mentah.`;
   }
 
   const userPrompt = `Buatkan artikel berita ${isRegional ? `regional liputan ${regionalScope}` : 'teknologi'} profesional tentang topik berikut:
@@ -888,6 +888,10 @@ export async function requestSadurArticleFromSource(
   baseUrl = baseUrl.replace(/\/+$/, '');
   const endpoint = `${baseUrl}/chat/completions`;
 
+  const cleanDomain = options.domain
+    ? options.domain.replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/.*$/, '')
+    : 'Sumber Terkait';
+
   const systemPrompt = `Anda adalah jurnalis teknologi senior dan editor penyadur berita di portal media teknologi "Naratif" (Indonesia).
 Tugas Anda adalah membaca laporan berita sumber asli, mengekstrak fakta-fakta kunci, dan MENULIS ULANG (REWRITE / SADUR) menjadi naskah berita orisinal berbahasa Indonesia yang segar, berwawasan tajam, dan memenuhi standar jurnalisme piramida terbalik.
 
@@ -898,9 +902,10 @@ ATURAN PENULISAN:
 4. Format Konten: Gunakan Markdown murni (Heading ##, ###, bullet points, penekanan bold, kutipan analitis >). JANGAN gunakan tag HTML mentah seperti <p>, <div>, <span>.
 5. Panjang konten: Target ${wordCountTarget}.
 6. Kategori artikel HARUS salah satu dari: ["AI", "Software", "Hardware", "Gadget", "Infrastruktur", "Regional"].
-7. Atribusi Sumber Wajib: Pada bagian paling bawah artikel (baris terakhir), WAJIB sertakan baris atribusi etis:
+7. Atribusi Sumber Wajib: Pada bagian paling bawah artikel (baris terakhir), WAJIB sertakan garis pembatas (---) dan satu baris sumber ringkas:
    ---
-   *Dikutip dan disadur berdasarkan laporan dari ${options.domain || 'sumber terkait'} (${options.sourceUrl}).*
+   *Sumber: ${cleanDomain}.*
+   (Cukup tulis nama media sumber yang bersih, DILARANG mencantumkan link URL panjang atau teks bertele-tele).
 8. Larangan Judul Ganda: DILARANG mengulang judul berita sebagai Heading (# atau ##) di baris pertama 'content'. Bagian 'content' WAJIB langsung dimulai dengan paragraf teks narasi liputan.
 9. Output: WAJIB HANYA berupa objek JSON murni (VALID JSON) tanpa teks obrolan apa pun di luar JSON.
 

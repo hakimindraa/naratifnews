@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   Sparkles,
-  Zap,
   Bot,
   CheckCircle2,
   Clock,
@@ -19,7 +18,6 @@ import {
   Code,
   Check,
   TrendingUp,
-  Info,
   Image as ImageIcon,
   Trash2,
   Search,
@@ -28,8 +26,19 @@ import {
   Settings,
   Building2,
   MapPin,
+  ArrowRight,
+  Filter,
+  X,
+  FileText,
+  Rocket,
+  ShieldCheck,
 } from 'lucide-react';
-import { generateArticleAction, getGenerationDataAction, deleteGenerationLogAction, clearFailedLogsAction } from './actions';
+import {
+  generateArticleAction,
+  getGenerationDataAction,
+  deleteGenerationLogAction,
+  clearFailedLogsAction,
+} from './actions';
 import { getAISettings } from '../pengaturan/actions';
 
 interface LogItem {
@@ -56,45 +65,52 @@ interface StatsData {
 const PRESET_TOPICS = [
   {
     icon: Flame,
-    label: 'Tren & Inovasi AI Terkini',
+    label: 'Tren & Inovasi AI',
     category: 'AI',
-    prompt: 'Bahas perkembangan terkini teknologi kecerdasan buatan dan model generasi baru, bagaimana inovasi mutakhir ini mengubah industri, serta efisiensi dan dampaknya bagi masyarakat berdasarkan riset dan data faktual terkini.',
-  },
-  {
-    icon: Code,
-    label: 'Ekosistem & Tren Software',
-    category: 'Software',
-    prompt: 'Ulas perkembangan mutakhir dunia rekayasa perangkat lunak, adopsi standar teknologi baru di kalangan developer, dan inovasi arsitektur aplikasi modern berdasarkan fakta industri terkini.',
-  },
-  {
-    icon: Cpu,
-    label: 'Dinamika Semikonduktor & Hardware',
-    category: 'Hardware',
-    prompt: 'Sorot perkembangan industri semikonduktor, kemajuan arsitektur komputasi perangkat keras generasi terbaru, serta pengaruhnya terhadap pasar teknologi global berdasarkan rilis dan laporan terkini.',
-  },
-  {
-    icon: Layers,
-    label: 'Infrastruktur Cloud & Keamanan',
-    category: 'Infrastruktur',
-    prompt: 'Bahas perkembangan infrastruktur data center modern, tren komputasi awan, dan lanskap keamanan siber terkini dalam menghadapi tantangan era digital berdasarkan fakta riset terbaru.',
-  },
-  {
-    icon: Smartphone,
-    label: 'Inovasi Gadget & Konsumen',
-    category: 'Gadget',
-    prompt: 'Analisis tren inovasi perangkat pintar generasi terbaru, fitur-fitur mutakhir yang mulai diadopsi massal, dan arah masa depan ekosistem teknologi konsumen berdasarkan pembaruan industri terkini.',
+    prompt:
+      'Bahas perkembangan terkini teknologi kecerdasan buatan dan model generasi baru, bagaimana inovasi mutakhir ini mengubah industri, serta efisiensi dan dampaknya bagi masyarakat berdasarkan riset dan data faktual terkini.',
   },
   {
     icon: Building2,
-    label: 'Kebijakan Daerah & Isu Publik',
+    label: 'Kebijakan Pemda',
     category: 'Regional',
-    prompt: 'Bahas isu kebijakan pemerintah daerah, pelayanan fasilitas publik, atau dinamika sosial masyarakat terkini di daerah berdasarkan fakta dan laporan terkini.',
+    prompt:
+      'Bahas isu kebijakan pemerintah daerah, pelayanan fasilitas publik, atau dinamika sosial masyarakat terkini di daerah berdasarkan fakta dan laporan terkini.',
   },
   {
     icon: MapPin,
-    label: 'Infrastruktur & Transportasi Daerah',
+    label: 'Infrastruktur Daerah',
     category: 'Regional',
-    prompt: 'Ulas perkembangan proyek infrastruktur, konektivitas transportasi daerah, atau penataan ruang kota yang berdampak langsung bagi mobilitas masyarakat setempat.',
+    prompt:
+      'Ulas perkembangan proyek infrastruktur, konektivitas transportasi daerah, atau penataan ruang kota yang berdampak langsung bagi mobilitas masyarakat setempat.',
+  },
+  {
+    icon: Code,
+    label: 'Ekosistem Software',
+    category: 'Software',
+    prompt:
+      'Ulas perkembangan mutakhir dunia rekayasa perangkat lunak, adopsi standar teknologi baru di kalangan developer, dan inovasi arsitektur aplikasi modern berdasarkan fakta industri terkini.',
+  },
+  {
+    icon: Cpu,
+    label: 'Semikonduktor & Chip',
+    category: 'Hardware',
+    prompt:
+      'Sorot perkembangan industri semikonduktor, kemajuan arsitektur komputasi perangkat keras generasi terbaru, serta pengaruhnya terhadap pasar teknologi global berdasarkan rilis dan laporan terkini.',
+  },
+  {
+    icon: Layers,
+    label: 'Cloud & Keamanan Siber',
+    category: 'Infrastruktur',
+    prompt:
+      'Bahas perkembangan infrastruktur data center modern, tren komputasi awan, dan lanskap keamanan siber terkini dalam menghadapi tantangan era digital berdasarkan fakta riset terbaru.',
+  },
+  {
+    icon: Smartphone,
+    label: 'Gadget & Konsumen',
+    category: 'Gadget',
+    prompt:
+      'Analisis tren inovasi perangkat pintar generasi terbaru, fitur-fitur mutakhir yang mulai diadopsi massal, dan arah masa depan ekosistem teknologi konsumen berdasarkan pembaruan industri terkini.',
   },
 ];
 
@@ -140,6 +156,9 @@ export default function GeneratorStudioPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const [logs, setLogs] = useState<LogItem[]>([]);
+  const [logFilterStatus, setLogFilterStatus] = useState<'all' | 'published' | 'draft' | 'failed'>('all');
+  const [logSearchQuery, setLogSearchQuery] = useState('');
+
   const [stats, setStats] = useState<StatsData>({
     totalGenerated: 0,
     publishedCount: 0,
@@ -264,14 +283,12 @@ export default function GeneratorStudioPage() {
           researchSources: res.researchSources || [],
           similarityInfo: res.similarityInfo || null,
         });
-        // Kosongkan prompt & cover setelah sukses
         setPrompt('');
         setCoverUrl('');
       } else {
         setErrorMessage(res.error || 'Gagal membuat artikel.');
       }
 
-      // Refresh log dan statistik dari database
       await loadInitialData();
     } catch (err: any) {
       clearInterval(stepInterval);
@@ -296,185 +313,233 @@ export default function GeneratorStudioPage() {
     }
   };
 
+  // Filter logs berdasarkan tab dan pencarian
+  const filteredLogs = logs.filter((log) => {
+    if (logFilterStatus === 'published' && log.status !== 'published') return false;
+    if (logFilterStatus === 'draft' && log.status !== 'draft') return false;
+    if (logFilterStatus === 'failed' && log.status !== 'failed') return false;
+
+    if (logSearchQuery.trim()) {
+      const q = logSearchQuery.toLowerCase();
+      const matchPrompt = log.prompt.toLowerCase().includes(q);
+      const matchTitle = (log.articleTitle || '').toLowerCase().includes(q);
+      const matchCat = log.category.toLowerCase().includes(q);
+      if (!matchPrompt && !matchTitle && !matchCat) return false;
+    }
+
+    return true;
+  });
+
   return (
     <div className="space-y-6 sm:space-y-8">
-      {/* HEADER BANNER */}
-      <div className="bg-gradient-to-br from-gray-900 via-gray-800 to-indigo-950 text-white rounded-2xl sm:rounded-3xl p-5 sm:p-8 shadow-xl border border-gray-800 relative overflow-hidden">
+      {/* 1. HEADER BANNER MEWAH */}
+      <div className="bg-gradient-to-br from-gray-900 via-gray-800 to-indigo-950 text-white rounded-2xl sm:rounded-3xl p-5 sm:p-7 shadow-xl border border-gray-800 relative overflow-hidden">
         <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-5 sm:gap-6">
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-5">
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-300 text-xs font-semibold uppercase tracking-wider mb-2.5 sm:mb-3 border border-indigo-500/30">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-300 text-xs font-semibold uppercase tracking-wider mb-2.5 border border-indigo-500/30">
               <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
               <span>Naratif AI Studio</span>
             </div>
-            <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold tracking-tight font-heading">
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-black tracking-tight font-heading">
               Studio Generator Berita Otomatis
             </h1>
-            <p className="text-gray-300 text-xs sm:text-sm lg:text-base mt-2 max-w-2xl leading-relaxed">
-              Kendalikan AI untuk mencari, menyusun naskah, dan menerbitkan artikel berita teknologi ke Naratif hanya dengan sekali klik atau instruksi kustom Anda.
+            <p className="text-gray-300 text-xs sm:text-sm mt-1.5 max-w-2xl leading-relaxed">
+              Kendalikan AI untuk meriset fakta Google News, menyusun naskah jurnalistik mendalam, dan menerbitkan artikel ke Naratif dalam hitungan detik.
             </p>
           </div>
 
-          {/* Quick Metrics */}
-          <div className="flex items-center justify-between sm:justify-start gap-3 sm:gap-4 bg-white/5 backdrop-blur-md px-4 sm:px-5 py-2.5 sm:py-3 rounded-2xl border border-white/10 shrink-0 w-full sm:w-auto">
-            <div className="text-left sm:text-center px-1 sm:px-2">
-              <div className="text-[11px] sm:text-xs text-gray-400 font-medium">AI Engine Aktif</div>
-              <div className="text-xs sm:text-sm font-bold text-white flex items-center gap-1.5 mt-0.5">
-                <span className={`w-2 h-2 rounded-full ${selectedProvider === 'gemini' ? 'bg-amber-400' : selectedProvider === 'groq' ? 'bg-cyan-400' : 'bg-emerald-400'} animate-pulse`} />
-                <span>
-                  {selectedProvider === 'gemini'
-                    ? 'Google Gemini 3.8 Flash'
-                    : selectedProvider === 'groq'
-                    ? 'Groq (GPT-OSS 120B)'
-                    : active9RouterModel
-                    ? `9Router (${active9RouterModel})`
-                    : '9Router Gateway'}
-                </span>
+          {/* Quick Metrics & Link */}
+          <div className="flex flex-wrap items-center gap-3 shrink-0">
+            <div className="flex items-center gap-3 bg-white/5 backdrop-blur-md px-4 py-2.5 rounded-xl border border-white/10 text-xs">
+              <div>
+                <div className="text-[10px] text-gray-400 font-medium">Model Aktif</div>
+                <div className="font-bold text-white flex items-center gap-1.5 mt-0.5">
+                  <span
+                    className={`w-2 h-2 rounded-full ${
+                      selectedProvider === 'gemini'
+                        ? 'bg-amber-400'
+                        : selectedProvider === 'groq'
+                        ? 'bg-cyan-400'
+                        : 'bg-emerald-400'
+                    } animate-pulse`}
+                  />
+                  <span>
+                    {selectedProvider === 'gemini'
+                      ? 'Gemini 3.8 Flash'
+                      : selectedProvider === 'groq'
+                      ? 'Groq Cloud'
+                      : '9Router Gateway'}
+                  </span>
+                </div>
+              </div>
+              <div className="w-px h-6 bg-white/10" />
+              <div>
+                <div className="text-[10px] text-gray-400 font-medium">Sukses</div>
+                <div className="font-bold text-emerald-400 mt-0.5">{stats.successRate}</div>
               </div>
             </div>
-            <div className="w-px h-7 sm:h-8 bg-white/10" />
-            <div className="text-right sm:text-center px-1 sm:px-2">
-              <div className="text-[11px] sm:text-xs text-gray-400 font-medium">Tingkat Keberhasilan</div>
-              <div className="text-xs sm:text-sm font-bold text-emerald-400 mt-0.5">
-                {stats.successRate}
-              </div>
-            </div>
+
+            <Link
+              href="/admin"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs transition-colors border border-white/10"
+            >
+              <span>Dasbor Redaksi</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
           </div>
         </div>
       </div>
 
-      {/* STAT CARDS (REAL DATA DARI NEON DB) */}
+      {/* 2. STAT CARDS (SELARAS DENGAN DASBOR REDAKSI) */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-gray-200 shadow-sm flex items-center justify-between">
+        {/* Total Hasil AI */}
+        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-gray-200 shadow-xs flex items-center justify-between">
           <div>
-            <p className="text-[10px] sm:text-xs font-semibold text-gray-500 uppercase tracking-wider">Total Hasil AI</p>
-            <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mt-0.5 sm:mt-1 font-heading">
+            <p className="text-[10px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
+              Total Hasil AI
+            </p>
+            <h3 className="text-xl sm:text-2xl font-black text-gray-900 font-heading">
               {stats.totalGenerated}
             </h3>
-            <span className="inline-flex items-center text-[10px] sm:text-xs text-indigo-600 font-medium mt-0.5 sm:mt-1">
-              <TrendingUp className="w-3 h-3 sm:w-3.5 sm:h-3.5 mr-1" />
-              <span className="truncate max-w-[85px] sm:max-w-none">{stats.totalGenerated === 0 ? 'Belum ada' : 'Tercatat di DB'}</span>
+            <span className="text-[11px] text-indigo-600 font-medium mt-0.5 block">
+              Tercatat di Neon DB
             </span>
           </div>
-          <div className="w-9 h-9 sm:w-12 sm:h-12 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 shrink-0">
+          <div className="w-10 h-10 sm:w-12 sm:h-12 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 shrink-0">
             <Bot className="w-5 h-5 sm:w-6 sm:h-6" />
           </div>
         </div>
 
-        <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-gray-200 shadow-sm flex items-center justify-between">
+        {/* Terbit Langsung */}
+        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-gray-200 shadow-xs flex items-center justify-between">
           <div>
-            <p className="text-[10px] sm:text-xs font-semibold text-gray-500 uppercase tracking-wider">Terbit Langsung</p>
-            <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mt-0.5 sm:mt-1 font-heading">
+            <p className="text-[10px] sm:text-xs font-bold text-emerald-600 uppercase tracking-wider mb-1">
+              Terbit Langsung
+            </p>
+            <h3 className="text-xl sm:text-2xl font-black text-emerald-700 font-heading">
               {stats.publishedCount}
             </h3>
-            <span className="text-[10px] sm:text-xs text-emerald-600 mt-0.5 sm:mt-1 font-medium block truncate max-w-[85px] sm:max-w-none">Status Published</span>
+            <span className="text-[11px] text-emerald-600/80 mt-0.5 block">
+              Status Published
+            </span>
           </div>
-          <div className="w-9 h-9 sm:w-12 sm:h-12 bg-emerald-50 rounded-xl flex items-center justify-center text-emerald-600 shrink-0">
+          <div className="w-10 h-10 sm:w-12 sm:h-12 bg-emerald-50 rounded-xl flex items-center justify-center text-emerald-600 shrink-0">
             <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6" />
           </div>
         </div>
 
-        <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-gray-200 shadow-sm flex items-center justify-between">
+        {/* Draft Siap Review */}
+        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-gray-200 shadow-xs flex items-center justify-between">
           <div>
-            <p className="text-[10px] sm:text-xs font-semibold text-gray-500 uppercase tracking-wider">Draft Siap Review</p>
-            <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mt-0.5 sm:mt-1 font-heading">
+            <p className="text-[10px] sm:text-xs font-bold text-amber-600 uppercase tracking-wider mb-1 flex items-center gap-1">
+              <span>Draf Siap Review</span>
+              {stats.draftCount > 0 && <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />}
+            </p>
+            <h3 className="text-xl sm:text-2xl font-black text-amber-700 font-heading">
               {stats.draftCount}
             </h3>
-            <span className="text-[10px] sm:text-xs text-amber-600 font-medium mt-0.5 sm:mt-1 block truncate max-w-[85px] sm:max-w-none">Perlu pengecekan</span>
+            <span className="text-[11px] text-amber-600/80 mt-0.5 block">
+              Perlu pemeriksaan
+            </span>
           </div>
-          <div className="w-9 h-9 sm:w-12 sm:h-12 bg-amber-50 rounded-xl flex items-center justify-center text-amber-600 shrink-0">
+          <div className="w-10 h-10 sm:w-12 sm:h-12 bg-amber-50 rounded-xl flex items-center justify-center text-amber-600 shrink-0">
             <PenSquare className="w-5 h-5 sm:w-6 sm:h-6" />
           </div>
         </div>
 
-        <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-gray-200 shadow-sm flex items-center justify-between">
+        {/* Rata-Rata Waktu */}
+        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-gray-200 shadow-xs flex items-center justify-between">
           <div>
-            <p className="text-[10px] sm:text-xs font-semibold text-gray-500 uppercase tracking-wider">Rata-Rata Waktu</p>
-            <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mt-0.5 sm:mt-1 font-heading">
+            <p className="text-[10px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
+              Rata-rata Waktu
+            </p>
+            <h3 className="text-xl sm:text-2xl font-black text-gray-900 font-heading">
               {stats.avgDuration}
             </h3>
-            <span className="text-[10px] sm:text-xs text-gray-500 mt-0.5 sm:mt-1 block truncate max-w-[85px] sm:max-w-none">
-              {stats.avgDuration === '-' ? 'Belum ada' : 'Per artikel'}
+            <span className="text-[11px] text-gray-400 mt-0.5 block">
+              Per artikel berita
             </span>
           </div>
-          <div className="w-9 h-9 sm:w-12 sm:h-12 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600 shrink-0">
+          <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gray-100 rounded-xl flex items-center justify-center text-gray-700 shrink-0">
             <Clock className="w-5 h-5 sm:w-6 sm:h-6" />
           </div>
         </div>
       </div>
 
-      {/* MAIN COMMAND CENTER */}
-      <div className="bg-white rounded-2xl sm:rounded-3xl border border-gray-200 shadow-sm p-4 sm:p-6 lg:p-8 space-y-5 sm:space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-4 sm:pb-5">
-          <div>
-            <h2 className="text-lg sm:text-xl font-bold text-gray-900 font-heading flex items-center gap-2">
-              <Wand2 className="w-5 h-5 text-indigo-600 shrink-0" />
-              Perintahkan AI Membuat Berita
-            </h2>
-            <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
-              Pilih topik cepat di bawah atau ketik instruksi spesifik Anda sendiri.
-            </p>
+      {/* 3. MAIN GENERATOR CARD (REDESAIN RINGKAS & ERGONOMIS) */}
+      <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-7 border border-gray-200 shadow-sm space-y-6">
+        {/* 3.1 CHIP PILLS INSPIRASI TOPIK (TIDAK MEMAKAN RUANG VERTIKAL) */}
+        <div>
+          <div className="flex items-center justify-between mb-2.5">
+            <label className="text-xs font-bold uppercase tracking-wider text-gray-700 flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+              <span>Inspirasi Topik Cepat (Klik Sekali untuk Mengisi):</span>
+            </label>
+            <span className="text-[11px] text-gray-400">Pilih inspirasi atau ketik sendiri</span>
           </div>
-          <div className="flex items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs text-gray-500 bg-gray-50 px-2.5 sm:px-3 py-1.5 rounded-lg border border-gray-200 self-start sm:self-auto">
-            <Info className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-            <span>Format output otomatis tersimpan ke Neon Database</span>
-          </div>
-        </div>
 
-        {/* 1. PRESET CHIPS */}
-        <div className="space-y-2.5">
-          <label className="text-xs font-bold uppercase tracking-wider text-gray-500 flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
-            Pilihan Cepat (Klik Sekali untuk Mengisi):
-          </label>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-2.5 sm:gap-3">
+          <div className="flex flex-wrap gap-2">
             {PRESET_TOPICS.map((preset, idx) => {
               const Icon = preset.icon;
               const isSelected = prompt === preset.prompt;
+              const isReg = preset.category === 'Regional';
+
               return (
                 <button
                   key={idx}
                   type="button"
                   onClick={() => handleSelectPreset(preset)}
                   disabled={isLoading}
-                  className={`p-3 sm:p-3.5 text-left rounded-xl sm:rounded-2xl border transition-all duration-200 flex flex-col justify-between gap-2.5 group cursor-pointer ${
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                     isSelected
-                      ? 'border-indigo-600 bg-indigo-50/70 shadow-sm ring-1 ring-indigo-600'
-                      : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                      ? 'bg-indigo-600 text-white shadow-xs ring-2 ring-indigo-600/30'
+                      : isReg
+                      ? 'bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100'
+                      : 'bg-gray-50 text-gray-700 border border-gray-200 hover:bg-gray-100'
                   }`}
                 >
-                  <div className="flex items-center justify-between">
-                    <span className="p-1.5 sm:p-2 rounded-lg sm:rounded-xl bg-white border border-gray-100 shadow-2xs text-indigo-600 group-hover:scale-110 transition-transform">
-                      <Icon className="w-4 h-4" />
-                    </span>
-                    <span className="text-[10px] sm:text-[11px] font-semibold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-md">
-                      {preset.category}
-                    </span>
-                  </div>
-                  <div>
-                    <h4 className="text-xs sm:text-sm font-bold text-gray-900 group-hover:text-indigo-600 transition-colors">
-                      {preset.label}
-                    </h4>
-                    <p className="text-[11px] sm:text-xs text-gray-500 line-clamp-1 mt-0.5">
-                      {preset.prompt}
-                    </p>
-                  </div>
+                  <Icon className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-white' : isReg ? 'text-emerald-600' : 'text-gray-500'}`} />
+                  <span>{preset.label}</span>
+                  <span
+                    className={`text-[9px] px-1.5 py-0.2 rounded font-extrabold ${
+                      isSelected
+                        ? 'bg-white/20 text-white'
+                        : isReg
+                        ? 'bg-emerald-200/60 text-emerald-900'
+                        : 'bg-gray-200 text-gray-700'
+                    }`}
+                  >
+                    {preset.category}
+                  </span>
                 </button>
               );
             })}
           </div>
         </div>
 
-        {/* 2. CUSTOM PROMPT INPUT */}
+        {/* 3.2 TEXTAREA INSTRUKSI TOPIK */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <label className="text-xs font-bold uppercase tracking-wider text-gray-700">
-              Instruksi / Topik Berita Anda:
+            <label className="text-xs font-bold uppercase tracking-wider text-gray-700 flex items-center gap-1.5">
+              <FileText className="w-3.5 h-3.5 text-gray-500" />
+              <span>Instruksi / Topik Berita Anda:</span>
             </label>
-            <span className="text-xs text-gray-400">
-              {prompt.length} karakter
-            </span>
+            <div className="flex items-center gap-3">
+              {prompt && (
+                <button
+                  type="button"
+                  onClick={() => setPrompt('')}
+                  className="text-xs text-red-500 hover:text-red-700 flex items-center gap-0.5 cursor-pointer"
+                >
+                  <X className="w-3 h-3" />
+                  <span>Kosongkan</span>
+                </button>
+              )}
+              <span className="text-xs text-gray-400">{prompt.length} karakter</span>
+            </div>
           </div>
+
           <div className="relative">
             <textarea
               rows={3}
@@ -483,24 +548,22 @@ export default function GeneratorStudioPage() {
               disabled={isLoading}
               placeholder={
                 selectedCategory === 'Regional'
-                  ? `Contoh: Bahas kebijakan Pemda ${selectedRegion !== 'Umum' ? selectedRegion : ''} terkait pelayanan publik, transportasi daerah, atau fasilitas warga berdasarkan fakta dan laporan terkini...`
+                  ? `Contoh: Bahas kebijakan Pemda ${selectedRegion !== 'Umum' ? selectedRegion : 'terkait'} pelayanan publik, transportasi daerah, fasilitas warga, atau anggaran dinas berdasarkan fakta dan laporan terkini...`
                   : 'Contoh: Analisis perkembangan terbaru dan tren terhangat saat ini, sorot dampaknya bagi ekosistem industri dan masyarakat berdasarkan riset berita faktual terkini...'
               }
-              className="w-full rounded-xl sm:rounded-2xl border border-gray-300 p-3.5 sm:p-4 text-xs sm:text-sm text-gray-900 placeholder:text-gray-400 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20 outline-none transition-all resize-none shadow-2xs"
+              className="w-full rounded-2xl border border-gray-300 p-3.5 sm:p-4 text-xs sm:text-sm text-gray-900 placeholder:text-gray-400 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20 outline-none transition-all resize-none shadow-2xs leading-relaxed"
             />
           </div>
         </div>
 
-        {/* 2.5 COVER IMAGE LINK (IMGBB - OPSIONAL) */}
+        {/* 3.3 COVER IMAGE LINK (OPSIONAL) */}
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
             <label className="text-xs font-bold uppercase tracking-wider text-gray-700 flex items-center gap-1.5">
               <ImageIcon className="w-3.5 h-3.5 text-gray-400" />
-              Link Cover Image (ImgBB - Opsional):
+              Link Cover Image (ImgBB / URL Foto - Opsional):
             </label>
-            <span className="text-[10px] sm:text-[11px] text-gray-400">
-              Kosongkan jika ingin input nanti di editor
-            </span>
+            <span className="text-[11px] text-gray-400">Kosongkan jika ingin input nanti di editor</span>
           </div>
           <input
             type="url"
@@ -512,114 +575,116 @@ export default function GeneratorStudioPage() {
           />
         </div>
 
-        {/* 3. SETTINGS & TRIGGER BAR */}
-        <div className="flex flex-col gap-4 pt-2">
-          {/* Controls: Responsive grid on mobile, flex on desktop */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:flex lg:flex-wrap items-stretch sm:items-center gap-2.5 sm:gap-3">
-            {/* AI Engine Switcher */}
-            <div className="flex items-center gap-2 bg-indigo-50/90 px-3.5 py-2.5 rounded-xl border border-indigo-200">
-              <Bot className="w-4 h-4 text-indigo-600 shrink-0" />
-              <div className="flex flex-col min-w-0 flex-1">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-semibold text-indigo-900 uppercase tracking-wider">AI Engine</span>
-                  <Link
-                    href="/admin/pengaturan"
-                    title="Buka Pengaturan AI Gateway (9Router)"
-                    className="text-[10px] text-indigo-600 hover:text-indigo-800 font-bold flex items-center gap-0.5 transition-colors"
-                  >
-                    <Settings className="w-2.5 h-2.5" />
-                    <span>Atur</span>
-                  </Link>
-                </div>
-                <select
-                  value={selectedProvider}
-                  onChange={(e) => setSelectedProvider(e.target.value as 'gemini' | 'groq' | '9router')}
-                  disabled={isLoading}
-                  className="bg-transparent text-xs sm:text-sm font-bold text-indigo-950 outline-none cursor-pointer truncate"
-                >
-                  <option value="gemini">Google Gemini 3.8 Flash (Rekomendasi)</option>
-                  <option value="groq">Groq Cloud (GPT-OSS 120B)</option>
-                  <option value="9router">
-                    {active9RouterModel ? `9Router (${active9RouterModel})` : '9Router Gateway'}
-                  </option>
-                </select>
-              </div>
-            </div>
-
-            {/* Google News Research Toggle */}
-            <button
-              type="button"
-              onClick={() => setEnableWebSearch(!enableWebSearch)}
-              disabled={isLoading}
-              title="Cari berita & fakta terkini dari Google News Indonesia sebelum menulis artikel"
-              className={`flex items-center justify-between sm:justify-start gap-2.5 px-3.5 py-2.5 rounded-xl border transition-all cursor-pointer ${
-                enableWebSearch
-                  ? 'bg-blue-50/90 border-blue-300 text-blue-900 shadow-2xs'
-                  : 'bg-gray-50 border-gray-200 text-gray-500 hover:bg-gray-100'
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <Search className={`w-4 h-4 shrink-0 ${enableWebSearch ? 'text-blue-600' : 'text-gray-400'}`} />
-                <span className="text-xs sm:text-sm font-semibold">
-                  Riset Google News
+        {/* 3.4 GRID PENGATURAN PRODUKSI (LEGA, RAPI & TERSTRUKTUR) */}
+        <div className="pt-2 border-t border-gray-100">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {/* Box 1: AI Engine */}
+            <div className="bg-indigo-50/70 p-3.5 rounded-xl border border-indigo-200 space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-indigo-900 flex items-center gap-1">
+                  <Bot className="w-3 h-3 text-indigo-600" />
+                  AI Engine
                 </span>
+                <Link
+                  href="/admin/pengaturan"
+                  className="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-0.5"
+                >
+                  <Settings className="w-2.5 h-2.5" />
+                  Atur
+                </Link>
               </div>
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
-                enableWebSearch ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'
-              }`}>
-                {enableWebSearch ? 'Aktif (Gratis)' : 'Nonaktif'}
-              </span>
-            </button>
-
-            {/* Category */}
-            <div className="flex items-center justify-between sm:justify-start gap-2 bg-gray-50 px-3.5 py-2.5 rounded-xl border border-gray-200">
-              <span className="text-xs font-medium text-gray-500">Kategori:</span>
               <select
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
+                value={selectedProvider}
+                onChange={(e) => setSelectedProvider(e.target.value as any)}
                 disabled={isLoading}
-                className="bg-transparent text-xs sm:text-sm font-bold text-gray-800 outline-none cursor-pointer"
+                className="w-full bg-white rounded-lg border border-indigo-200 px-2.5 py-1.5 text-xs font-bold text-indigo-950 outline-none cursor-pointer truncate"
               >
-                <option value="AI">AI</option>
-                <option value="Software">Software</option>
-                <option value="Hardware">Hardware</option>
-                <option value="Gadget">Gadget</option>
-                <option value="Infrastruktur">Infrastruktur</option>
-                <option value="Regional">Regional</option>
+                <option value="gemini">Google Gemini 3.8 Flash</option>
+                <option value="groq">Groq Cloud (GPT-OSS 120B)</option>
+                <option value="9router">
+                  {active9RouterModel ? `9Router (${active9RouterModel})` : '9Router Gateway'}
+                </option>
               </select>
             </div>
 
-            {/* Region / Wilayah Selector (Khusus Kategori Regional) */}
-            {selectedCategory === 'Regional' && (
-              <div className="flex items-center justify-between sm:justify-start gap-2 bg-emerald-50/90 px-3.5 py-2.5 rounded-xl border border-emerald-300 animate-in fade-in duration-200">
-                <div className="flex items-center gap-1.5 text-emerald-800">
-                  <MapPin className="w-4 h-4 text-emerald-600 shrink-0" />
-                  <span className="text-xs font-semibold">Wilayah:</span>
-                </div>
+            {/* Box 2: Kategori & Wilayah */}
+            <div className="bg-gray-50 p-3.5 rounded-xl border border-gray-200 space-y-1">
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-gray-600 flex items-center gap-1">
+                <Layers className="w-3 h-3 text-gray-500" />
+                Kategori Berita
+              </span>
+              <div className="flex items-center gap-2">
                 <select
-                  value={selectedRegion}
-                  onChange={(e) => setSelectedRegion(e.target.value)}
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
                   disabled={isLoading}
-                  className="bg-transparent text-xs sm:text-sm font-bold text-emerald-950 outline-none cursor-pointer"
+                  className="w-full bg-white rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs font-bold text-gray-800 outline-none cursor-pointer"
                 >
-                  {INDONESIA_REGIONS.map((r) => (
-                    <option key={r} value={r}>
-                      {r === 'Umum' ? 'Umum / Semua Wilayah' : r}
-                    </option>
-                  ))}
+                  <option value="AI">AI</option>
+                  <option value="Regional">Regional</option>
+                  <option value="Software">Software</option>
+                  <option value="Hardware">Hardware</option>
+                  <option value="Gadget">Gadget</option>
+                  <option value="Infrastruktur">Infrastruktur</option>
                 </select>
-              </div>
-            )}
 
-            {/* Target Status */}
-            <div className="flex items-center justify-between sm:justify-start gap-2 bg-gray-50 px-3.5 py-2.5 rounded-xl border border-gray-200">
-              <span className="text-xs font-medium text-gray-500">Hasil:</span>
-              <div className="flex items-center gap-1">
+                {/* Sub-selector Wilayah (hanya jika Regional) */}
+                {selectedCategory === 'Regional' && (
+                  <select
+                    value={selectedRegion}
+                    onChange={(e) => setSelectedRegion(e.target.value)}
+                    disabled={isLoading}
+                    className="w-full bg-emerald-50 rounded-lg border border-emerald-300 px-2.5 py-1.5 text-xs font-bold text-emerald-950 outline-none cursor-pointer animate-in fade-in"
+                  >
+                    {INDONESIA_REGIONS.map((r) => (
+                      <option key={r} value={r}>
+                        {r === 'Umum' ? 'Semua Daerah' : r}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+            </div>
+
+            {/* Box 3: Riset Google News */}
+            <div className="bg-blue-50/70 p-3.5 rounded-xl border border-blue-200 space-y-1">
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-blue-900 flex items-center gap-1">
+                <Search className="w-3 h-3 text-blue-600" />
+                Riset Google News
+              </span>
+              <button
+                type="button"
+                onClick={() => setEnableWebSearch(!enableWebSearch)}
+                disabled={isLoading}
+                className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg border text-xs font-bold transition-all cursor-pointer ${
+                  enableWebSearch
+                    ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
+                    : 'bg-white text-gray-500 border-gray-200'
+                }`}
+              >
+                <span>{enableWebSearch ? 'Aktif (Riset Riil)' : 'Nonaktif (Murni AI)'}</span>
+                <span
+                  className={`text-[9px] px-1.5 py-0.5 rounded font-extrabold ${
+                    enableWebSearch ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-700'
+                  }`}
+                >
+                  {selectedCategory === 'Regional' ? 'Lokal ID' : 'Dual Engine'}
+                </span>
+              </button>
+            </div>
+
+            {/* Box 4: Target Status */}
+            <div className="bg-gray-50 p-3.5 rounded-xl border border-gray-200 space-y-1">
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-gray-600 flex items-center gap-1">
+                <Rocket className="w-3 h-3 text-gray-500" />
+                Target Status
+              </span>
+              <div className="grid grid-cols-2 gap-1.5 bg-gray-200/80 p-1 rounded-lg">
                 <button
                   type="button"
                   onClick={() => setPublishStatus('draft')}
                   disabled={isLoading}
-                  className={`text-xs px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                  className={`text-xs py-1 rounded-md font-bold transition-all cursor-pointer ${
                     publishStatus === 'draft'
                       ? 'bg-amber-500 text-white shadow-2xs'
                       : 'text-gray-600 hover:text-gray-900'
@@ -631,7 +696,7 @@ export default function GeneratorStudioPage() {
                   type="button"
                   onClick={() => setPublishStatus('published')}
                   disabled={isLoading}
-                  className={`text-xs px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                  className={`text-xs py-1 rounded-md font-bold transition-all cursor-pointer ${
                     publishStatus === 'published'
                       ? 'bg-emerald-600 text-white shadow-2xs'
                       : 'text-gray-600 hover:text-gray-900'
@@ -642,53 +707,73 @@ export default function GeneratorStudioPage() {
               </div>
             </div>
 
-            {/* Length */}
-            <div className="flex items-center justify-between sm:justify-start gap-2 bg-gray-50 px-3.5 py-2.5 rounded-xl border border-gray-200">
-              <span className="text-xs font-medium text-gray-500">Panjang:</span>
-              <select
-                value={articleLength}
-                onChange={(e) => setArticleLength(e.target.value as any)}
-                disabled={isLoading}
-                className="bg-transparent text-xs sm:text-sm font-bold text-gray-800 outline-none cursor-pointer"
-              >
-                <option value="standar">Standar (~700 kata)</option>
-                <option value="mendalam">Mendalam (~1200 kata)</option>
-              </select>
+            {/* Box 5: Target Panjang */}
+            <div className="bg-gray-50 p-3.5 rounded-xl border border-gray-200 space-y-1 sm:col-span-2 lg:col-span-2">
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-gray-600 flex items-center gap-1">
+                <FileText className="w-3 h-3 text-gray-500" />
+                Target Panjang Naskah
+              </span>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setArticleLength('standar')}
+                  disabled={isLoading}
+                  className={`px-3 py-1.5 rounded-lg border text-xs font-bold transition-all cursor-pointer ${
+                    articleLength === 'standar'
+                      ? 'bg-gray-900 text-white border-gray-900 shadow-2xs'
+                      : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-100'
+                  }`}
+                >
+                  Standar (~700 kata)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setArticleLength('mendalam')}
+                  disabled={isLoading}
+                  className={`px-3 py-1.5 rounded-lg border text-xs font-bold transition-all cursor-pointer ${
+                    articleLength === 'mendalam'
+                      ? 'bg-gray-900 text-white border-gray-900 shadow-2xs'
+                      : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-100'
+                  }`}
+                >
+                  Mendalam (~1200 kata)
+                </button>
+              </div>
             </div>
           </div>
 
-          {/* Action Button - Full width on mobile */}
-          <div className="flex justify-end pt-1">
+          {/* Action Trigger Button */}
+          <div className="mt-5">
             <button
               type="button"
               onClick={handleStartGeneration}
               disabled={!prompt.trim() || isLoading}
-              className={`w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-2xl font-bold text-sm shadow-md transition-all duration-200 cursor-pointer ${
+              className={`w-full inline-flex items-center justify-center gap-2.5 py-4 px-6 rounded-2xl font-black text-sm sm:text-base shadow-md transition-all duration-200 cursor-pointer ${
                 isLoading
                   ? 'bg-indigo-400 text-white cursor-not-allowed'
                   : !prompt.trim()
                   ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                  : 'bg-indigo-600 hover:bg-indigo-700 text-white hover:shadow-indigo-500/25 active:scale-98'
+                  : 'bg-gradient-to-r from-indigo-600 via-indigo-700 to-indigo-800 hover:from-indigo-700 hover:to-indigo-900 text-white shadow-indigo-500/25 active:scale-99'
               }`}
             >
               {isLoading ? (
                 <>
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                  <span>AI Sedang Bekerja...</span>
+                  <RefreshCw className="w-5 h-5 animate-spin" />
+                  <span>AI Sedang Memproses Liputan & Menulis Naskah...</span>
                 </>
               ) : (
                 <>
-                  <Wand2 className="w-4 h-4" />
-                  <span>Mulai Cari, Buat & Unggah</span>
+                  <Wand2 className="w-5 h-5" />
+                  <span>Mulai Riset, Buat & Unggah Berita</span>
                 </>
               )}
             </button>
           </div>
         </div>
 
-        {/* 4. REALTIME PROGRESS STEPPER */}
+        {/* 3.5 REALTIME STEPPER PROGRESS */}
         {isLoading && (
-          <div className="bg-indigo-50/80 rounded-2xl p-5 border border-indigo-200/80 space-y-4 animate-in fade-in duration-300">
+          <div className="bg-indigo-50/90 rounded-2xl p-5 border border-indigo-200 space-y-4 animate-in fade-in duration-300">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center">
@@ -696,10 +781,10 @@ export default function GeneratorStudioPage() {
                 </div>
                 <div>
                   <h4 className="text-sm font-bold text-gray-900">
-                    Proses Eksekusi AI Sedang Berjalan di Cloud
+                    Proses Eksekusi AI Berjalan di Cloud
                   </h4>
                   <p className="text-xs text-gray-600">
-                    ModelRouter sedang memproses artikel berdasarkan instruksi Anda.
+                    Sedang memadukan riset Google News dan LLM Gateway.
                   </p>
                 </div>
               </div>
@@ -708,7 +793,6 @@ export default function GeneratorStudioPage() {
               </span>
             </div>
 
-            {/* Stepper Dots */}
             <div className="space-y-2 pt-1">
               {steps.map((text, idx) => {
                 const isPassed = currentStep > idx;
@@ -744,7 +828,7 @@ export default function GeneratorStudioPage() {
           </div>
         )}
 
-        {/* ERROR MESSAGE ALERT */}
+        {/* ERROR ALERT */}
         {errorMessage && (
           <div className="bg-red-50 text-red-800 p-4 rounded-2xl border border-red-200 text-sm flex items-start gap-3">
             <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
@@ -755,9 +839,9 @@ export default function GeneratorStudioPage() {
           </div>
         )}
 
-        {/* 5. SUCCESS CARD PREVIEW */}
+        {/* 3.6 SUCCESS CARD PREVIEW */}
         {lastGenerated && !isLoading && (
-          <div className="bg-emerald-50 rounded-2xl p-5 border border-emerald-200 space-y-3 animate-in fade-in duration-300">
+          <div className="bg-emerald-50 rounded-2xl p-5 border border-emerald-200 space-y-4 animate-in fade-in duration-300">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0">
@@ -791,7 +875,7 @@ export default function GeneratorStudioPage() {
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-gray-300 text-xs font-bold text-gray-700 hover:bg-gray-50 transition-colors shadow-2xs"
                 >
                   <PenSquare className="w-3.5 h-3.5" />
-                  <span>Lihat di Dasbor Redaksi</span>
+                  <span>Dasbor Redaksi</span>
                 </Link>
                 <Link
                   href={`/admin/edit/${lastGenerated.id}`}
@@ -801,8 +885,9 @@ export default function GeneratorStudioPage() {
                 </Link>
                 {lastGenerated.status === 'published' && (
                   <a
-                    href={`/berita-teknologi/${lastGenerated.category.toLowerCase()}/${lastGenerated.id}/${lastGenerated.slug}`}
+                    href={`/berita-teknologi/${lastGenerated.category.toLowerCase().replace(/\s+/g, '-')}/${lastGenerated.id}/${lastGenerated.slug}`}
                     target="_blank"
+                    rel="noreferrer"
                     className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 transition-colors shadow-2xs"
                   >
                     <span>Lihat di Web</span>
@@ -817,37 +902,22 @@ export default function GeneratorStudioPage() {
               <div className="pt-3 border-t border-emerald-200/80">
                 <p className="text-xs font-bold text-emerald-950 flex items-center gap-1.5 mb-2">
                   <Globe className="w-3.5 h-3.5 text-emerald-700" />
-                  <span>Riset Google News Berhasil ({lastGenerated.researchSources.length} Berita Referensi Terkini Terintegrasi):</span>
+                  <span>
+                    Riset Google News Berhasil ({lastGenerated.researchSources.length} Berita Referensi Terkini Terintegrasi):
+                  </span>
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {lastGenerated.researchSources.map((item, idx) => (
                     <div
                       key={idx}
-                      className="inline-flex items-center gap-1.5 text-xs bg-white/90 border border-emerald-300 text-emerald-950 px-2.5 py-1 rounded-lg shadow-2xs font-medium"
+                      className="inline-flex items-center gap-1.5 bg-white/80 border border-emerald-200 px-2.5 py-1 rounded-md text-[11px] text-gray-700 max-w-sm"
+                      title={item.title}
                     >
-                      <span className="font-bold text-emerald-700">
-                        [{item.region === 'GLOBAL' ? 'Global: ' : ''}{item.source}]
-                      </span>
-                      <span className="truncate max-w-[280px] sm:max-w-[420px]">{item.title}</span>
+                      <span className="font-bold text-emerald-800">{item.source}</span>
+                      <span className="text-gray-300">•</span>
+                      <span className="truncate">{item.title}</span>
                     </div>
                   ))}
-                </div>
-              </div>
-            )}
-
-            {/* Advisory Similarity Info */}
-            {lastGenerated.similarityInfo?.hasSimilar && lastGenerated.similarityInfo.matchedArticle && (
-              <div className="pt-2">
-                <div className="p-3 bg-amber-50/90 rounded-xl border border-amber-200 text-amber-900 text-xs space-y-1">
-                  <div className="font-bold flex items-center gap-1.5 text-amber-800">
-                    <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
-                    <span>Informasi Kemiripan Topik ({Math.round(lastGenerated.similarityInfo.matchedArticle.score * 100)}%):</span>
-                  </div>
-                  <p className="text-[11px] text-amber-800/90 pl-5">
-                    Artikel ini memiliki kemiripan topik dengan berita terdahulu:{' '}
-                    <b>&quot;{lastGenerated.similarityInfo.matchedArticle.title}&quot;</b>.
-                    Status artikel Anda tetap tersimpan sebagai <b>{lastGenerated.status}</b> sesuai pilihan Anda. Anda dapat membuka editor untuk meninjau atau menyesuaikan sudut pandang jika diperlukan.
-                  </p>
                 </div>
               </div>
             )}
@@ -855,181 +925,189 @@ export default function GeneratorStudioPage() {
         )}
       </div>
 
-      {/* MONITORING / REAL DATABASE HISTORY LOGS TABLE */}
-      <div className="bg-white rounded-2xl sm:rounded-3xl border border-gray-200 shadow-sm overflow-hidden">
-        <div className="p-4 sm:p-6 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-          <div>
-            <h3 className="text-base sm:text-lg font-bold text-gray-900 font-heading">
-              Riwayat Perintah & Pemantau Kerja
-            </h3>
-            <p className="text-xs text-gray-500 mt-0.5">
-              Catatan riil dari database Neon DB seluruh artikel yang pernah digenerate oleh AI.
-            </p>
+      {/* 4. RIWAYAT HASIL GENERATE AI (DENGAN TABS FILTER, PENCARIAN & TABEL RAPI) */}
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+        {/* Header & Filter Tabs */}
+        <div className="p-4 sm:p-5 border-b border-gray-100 bg-gray-50/50 space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h3 className="text-sm sm:text-base font-bold text-gray-900 font-heading">
+                Riwayat Eksekusi AI ({logs.length})
+              </h3>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Daftar artikel yang telah digenerate oleh AI Studio di Naratif.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {logs.some((l) => l.status === 'failed') && (
+                <button
+                  type="button"
+                  onClick={handleClearFailed}
+                  disabled={isClearingFailed}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 text-xs font-bold transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>{isClearingFailed ? 'Membersihkan...' : 'Hapus Semua Gagal'}</span>
+                </button>
+              )}
+            </div>
           </div>
-          <div className="flex items-center gap-2 self-start sm:self-auto">
-            {logs.some((l) => l.status === 'failed') && (
+
+          {/* Tabs Filter Status & Search */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-1">
+            <div className="flex flex-wrap items-center gap-1.5">
               <button
                 type="button"
-                onClick={handleClearFailed}
-                disabled={isClearingFailed}
-                className="inline-flex items-center gap-1.5 text-xs font-bold text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg border border-red-200 transition-colors cursor-pointer"
+                onClick={() => setLogFilterStatus('all')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                  logFilterStatus === 'all'
+                    ? 'bg-gray-900 text-white'
+                    : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
+                }`}
               >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>{isClearingFailed ? 'Menghapus...' : 'Bersihkan Log Gagal'}</span>
+                Semua ({logs.length})
               </button>
-            )}
-            <span className="text-xs font-semibold text-gray-500 bg-gray-100 px-3 py-1.5 rounded-lg">
-              Total {logs.length} Catatan
-            </span>
+              <button
+                type="button"
+                onClick={() => setLogFilterStatus('published')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                  logFilterStatus === 'published'
+                    ? 'bg-emerald-600 text-white'
+                    : 'bg-white text-emerald-800 hover:bg-emerald-50 border border-emerald-300'
+                }`}
+              >
+                Terbit ({logs.filter((l) => l.status === 'published').length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setLogFilterStatus('draft')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                  logFilterStatus === 'draft'
+                    ? 'bg-amber-600 text-white'
+                    : 'bg-white text-amber-800 hover:bg-amber-50 border border-amber-300'
+                }`}
+              >
+                Draf ({logs.filter((l) => l.status === 'draft').length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setLogFilterStatus('failed')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                  logFilterStatus === 'failed'
+                    ? 'bg-red-600 text-white'
+                    : 'bg-white text-red-800 hover:bg-red-50 border border-red-300'
+                }`}
+              >
+                Gagal ({logs.filter((l) => l.status === 'failed').length})
+              </button>
+            </div>
+
+            {/* Search Input */}
+            <div className="relative min-w-[220px]">
+              <Search className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="text"
+                value={logSearchQuery}
+                onChange={(e) => setLogSearchQuery(e.target.value)}
+                placeholder="Cari topik atau judul..."
+                className="w-full bg-white rounded-lg border border-gray-200 pl-8 pr-3 py-1.5 text-xs text-gray-900 placeholder:text-gray-400 focus:border-indigo-600 outline-none"
+              />
+            </div>
           </div>
         </div>
 
-        {logs.length === 0 ? (
-          <div className="p-8 sm:p-12 text-center text-gray-400 text-xs sm:text-sm">
-            Belum ada riwayat pembuatan berita. Coba perintahkan AI di atas untuk membuat berita pertama Anda!
+        {/* Table / List */}
+        {filteredLogs.length === 0 ? (
+          <div className="p-8 text-center text-xs text-gray-500">
+            Tidak ada riwayat hasil AI untuk filter yang dipilih.
           </div>
         ) : (
-          <>
-            {/* 1. MOBILE CARD LIST VIEW (TAMPIL HANYA DI HP / LAYAR KECIL) */}
-            <div className="block md:hidden divide-y divide-gray-100">
-              {logs.map((log) => (
-                <div key={log.id} className="p-4 space-y-2.5 hover:bg-gray-50/60 transition-colors">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-[11px] text-gray-500 flex items-center gap-1">
-                      <Clock className="w-3 h-3 text-gray-400" />
-                      {formatLogDate(log.createdAt)}
-                    </span>
-                    {log.status === 'published' ? (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800">
-                        <CheckCircle2 className="w-3 h-3" /> Published
-                      </span>
-                    ) : log.status === 'scheduled' ? (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-100 text-blue-800">
-                        <Clock className="w-3 h-3" /> Terjadwal
-                      </span>
-                    ) : log.status === 'draft' ? (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800">
-                        <PenSquare className="w-3 h-3" /> Draft
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-red-100 text-red-800">
-                        <AlertCircle className="w-3 h-3" /> Gagal
-                      </span>
-                    )}
-                  </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm text-gray-600">
+              <thead className="bg-gray-50/75 border-b border-gray-200 text-[11px] font-bold text-gray-700 uppercase tracking-wider">
+                <tr>
+                  <th className="px-5 py-3">Waktu</th>
+                  <th className="px-5 py-3">Topik / Prompt</th>
+                  <th className="px-5 py-3">Judul Artikel Dihasilkan</th>
+                  <th className="px-5 py-3">Kategori</th>
+                  <th className="px-5 py-3">Status</th>
+                  <th className="px-5 py-3">Durasi</th>
+                  <th className="px-5 py-3 text-right">Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {filteredLogs.map((log) => {
+                  const isPub = log.status === 'published';
+                  const isDrf = log.status === 'draft';
+                  const isFail = log.status === 'failed';
 
-                  <div>
-                    <h4 className="text-sm font-bold text-gray-900 line-clamp-2 leading-snug">
-                      {log.articleTitle || log.errorMessage || '-'}
-                    </h4>
-                    <p className="text-xs text-gray-500 line-clamp-1 mt-1">
-                      Instruksi: {log.prompt}
-                    </p>
-                  </div>
-
-                  <div className="flex items-center justify-between pt-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-semibold bg-gray-100 text-gray-700 px-2 py-0.5 rounded-md">
-                        {log.category}
-                      </span>
-                      <span className="text-[10px] text-gray-400">
-                        {log.durationMs ? `${(log.durationMs / 1000).toFixed(1)}s` : '-'}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      {log.articleId && (
-                        <Link
-                          href={`/admin/edit/${log.articleId}`}
-                          className="text-xs font-semibold text-gray-700 hover:text-indigo-600 bg-gray-100 hover:bg-gray-200 px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1"
-                        >
-                          <PenSquare className="w-3 h-3" />
-                          Edit
-                        </Link>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteLog(log.id)}
-                        disabled={deletingId === log.id}
-                        title="Hapus riwayat ini"
-                        className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer disabled:opacity-50"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* 2. DESKTOP TABLE VIEW (TAMPIL DI LAYAR TABLET & DESKTOP) */}
-            <div className="hidden md:block overflow-x-auto">
-              <table className="w-full text-left text-sm text-gray-600">
-                <thead className="bg-gray-50/75 border-b border-gray-200 text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                  <tr>
-                    <th className="px-6 py-4">Waktu</th>
-                    <th className="px-6 py-4">Topik / Instruksi</th>
-                    <th className="px-6 py-4">Judul Artikel Dihasilkan</th>
-                    <th className="px-6 py-4">Kategori</th>
-                    <th className="px-6 py-4">Status</th>
-                    <th className="px-6 py-4">Durasi</th>
-                    <th className="px-6 py-4 text-right">Aksi</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {logs.map((log) => (
+                  return (
                     <tr key={log.id} className="hover:bg-gray-50/60 transition-colors">
-                      <td className="px-6 py-4 whitespace-nowrap text-xs text-gray-500">
+                      <td className="px-5 py-3.5 whitespace-nowrap text-xs text-gray-500">
                         <div className="flex items-center gap-1.5">
-                          <Clock className="w-3.5 h-3.5 text-gray-400" />
+                          <Clock className="w-3 h-3 text-gray-400" />
                           <span>{formatLogDate(log.createdAt)}</span>
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-xs font-medium text-gray-800 max-w-xs">
+
+                      <td className="px-5 py-3.5 text-xs font-medium text-gray-800 max-w-xs">
                         <span className="line-clamp-2">{log.prompt}</span>
                       </td>
-                      <td className="px-6 py-4 text-xs font-bold text-gray-900 max-w-sm">
-                        <span className="line-clamp-2">
-                          {log.articleTitle || log.errorMessage || '-'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-[11px] font-semibold bg-gray-100 text-gray-700 px-2.5 py-1 rounded-md">
-                          {log.category}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {log.status === 'published' ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">
-                            <CheckCircle2 className="w-3 h-3" /> Published
-                          </span>
-                        ) : log.status === 'scheduled' ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-800">
-                            <Clock className="w-3 h-3" /> Terjadwal
-                          </span>
-                        ) : log.status === 'draft' ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800">
-                            <PenSquare className="w-3 h-3" /> Draft
-                          </span>
+
+                      <td className="px-5 py-3.5 text-xs font-bold text-gray-900 max-w-sm">
+                        {log.articleId ? (
+                          <Link
+                            href={`/admin/edit/${log.articleId}`}
+                            className="hover:text-indigo-600 transition-colors line-clamp-2"
+                          >
+                            {log.articleTitle || 'Tanpa Judul'}
+                          </Link>
                         ) : (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-800">
-                            <AlertCircle className="w-3 h-3" /> Gagal
+                          <span className="line-clamp-2 text-red-600">
+                            {log.errorMessage || 'Gagal'}
                           </span>
                         )}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-xs text-gray-500">
+
+                      <td className="px-5 py-3.5 whitespace-nowrap">
+                        <span className="text-[10px] font-bold bg-gray-100 text-gray-700 px-2 py-0.5 rounded">
+                          {log.category}
+                        </span>
+                      </td>
+
+                      <td className="px-5 py-3.5 whitespace-nowrap">
+                        <span
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${
+                            isPub
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : isDrf
+                              ? 'bg-amber-100 text-amber-900'
+                              : 'bg-red-100 text-red-800'
+                          }`}
+                        >
+                          {isPub && <CheckCircle2 className="w-2.5 h-2.5" />}
+                          {isDrf && <PenSquare className="w-2.5 h-2.5" />}
+                          {isFail && <AlertCircle className="w-2.5 h-2.5" />}
+                          <span>{log.status}</span>
+                        </span>
+                      </td>
+
+                      <td className="px-5 py-3.5 whitespace-nowrap text-xs text-gray-500">
                         {log.durationMs ? `${(log.durationMs / 1000).toFixed(1)}s` : '-'}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          {log.articleId ? (
+
+                      <td className="px-5 py-3.5 whitespace-nowrap text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          {log.articleId && (
                             <Link
                               href={`/admin/edit/${log.articleId}`}
-                              className="text-xs font-semibold text-gray-700 hover:text-indigo-600 bg-gray-100 hover:bg-gray-200 px-2.5 py-1.5 rounded-lg transition-colors"
+                              className="p-1.5 rounded-lg text-gray-400 hover:text-gray-900 hover:bg-gray-100 transition-colors"
+                              title="Edit Artikel"
                             >
-                              Edit
+                              <Settings className="w-3.5 h-3.5" />
                             </Link>
-                          ) : null}
+                          )}
                           <button
                             type="button"
                             onClick={() => handleDeleteLog(log.id)}
@@ -1042,11 +1120,11 @@ export default function GeneratorStudioPage() {
                         </div>
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>
