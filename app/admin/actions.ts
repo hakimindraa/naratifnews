@@ -181,10 +181,17 @@ export async function updateArticle(id: number, formData: FormData) {
     const title = formData.get('title') as string;
     const slug = formData.get('slug') as string;
     const category = formData.get('category') as string;
+    const author = (formData.get('author') as string || 'Redaksi').trim();
     const excerpt = formData.get('excerpt') as string;
     const coverUrl = formData.get('coverUrl') as string;
+    const coverCaption = (formData.get('coverCaption') as string || '').trim();
+    const tagsStr = (formData.get('tags') as string || '').trim();
     const publishAtStr = formData.get('publishAt') as string;
     const content = formData.get('content') as string;
+
+    const tags = tagsStr 
+      ? tagsStr.split(',').map(t => t.trim().replace(/^#/, '')).filter(t => t.length > 0)
+      : [];
 
     // Ganti 'T' menjadi spasi dan tambahkan UTC+7 (WIB) agar tidak dianggap UTC oleh server Vercel
     const safePublishAtStr = publishAtStr ? publishAtStr.replace('T', ' ') + '+07:00' : '';
@@ -207,6 +214,9 @@ export async function updateArticle(id: number, formData: FormData) {
         title,
         slug,
         category,
+        author: author || 'Redaksi',
+        coverCaption,
+        tags,
         excerpt,
         coverUrl,
         content,
@@ -224,6 +234,7 @@ export async function updateArticle(id: number, formData: FormData) {
     }
 
     revalidatePath('/', 'layout');
+    revalidatePath('/admin');
     return { success: true };
   } catch (error) {
     return { error: 'Gagal mengupdate artikel' };
