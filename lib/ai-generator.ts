@@ -53,7 +53,8 @@ function extractKeywords(prompt: string, category = 'AI'): { localQuery: string;
     'tentang', 'terkait', 'bagaimana', 'perkembangan', 'terkini', 'terbaru', 'mutakhir',
     'generasi', 'baru', 'inovasi', 'industri', 'masyarakat', 'berdasarkan', 'riset',
     'data', 'faktual', 'fakta', 'saat', 'ini', 'dan', 'yang', 'di', 'dari', 'ke', 'untuk',
-    'dengan', 'pada', 'serta', 'bagi', 'para', 'adopsi', 'standar', 'ekosistem', 'tren'
+    'dengan', 'pada', 'serta', 'bagi', 'para', 'adopsi', 'standar', 'ekosistem', 'tren',
+    'pengaruhnya', 'terhadap', 'pasar', 'laporan', 'rilis', 'era', 'digital', 'dunia'
   ]);
 
   const words = prompt
@@ -63,21 +64,55 @@ function extractKeywords(prompt: string, category = 'AI'): { localQuery: string;
     .filter((w) => w.length > 2 && !stopWords.has(w));
 
   const uniqueWords = Array.from(new Set(words));
-  const keywordSlice = uniqueWords.slice(0, 4).join(' ');
 
-  const categoryTerms: Record<string, { id: string; en: string }> = {
-    ai: { id: 'AI kecerdasan buatan', en: 'Artificial Intelligence AI' },
-    software: { id: 'software teknologi aplikasi', en: 'software engineering tools' },
-    hardware: { id: 'semikonduktor chipset hardware', en: 'semiconductor hardware chips' },
-    infrastruktur: { id: 'data center cloud keamanan siber', en: 'cloud data center cybersecurity' },
-    gadget: { id: 'smartphone gadget teknologi', en: 'smartphone consumer tech gadget' },
-    regional: { id: 'berita daerah pemda kebijakan daerah peristiwa', en: 'regional local government news' },
+  const categoryTerms: Record<string, { id: string[]; en: string[] }> = {
+    ai: {
+      id: ['AI kecerdasan buatan', 'model AI OpenAI Google', 'kecerdasan buatan terapan', 'AI agent inovasi'],
+      en: ['Artificial Intelligence AI', 'LLM AI models', 'generative AI tech', 'AI agents technology'],
+    },
+    software: {
+      id: ['software teknologi aplikasi', 'rekayasa perangkat lunak', 'developer open source cloud', 'framework bahasa pemrograman'],
+      en: ['software engineering tools', 'developer tech framework', 'open source software', 'cloud native app'],
+    },
+    hardware: {
+      id: ['semikonduktor chipset hardware', 'prosesor GPU komputasi', 'arsitektur semikonduktor chip', 'fabrikasi silikon hardware'],
+      en: ['semiconductor hardware chips', 'processor GPU computing', 'chip architecture technology', 'silicon hardware tech'],
+    },
+    infrastruktur: {
+      id: ['data center cloud keamanan siber', 'infrastruktur komputasi awan', 'jaringan server telekomunikasi', 'keamanan siber data breach'],
+      en: ['cloud data center cybersecurity', 'cloud infrastructure computing', 'network telecom servers', 'cybersecurity technology'],
+    },
+    gadget: {
+      id: ['smartphone gadget teknologi', 'HP terbaru kamera baterai', 'perangkat wearable tablet pintar', 'gadget consumer tech'],
+      en: ['smartphone consumer tech gadget', 'flagship smartphone review', 'wearable smart devices', 'mobile consumer electronics'],
+    },
+    regional: {
+      id: ['berita daerah pemda kebijakan daerah', 'pelayanan publik dinas daerah', 'infrastruktur daerah peristiwa kota', 'kebijakan pemprov pemkot'],
+      en: ['regional local government news', 'regional public policy', 'smart city local initiative', 'regional public service'],
+    },
   };
 
-  const defaultTerms = categoryTerms[category.toLowerCase()] || { id: 'teknologi terkini', en: 'technology news' };
+  const catKey = category.toLowerCase();
+  const defaultTerms = categoryTerms[catKey] || {
+    id: ['teknologi terkini', 'inovasi teknologi digital'],
+    en: ['technology news', 'digital innovation tech'],
+  };
 
-  const localQuery = keywordSlice ? `${keywordSlice} ${defaultTerms.id.split(' ')[0]}`.trim() : defaultTerms.id;
-  const globalQuery = keywordSlice ? `${keywordSlice} tech`.trim() : defaultTerms.en;
+  // Pilih variasi istilah kategori secara acak agar query dinamis jika prompt berupa preset umum
+  const randomIdTerm = defaultTerms.id[Math.floor(Math.random() * defaultTerms.id.length)];
+  const randomEnTerm = defaultTerms.en[Math.floor(Math.random() * defaultTerms.en.length)];
+
+  // Jika kata kunci unik banyak (misal prompt panjang/preset), kita pilih 2-3 kata dengan offset bervariasi
+  let keywordSlice = '';
+  if (uniqueWords.length > 4) {
+    const offset = Math.floor(Math.random() * Math.max(1, uniqueWords.length - 2));
+    keywordSlice = uniqueWords.slice(offset, offset + 3).join(' ');
+  } else if (uniqueWords.length > 0) {
+    keywordSlice = uniqueWords.join(' ');
+  }
+
+  const localQuery = keywordSlice ? `${keywordSlice} ${randomIdTerm.split(' ')[0]}`.trim() : randomIdTerm;
+  const globalQuery = keywordSlice ? `${keywordSlice} tech`.trim() : randomEnTerm;
 
   return {
     localQuery: localQuery.slice(0, 60),
@@ -85,7 +120,7 @@ function extractKeywords(prompt: string, category = 'AI'): { localQuery: string;
   };
 }
 
-async function fetchFromRssUrl(url: string, region: 'ID' | 'GLOBAL', maxItems = 3): Promise<NewsSource[]> {
+async function fetchFromRssUrl(url: string, region: 'ID' | 'GLOBAL', maxItems = 4): Promise<NewsSource[]> {
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 6000);
@@ -142,13 +177,14 @@ export async function fetchGoogleNewsResearch(
   try {
     const { localQuery, globalQuery } = extractKeywords(query, category);
 
-    const localUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(localQuery)}&hl=id&gl=ID&ceid=ID:id`;
-    const globalUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(globalQuery)}&hl=en-US&gl=US&ceid=US:en`;
+    // Filter Waktu 24 Jam Terakhir (when:1d) untuk menjamin berita yang didapat adalah peristiwa terkini hari ini
+    const localUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(localQuery + ' when:1d')}&hl=id&gl=ID&ceid=ID:id`;
+    const globalUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(globalQuery + ' when:1d')}&hl=en-US&gl=US&ceid=US:en`;
 
     // Eksekusi paralel 2 jalur (Lokal Indonesia & Global Dunia)
     const [localResult, globalResult] = await Promise.allSettled([
-      fetchFromRssUrl(localUrl, 'ID', 3),
-      fetchFromRssUrl(globalUrl, 'GLOBAL', 3),
+      fetchFromRssUrl(localUrl, 'ID', 4),
+      fetchFromRssUrl(globalUrl, 'GLOBAL', 4),
     ]);
 
     const localSources = localResult.status === 'fulfilled' ? localResult.value : [];
@@ -156,24 +192,73 @@ export async function fetchGoogleNewsResearch(
 
     let combined = [...localSources, ...globalSources];
 
-    // Fallback jika hasil query spesifik kosong: cari berdasarkan topik umum kategori
+    // Fallback jika hasil query spesifik 1 hari terakhir kosong: cari rentang 2 hari (when:2d)
     if (combined.length < 2) {
-      const fallbackUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(category + ' teknologi')}&hl=id&gl=ID&ceid=ID:id`;
-      const fallbackItems = await fetchFromRssUrl(fallbackUrl, 'ID', 3);
+      const fallbackUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(localQuery + ' when:2d')}&hl=id&gl=ID&ceid=ID:id`;
+      const fallbackItems = await fetchFromRssUrl(fallbackUrl, 'ID', 4);
       combined = [...combined, ...fallbackItems];
     }
 
-    // Filter judul duplikat
+    // Fallback jika masih minim: gunakan kata kunci kategori dalam 2 hari terakhir
+    if (combined.length < 2) {
+      const fallbackCatUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(category + ' teknologi when:2d')}&hl=id&gl=ID&ceid=ID:id`;
+      const fallbackCatItems = await fetchFromRssUrl(fallbackCatUrl, 'ID', 4);
+      combined = [...combined, ...fallbackCatItems];
+    }
+
+    // Ambil riwayat judul artikel yang sudah pernah ada di database agar tidak meliput berita yang sudah pernah ditulis
+    let recentDbTitles: string[] = [];
+    try {
+      const recentRows = await db
+        .select({ title: articles.title })
+        .from(articles)
+        .orderBy(desc(articles.id))
+        .limit(40);
+      recentDbTitles = recentRows.map((r) => r.title.toLowerCase());
+    } catch {
+      // Abaikan jika query database gagal
+    }
+
+    // Filter judul duplikat di antara hasil riset DAN terhadap artikel yang sudah ada di database
     const seenTitles = new Set<string>();
     const uniqueSources: NewsSource[] = [];
 
     for (const item of combined) {
       const simplifiedTitle = item.title.slice(0, 35).toLowerCase();
-      if (!seenTitles.has(simplifiedTitle)) {
-        seenTitles.add(simplifiedTitle);
-        uniqueSources.push(item);
+      if (seenTitles.has(simplifiedTitle)) continue;
+
+      // Cek apakah topik berita ini sudah pernah dibuat artikelnya di Naratif
+      const isAlreadyInDb = recentDbTitles.some((dbTitle) => {
+        const itemWords = item.title
+          .toLowerCase()
+          .replace(/[^a-z0-9]/g, ' ')
+          .split(/\s+/)
+          .filter((w) => w.length > 3);
+        if (itemWords.length === 0) return false;
+        const matchWords = itemWords.filter((w) => dbTitle.includes(w));
+        return matchWords.length / itemWords.length >= 0.55;
+      });
+
+      if (isAlreadyInDb) {
+        // Berita ini sudah pernah ditulis di portal Naratif, lewati agar AI mendapat topik yang benar-benar baru
+        continue;
       }
+
+      seenTitles.add(simplifiedTitle);
+      uniqueSources.push(item);
       if (uniqueSources.length >= maxItems) break;
+    }
+
+    // Jika seluruh hasil tersaring habis (misal semua berita top sudah ditulis), gunakan berita combined agar AI tetap memiliki referensi
+    if (uniqueSources.length === 0 && combined.length > 0) {
+      for (const item of combined) {
+        const simplifiedTitle = item.title.slice(0, 35).toLowerCase();
+        if (!seenTitles.has(simplifiedTitle)) {
+          seenTitles.add(simplifiedTitle);
+          uniqueSources.push(item);
+        }
+        if (uniqueSources.length >= maxItems) break;
+      }
     }
 
     return uniqueSources;
@@ -411,12 +496,9 @@ export interface InternalLinkCandidate {
 }
 
 /**
- * Mengambil 20 artikel terakhir dari database untuk memori anti-duplikasi dan smart internal linking
+ * Mengambil kandidat artikel terbaru untuk Smart Internal Linking ("Baca Juga") otomatis pasca-generasi
  */
-async function getRecentArticlesForInternalLinking(limit = 20): Promise<{
-  memoryText: string;
-  candidates: InternalLinkCandidate[];
-}> {
+async function getInternalLinkCandidates(limit = 15): Promise<InternalLinkCandidate[]> {
   try {
     const rows = await db
       .select({
@@ -424,58 +506,25 @@ async function getRecentArticlesForInternalLinking(limit = 20): Promise<{
         title: articles.title,
         slug: articles.slug,
         category: articles.category,
-        publishedAt: articles.publishedAt,
-        createdAt: articles.createdAt,
       })
       .from(articles)
       .orderBy(desc(articles.id))
       .limit(limit);
 
     if (!rows || rows.length === 0) {
-      return { memoryText: '', candidates: [] };
+      return [];
     }
 
-    const candidates: InternalLinkCandidate[] = rows.map((r) => ({
+    return rows.map((r) => ({
       id: r.id,
       title: r.title,
       slug: r.slug,
       category: r.category,
       url: `/berita-teknologi/${r.category.toLowerCase().replace(/\s+/g, '-')}/${r.id}/${r.slug}`,
     }));
-
-    const antiDupList = rows
-      .map((r, i) => {
-        const d = r.publishedAt ? new Date(r.publishedAt) : new Date(r.createdAt);
-        const dateStr = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
-        return `${i + 1}. [${r.category}] "${r.title}" (${dateStr})`;
-      })
-      .join('\n');
-
-    const internalLinksList = candidates
-      .slice(0, 10)
-      .map((c, i) => `${i + 1}. [${c.category}] Judul: "${c.title}" -> URL: ${c.url}`)
-      .join('\n');
-
-    const memoryText = `\n\nARSIP 20 BERITA TERBARU DI PORTAL NARATIF (MEMORI REDAKSI & TAUTAN INTERNAL):
-${antiDupList}
-
-DAFTAR ARTIKEL PILIHAN UNTUK INTERNAL LINKING ("BACA JUGA"):
-${internalLinksList}
-
-PANDUAN ANTI-DUPLIKASI REDAKSI:
-- JANGAN PERNAH mengulang fakta, peristiwa, atau topik yang sudah dibahas pada daftar berita di atas!
-- Jika topik yang diminta berkaitan dengan salah satu berita di atas, kamu WAJIB menulisnya sebagai 'LIPUTAN KELANJUTAN' (Follow-up / Perkembangan Terbaru / Dampak Baru) dengan sudut pandang yang berbeda, BUKAN mengulang isi berita lama.
-
-PANDUAN SMART INTERNAL LINKING ("BACA JUGA"):
-- Anda WAJIB menyisipkan 1 atau 2 tautan internal "Baca Juga" di tengah artikel (antara paragraf ke-3 sampai paragraf ke-5).
-- Format penulisan WAJIB tepat seperti ini:
-> **Baca Juga:** [Judul Artikel yang Dipilih](url_artikel_yang_dipilih)
-- Pilih artikel dari daftar di atas yang paling relevan, ATAU artikel menarik mana saja dari daftar di atas (semua artikel boleh ditautkan).`;
-
-    return { memoryText, candidates };
   } catch (err) {
-    console.warn('Gagal memuat memori artikel terdahulu:', err);
-    return { memoryText: '', candidates: [] };
+    console.warn('Gagal memuat kandidat internal link:', err);
+    return [];
   }
 }
 
@@ -537,9 +586,8 @@ export async function requestArticleFromModelRouter(
     researchSources = await fetchGoogleNewsResearch(options.prompt, 6, targetCategory);
   }
 
-  // 1.1 Ambil 20 artikel terbaru dari database secara dinamis sebagai Memori Anti-Duplikasi & Smart Internal Linking
-  const { memoryText: memoryContext, candidates: internalCandidates } =
-    await getRecentArticlesForInternalLinking(20);
+  // 1.1 Ambil kandidat artikel terbaru untuk Smart Internal Linking ("Baca Juga") otomatis pasca-generasi
+  const internalCandidates = await getInternalLinkCandidates(15);
 
   let baseUrl = '';
   let apiKey = '';
@@ -614,7 +662,6 @@ PANDUAN PEMANFAATAN RISET:
   const userPrompt = `Buatkan artikel berita teknologi profesional tentang topik berikut:
 "${options.prompt}"
 ${newsContext}
-${memoryContext}
 Target Kategori yang diutamakan: ${targetCategory}
 Panjang artikel: ${wordCountTarget}
 
@@ -766,9 +813,8 @@ export async function requestSadurArticleFromSource(
     throw new Error(`API Key untuk ${provider} belum disetel di Environment Variables`);
   }
 
-  // Ambil 20 artikel terbaru dari database secara dinamis sebagai Memori Anti-Duplikasi & Smart Internal Linking
-  const { memoryText: memoryContext, candidates: internalCandidates } =
-    await getRecentArticlesForInternalLinking(20);
+  // Ambil kandidat artikel terbaru untuk Smart Internal Linking ("Baca Juga") otomatis pasca-generasi
+  const internalCandidates = await getInternalLinkCandidates(15);
 
   baseUrl = baseUrl.replace(/\/+$/, '');
   const endpoint = `${baseUrl}/chat/completions`;
@@ -811,7 +857,6 @@ ISI TEKS SUMBER:
 """
 ${options.sourceContent}
 """
-${memoryContext}
 
 Target Kategori yang diutamakan: ${targetCategory}
 Panjang artikel target: ${wordCountTarget}
