@@ -88,15 +88,21 @@ export async function GET(request: Request) {
       chosenNewsItem = newsSources[0];
     }
 
+    const isRegionalCategory = selectedCategory.toLowerCase() === 'regional';
     const topicPrompt = chosenNewsItem
-      ? `Liput dan analisis perkembangan berita terkini: "${chosenNewsItem.title}". Berikan analisis mendalam mengenai latar belakang, dampak bagi ekosistem industri teknologi, serta relevansinya bagi Indonesia dan dunia.`
-      : `Bahas tren teknologi terkini dan kemajuan inovasi di bidang ${selectedCategory} serta pengaruhnya terhadap perkembangan industri digital saat ini.`;
+      ? (isRegionalCategory
+          ? `Liput dan analisis perkembangan berita daerah terkini: "${chosenNewsItem.title}". Berikan laporan mendalam mengenai kebijakan pemerintah daerah, pelayanan fasilitas publik, dan dampaknya bagi masyarakat setempat.`
+          : `Liput dan analisis perkembangan berita terkini: "${chosenNewsItem.title}". Berikan analisis mendalam mengenai latar belakang, dampak bagi ekosistem industri teknologi, serta relevansinya bagi Indonesia dan dunia.`)
+      : (isRegionalCategory
+          ? `Bahas isu kebijakan pemerintah daerah, pelayanan publik, atau dinamika sosial masyarakat terkini di daerah berdasarkan fakta dan laporan terkini.`
+          : `Bahas tren teknologi terkini dan kemajuan inovasi di bidang ${selectedCategory} serta pengaruhnya terhadap perkembangan industri digital saat ini.`);
 
     // 6. Racik Naskah Berita menggunakan AI Engine
     const startTime = performance.now();
     const draftArticle = await requestArticleFromModelRouter({
       prompt: topicPrompt,
       category: selectedCategory,
+      region: isRegionalCategory ? 'Umum' : undefined,
       length: articleLength,
       provider: provider,
       enableWebSearch: true,

@@ -10,6 +10,7 @@ import { desc, eq } from 'drizzle-orm';
 export interface GeneratePayload {
   prompt: string;
   category: string;
+  region?: string;
   coverUrl?: string;
   status: 'published' | 'draft';
   length: 'standar' | 'mendalam';
@@ -29,6 +30,7 @@ export async function generateArticleAction(payload: GeneratePayload) {
     const draft = await requestArticleFromModelRouter({
       prompt: payload.prompt,
       category: payload.category,
+      region: payload.region,
       length: payload.length,
       provider: payload.provider || 'gemini',
       enableWebSearch: payload.enableWebSearch !== false,

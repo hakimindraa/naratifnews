@@ -9,6 +9,7 @@ import { cookies } from 'next/headers';
 import { encrypt } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { notifySearchEngines } from '@/lib/indexing';
+import { sendTelegramMessage } from '@/lib/telegram';
 
 export async function uploadMarkdownFile(formData: FormData) {
   try {
@@ -227,10 +228,32 @@ export async function updateArticle(id: number, formData: FormData) {
       })
       .where(eq(articles.id, id));
 
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.naratif.web.id';
+    const articleUrl = `${siteUrl}/berita-teknologi/${(category || 'software').toLowerCase()}/${id}/${slug}`;
+
     if (status === 'published') {
-      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.naratif.web.id';
-      const articleUrl = `${siteUrl}/berita-teknologi/${(category || 'software').toLowerCase()}/${id}/${slug}`;
       notifySearchEngines(articleUrl).catch((err) => console.warn('Update Article Indexing Error:', err));
+    }
+
+    // Kirim notifikasi Telegram ke Admin jika disetel (Fitur C)
+    const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID;
+    if (adminChatId) {
+      const statusLabel = status === 'published' ? '🚀 Terbit' : status === 'scheduled' ? '⏳ Terjadwal' : '📝 Draf';
+      const notifText = `🔔 <b>ARTIKEL DIPERBARUI DI WEB ADMIN</b>
+━━━━━━━━━━━━━━━━━━━━
+📰 <b>${title}</b>
+📂 Kategori: <b>${category}</b>
+✍️ Penulis: <b>${author || 'Redaksi'}</b>
+📊 Status: <b>${statusLabel}</b>
+━━━━━━━━━━━━━━━━━━━━
+<i>Perubahan artikel berhasil disimpan ke database Neon DB.</i>`;
+
+      sendTelegramMessage(adminChatId, notifText, {
+        inlineKeyboard: [
+          [{ text: '🌐 Buka di Website', url: articleUrl }],
+          [{ text: '✏️ Buka Editor Web', url: `${siteUrl}/admin/edit/${id}` }],
+        ],
+      }).catch((tgErr) => console.warn('Telegram update notif error:', tgErr));
     }
 
     revalidatePath('/', 'layout');

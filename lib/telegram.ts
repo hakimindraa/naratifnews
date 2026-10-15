@@ -121,3 +121,88 @@ export async function answerCallbackQuery(
     return { success: false, error: err.message };
   }
 }
+
+export async function editTelegramMessage(
+  chatId: number | string,
+  messageId: number,
+  text: string,
+  options: SendMessageOptions = {}
+): Promise<{ success: boolean; data?: any; error?: string }> {
+  const token = getTelegramToken();
+  if (!token) {
+    return { success: false, error: 'TELEGRAM_BOT_TOKEN belum disetel.' };
+  }
+
+  try {
+    const payload: any = {
+      chat_id: chatId,
+      message_id: messageId,
+      text: text,
+      parse_mode: options.parseMode || 'HTML',
+      disable_web_page_preview: options.disableWebPagePreview ?? false,
+    };
+
+    if (options.inlineKeyboard) {
+      payload.reply_markup = {
+        inline_keyboard: options.inlineKeyboard,
+      };
+    }
+
+    const res = await fetch(`https://api.telegram.org/bot${token}/editMessageText`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await res.json();
+    if (!data.ok) {
+      // Jika pesan sama persis, Telegram mengembalikan error "message is not modified"
+      if (data.description && data.description.includes('message is not modified')) {
+        return { success: true, data };
+      }
+      return { success: false, error: data.description || 'Gagal mengubah pesan Telegram.' };
+    }
+
+    return { success: true, data };
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Kesalahan jaringan saat mengubah pesan Telegram.' };
+  }
+}
+
+export async function deleteTelegramMessage(
+  chatId: number | string,
+  messageId: number
+): Promise<{ success: boolean; data?: any; error?: string }> {
+  const token = getTelegramToken();
+  if (!token) return { success: false, error: 'TELEGRAM_BOT_TOKEN belum disetel.' };
+
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${token}/deleteMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: chatId,
+        message_id: messageId,
+      }),
+    });
+    const data = await res.json();
+    return { success: data.ok, data, error: data.ok ? undefined : data.description };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function setTelegramCommands(
+  commands: { command: string; description: string }[]
+): Promise<any> {
+  const token = getTelegramToken();
+  if (!token) throw new Error('TELEGRAM_BOT_TOKEN belum disetel.');
+
+  const res = await fetch(`https://api.telegram.org/bot${token}/setMyCommands`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ commands }),
+  });
+  return await res.json();
+}
+

@@ -27,6 +27,7 @@ import {
   Wand2,
   Settings,
   Building2,
+  MapPin,
 } from 'lucide-react';
 import { generateArticleAction, getGenerationDataAction, deleteGenerationLogAction, clearFailedLogsAction } from './actions';
 import { getAISettings } from '../pengaturan/actions';
@@ -89,11 +90,44 @@ const PRESET_TOPICS = [
     category: 'Regional',
     prompt: 'Bahas isu kebijakan pemerintah daerah, pelayanan fasilitas publik, atau dinamika sosial masyarakat terkini di daerah berdasarkan fakta dan laporan terkini.',
   },
+  {
+    icon: MapPin,
+    label: 'Infrastruktur & Transportasi Daerah',
+    category: 'Regional',
+    prompt: 'Ulas perkembangan proyek infrastruktur, konektivitas transportasi daerah, atau penataan ruang kota yang berdampak langsung bagi mobilitas masyarakat setempat.',
+  },
+];
+
+const INDONESIA_REGIONS = [
+  'Umum',
+  'DKI Jakarta',
+  'Jawa Barat',
+  'Jawa Tengah',
+  'DI Yogyakarta',
+  'Jawa Timur',
+  'Banten',
+  'Bali',
+  'Sumatera Utara',
+  'Sumatera Barat',
+  'Riau',
+  'Kepulauan Riau',
+  'Sumatera Selatan',
+  'Lampung',
+  'Aceh',
+  'Kalimantan Timur',
+  'Kalimantan Barat',
+  'Kalimantan Selatan',
+  'Sulawesi Selatan',
+  'Sulawesi Utara',
+  'Nusa Tenggara Barat',
+  'Nusa Tenggara Timur',
+  'Papua',
 ];
 
 export default function GeneratorStudioPage() {
   const [prompt, setPrompt] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('AI');
+  const [selectedRegion, setSelectedRegion] = useState('Umum');
   const [selectedProvider, setSelectedProvider] = useState<'gemini' | 'groq' | '9router'>('gemini');
   const [active9RouterModel, setActive9RouterModel] = useState<string>('');
   const [enableWebSearch, setEnableWebSearch] = useState(true);
@@ -127,13 +161,19 @@ export default function GeneratorStudioPage() {
 
   const steps = enableWebSearch
     ? [
-        'Melakukan riset berita terkini via Google News Indonesia (100% Gratis)...',
+        selectedCategory === 'Regional'
+          ? `Melakukan riset berita ${selectedRegion !== 'Umum' ? selectedRegion : 'daerah'} via Google News Indonesia (100% Berita Lokal)...`
+          : 'Melakukan riset berita terkini via Google News (Dual Engine)...',
         'Menganalisis temuan fakta & merumuskan sudut pandang jurnalistik...',
-        'Menghubungi AI Studio (Gemini) & menyusun naskah mendalam (Markdown)...',
+        selectedCategory === 'Regional'
+          ? 'Menghubungi AI Studio & menyusun naskah liputan daerah (Markdown)...'
+          : 'Menghubungi AI Studio (Gemini) & menyusun naskah mendalam (Markdown)...',
         'Memformat metadata, tags, dan menyimpan otomatis ke Neon DB...',
       ]
     : [
-        'Menganalisis instruksi topik & sudut pandang berita teknologi...',
+        selectedCategory === 'Regional'
+          ? 'Menganalisis instruksi topik & sudut pandang liputan daerah...'
+          : 'Menganalisis instruksi topik & sudut pandang berita teknologi...',
         'Menghubungi AI Studio (Gemini) & menyusun naskah mendalam (Markdown)...',
         'Memformat metadata, tags, dan keterangan gambar...',
         'Menyimpan otomatis ke database Neon DB Naratif...',
@@ -202,6 +242,7 @@ export default function GeneratorStudioPage() {
       const res = await generateArticleAction({
         prompt,
         category: selectedCategory,
+        region: selectedCategory === 'Regional' ? selectedRegion : undefined,
         coverUrl: coverUrl.trim() || undefined,
         status: publishStatus,
         length: articleLength,
@@ -440,7 +481,11 @@ export default function GeneratorStudioPage() {
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               disabled={isLoading}
-              placeholder="Contoh: Analisis perkembangan terbaru dan tren terhangat saat ini, sorot dampaknya bagi ekosistem industri dan masyarakat berdasarkan riset berita faktual terkini..."
+              placeholder={
+                selectedCategory === 'Regional'
+                  ? `Contoh: Bahas kebijakan Pemda ${selectedRegion !== 'Umum' ? selectedRegion : ''} terkait pelayanan publik, transportasi daerah, atau fasilitas warga berdasarkan fakta dan laporan terkini...`
+                  : 'Contoh: Analisis perkembangan terbaru dan tren terhangat saat ini, sorot dampaknya bagi ekosistem industri dan masyarakat berdasarkan riset berita faktual terkini...'
+              }
               className="w-full rounded-xl sm:rounded-2xl border border-gray-300 p-3.5 sm:p-4 text-xs sm:text-sm text-gray-900 placeholder:text-gray-400 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20 outline-none transition-all resize-none shadow-2xs"
             />
           </div>
@@ -543,6 +588,28 @@ export default function GeneratorStudioPage() {
                 <option value="Regional">Regional</option>
               </select>
             </div>
+
+            {/* Region / Wilayah Selector (Khusus Kategori Regional) */}
+            {selectedCategory === 'Regional' && (
+              <div className="flex items-center justify-between sm:justify-start gap-2 bg-emerald-50/90 px-3.5 py-2.5 rounded-xl border border-emerald-300 animate-in fade-in duration-200">
+                <div className="flex items-center gap-1.5 text-emerald-800">
+                  <MapPin className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span className="text-xs font-semibold">Wilayah:</span>
+                </div>
+                <select
+                  value={selectedRegion}
+                  onChange={(e) => setSelectedRegion(e.target.value)}
+                  disabled={isLoading}
+                  className="bg-transparent text-xs sm:text-sm font-bold text-emerald-950 outline-none cursor-pointer"
+                >
+                  {INDONESIA_REGIONS.map((r) => (
+                    <option key={r} value={r}>
+                      {r === 'Umum' ? 'Umum / Semua Wilayah' : r}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             {/* Target Status */}
             <div className="flex items-center justify-between sm:justify-start gap-2 bg-gray-50 px-3.5 py-2.5 rounded-xl border border-gray-200">
@@ -697,13 +764,19 @@ export default function GeneratorStudioPage() {
                   <CheckCircle2 className="w-5 h-5" />
                 </div>
                 <div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <span className="text-xs font-bold uppercase tracking-wider text-emerald-800">
                       Berita Berhasil Disimpan ke Neon DB!
                     </span>
                     <span className="text-[10px] font-semibold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded">
                       Durasi: {(lastGenerated.durationMs / 1000).toFixed(1)}s
                     </span>
+                    {lastGenerated.category === 'Regional' && (
+                      <span className="text-[10px] font-semibold bg-emerald-600 text-white px-2 py-0.5 rounded flex items-center gap-1">
+                        <MapPin className="w-3 h-3" />
+                        <span>{selectedRegion !== 'Umum' ? selectedRegion : 'Regional'}</span>
+                      </span>
+                    )}
                   </div>
                   <h4 className="text-sm sm:text-base font-bold text-gray-900 mt-0.5 line-clamp-1">
                     {lastGenerated.title}

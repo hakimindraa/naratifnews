@@ -28,6 +28,7 @@ export type AIProvider = 'gemini' | 'groq' | '9router';
 export interface GenerateArticleOptions {
   prompt: string;
   category?: string;
+  region?: string;
   length?: 'ringkas' | 'standar' | 'mendalam';
   provider?: AIProvider;
   enableWebSearch?: boolean;
@@ -47,7 +48,8 @@ function cleanHtml(html: string): string {
     .trim();
 }
 
-function extractKeywords(prompt: string, category = 'AI'): { localQuery: string; globalQuery: string } {
+function extractKeywords(prompt: string, category = 'AI', region?: string): { localQuery: string; globalQuery: string } {
+  const isRegional = category.toLowerCase() === 'regional';
   const stopWords = new Set([
     'bahas', 'ulas', 'sorot', 'analisis', 'buatkan', 'tuliskan', 'berita', 'mendalam',
     'tentang', 'terkait', 'bagaimana', 'perkembangan', 'terkini', 'terbaru', 'mutakhir',
@@ -65,6 +67,35 @@ function extractKeywords(prompt: string, category = 'AI'): { localQuery: string;
 
   const uniqueWords = Array.from(new Set(words));
 
+  // ISOLASI KATEGORI REGIONAL: Tidak mencampurkan kata kunci teknologi sama sekali
+  if (isRegional) {
+    const regionalTerms = [
+      'kebijakan pemprov pemda dinas',
+      'pelayanan publik fasilitas daerah',
+      'anggaran dinas proyek infrastruktur daerah',
+      'peristiwa warga tata kota daerah'
+    ];
+    const baseTerm = regionalTerms[Math.floor(Math.random() * regionalTerms.length)];
+    const cleanRegion = (region && region !== 'Umum' && !region.toLowerCase().includes('semua')) ? region.trim() : '';
+
+    const queryParts: string[] = [];
+    if (cleanRegion) {
+      queryParts.push(cleanRegion);
+    }
+    if (uniqueWords.length > 0) {
+      queryParts.push(uniqueWords.slice(0, 3).join(' '));
+    } else {
+      queryParts.push(baseTerm);
+    }
+
+    const localQuery = queryParts.join(' ').slice(0, 60);
+    return {
+      localQuery,
+      globalQuery: '', // Regional 100% berita Indonesia, tidak mencari ke media global US
+    };
+  }
+
+  // Kategori Teknologi (AI, Software, Hardware, Infrastruktur, Gadget)
   const categoryTerms: Record<string, { id: string[]; en: string[] }> = {
     ai: {
       id: ['AI kecerdasan buatan', 'model AI OpenAI Google', 'kecerdasan buatan terapan', 'AI agent inovasi'],
@@ -85,10 +116,6 @@ function extractKeywords(prompt: string, category = 'AI'): { localQuery: string;
     gadget: {
       id: ['smartphone gadget teknologi', 'HP terbaru kamera baterai', 'perangkat wearable tablet pintar', 'gadget consumer tech'],
       en: ['smartphone consumer tech gadget', 'flagship smartphone review', 'wearable smart devices', 'mobile consumer electronics'],
-    },
-    regional: {
-      id: ['berita daerah pemda kebijakan daerah', 'pelayanan publik dinas daerah', 'infrastruktur daerah peristiwa kota', 'kebijakan pemprov pemkot'],
-      en: ['regional local government news', 'regional public policy', 'smart city local initiative', 'regional public service'],
     },
   };
 
@@ -172,23 +199,31 @@ async function fetchFromRssUrl(url: string, region: 'ID' | 'GLOBAL', maxItems = 
 export async function fetchGoogleNewsResearch(
   query: string,
   maxItems = 6,
-  category = 'AI'
+  category = 'AI',
+  region?: string
 ): Promise<NewsSource[]> {
   try {
-    const { localQuery, globalQuery } = extractKeywords(query, category);
+    const isRegional = category.toLowerCase() === 'regional';
+    const { localQuery, globalQuery } = extractKeywords(query, category, region);
 
     // Filter Waktu 24 Jam Terakhir (when:1d) untuk menjamin berita yang didapat adalah peristiwa terkini hari ini
     const localUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(localQuery + ' when:1d')}&hl=id&gl=ID&ceid=ID:id`;
-    const globalUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(globalQuery + ' when:1d')}&hl=en-US&gl=US&ceid=US:en`;
 
-    // Eksekusi paralel 2 jalur (Lokal Indonesia & Global Dunia)
-    const [localResult, globalResult] = await Promise.allSettled([
-      fetchFromRssUrl(localUrl, 'ID', 4),
-      fetchFromRssUrl(globalUrl, 'GLOBAL', 4),
-    ]);
+    // Eksekusi: Khusus Regional hanya mencari di Google News Indonesia (Media Nasional & Lokal), TIDAK ke Global US
+    let localSources: NewsSource[] = [];
+    let globalSources: NewsSource[] = [];
 
-    const localSources = localResult.status === 'fulfilled' ? localResult.value : [];
-    const globalSources = globalResult.status === 'fulfilled' ? globalResult.value : [];
+    if (isRegional) {
+      localSources = await fetchFromRssUrl(localUrl, 'ID', maxItems);
+    } else {
+      const globalUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(globalQuery + ' when:1d')}&hl=en-US&gl=US&ceid=US:en`;
+      const [localRes, globalRes] = await Promise.allSettled([
+        fetchFromRssUrl(localUrl, 'ID', 4),
+        fetchFromRssUrl(globalUrl, 'GLOBAL', 4),
+      ]);
+      localSources = localRes.status === 'fulfilled' ? localRes.value : [];
+      globalSources = globalRes.status === 'fulfilled' ? globalRes.value : [];
+    }
 
     let combined = [...localSources, ...globalSources];
 
@@ -199,9 +234,13 @@ export async function fetchGoogleNewsResearch(
       combined = [...combined, ...fallbackItems];
     }
 
-    // Fallback jika masih minim: gunakan kata kunci kategori dalam 2 hari terakhir
+    // Fallback jika masih minim: gunakan kata kunci kategori dalam 2 hari terakhir (Terisolasi dari kata 'teknologi' jika Regional)
     if (combined.length < 2) {
-      const fallbackCatUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(category + ' teknologi when:2d')}&hl=id&gl=ID&ceid=ID:id`;
+      const cleanRegion = (region && region !== 'Umum' && !region.toLowerCase().includes('semua')) ? region.trim() : '';
+      const fallbackCatQuery = isRegional
+        ? `berita daerah pemda pelayanan publik ${cleanRegion} when:2d`.trim()
+        : `${category} teknologi when:2d`;
+      const fallbackCatUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(fallbackCatQuery)}&hl=id&gl=ID&ceid=ID:id`;
       const fallbackCatItems = await fetchFromRssUrl(fallbackCatUrl, 'ID', 4);
       combined = [...combined, ...fallbackCatItems];
     }
@@ -233,9 +272,9 @@ export async function fetchGoogleNewsResearch(
           .toLowerCase()
           .replace(/[^a-z0-9]/g, ' ')
           .split(/\s+/)
-          .filter((w) => w.length > 3);
+          .filter((w: string) => w.length > 3);
         if (itemWords.length === 0) return false;
-        const matchWords = itemWords.filter((w) => dbTitle.includes(w));
+        const matchWords = itemWords.filter((w: string) => dbTitle.includes(w));
         return matchWords.length / itemWords.length >= 0.55;
       });
 
@@ -580,10 +619,10 @@ export async function requestArticleFromModelRouter(
       : '600 - 800 kata';
   const targetCategory = options.category || 'AI';
 
-  // 1. Lakukan riset Google News secara mendalam (Dual Engine: Lokal & Global) jika diaktifkan (Default: Aktif)
+  // 1. Lakukan riset Google News secara mendalam jika diaktifkan (Default: Aktif)
   let researchSources: NewsSource[] = [];
   if (options.enableWebSearch !== false) {
-    researchSources = await fetchGoogleNewsResearch(options.prompt, 6, targetCategory);
+    researchSources = await fetchGoogleNewsResearch(options.prompt, 6, targetCategory, options.region);
   }
 
   // 1.1 Ambil kandidat artikel terbaru untuk Smart Internal Linking ("Baca Juga") otomatis pasca-generasi
@@ -622,14 +661,44 @@ export async function requestArticleFromModelRouter(
   baseUrl = baseUrl.replace(/\/+$/, '');
   const endpoint = `${baseUrl}/chat/completions`;
 
-  const systemPrompt = `Anda adalah jurnalis teknologi senior dan editor utama di portal media teknologi terkemuka "Naratif" (Indonesia).
+  const isRegional = targetCategory.toLowerCase() === 'regional';
+  const cleanRegion = (options.region && options.region !== 'Umum' && !options.region.toLowerCase().includes('semua'))
+    ? options.region.trim()
+    : '';
+  const regionalScope = cleanRegion ? `khusus wilayah ${cleanRegion}` : 'daerah';
+
+  const systemPrompt = isRegional
+    ? `Anda adalah wartawan senior liputan daerah dan editor meja berita regional di portal media terkemuka "Naratif" (Indonesia).
+Tugas Anda adalah menulis berita liputan ${regionalScope} yang faktual, mendalam, dan relevan bagi kehidupan warga setempat.
+
+ATURAN PENULISAN:
+1. Bahasa: Bahasa Indonesia baku, bergaya jurnalisme meja kota/daerah yang lugas, hangat, dan berimbang (5W + 1H).
+2. Sudut Pandang Faktual: Fokuskan narasi pada fakta peristiwa daerah, kebijakan/pernyataan kepala daerah (Pemprov/Pemkab/Pemkot, Gubernur, Bupati, Walikota, atau Kepala Dinas terkait), pelayanan fasilitas publik, dan dampaknya bagi warga.
+3. Format Konten: Gunakan Markdown murni yang rapi (Heading ##, ###, bullet points, penekanan bold, kutipan analitis >). JANGAN gunakan tag HTML mentah seperti <p>, <div>, <span>.
+4. Panjang konten: Target ${wordCountTarget}.
+5. Kategori: WAJIB bernilai "Regional".
+6. Validitas Riset & E-E-A-T: Manfaatkan nama pejabat daerah, nama dinas, angka anggaran/statistik, dan fakta dari HASIL RISET RIIL yang disediakan. Di akhir konten (bagian paling bawah), WAJIB buatkan sub-heading "## Referensi Berita Terkait" berupa poin-poin yang menyebutkan media/sumber fakta yang Anda jadikan rujukan.
+7. Larangan Judul Ganda: DILARANG mengulang judul berita sebagai Heading (# atau ##) di baris pertama 'content'. Bagian 'content' WAJIB langsung dimulai dengan paragraf teks narasi pembuka.
+8. Output: WAJIB HANYA berupa objek JSON murni (VALID JSON) tanpa pembuka atau penutup obrolan apa pun di luar JSON.
+
+FORMAT STRUKTUR JSON YANG WAJIB ANDA HASILKAN:
+{
+  "title": "Judul Berita Daerah yang Memikat, Faktual, dan Bernilai Berita Tinggi (Maks 15 kata)",
+  "slug": "slug-url-ramah-seo-berdasarkan-judul",
+  "excerpt": "Ringkasan tajam 2-3 kalimat yang menggambarkan inti berita (maksimal 250 karakter)",
+  "category": "Regional",
+  "tags": ["Regional", "${cleanRegion || 'Daerah'}", "Kebijakan Daerah", "Pemda"],
+  "coverCaption": "Deskripsi singkat foto/ilustrasi berita (maksimal 100 karakter)",
+  "content": "Isi lengkap berita dalam format Markdown..."
+}`
+    : `Anda adalah jurnalis teknologi senior dan editor utama di portal media teknologi terkemuka "Naratif" (Indonesia).
 Tugas Anda adalah menulis artikel berita teknologi yang mendalam, berwawasan tajam, faktual, dan menarik untuk para antusias teknologi, developer, dan praktisi industri.
 
 ATURAN PENULISAN:
 1. Bahasa: Bahasa Indonesia baku, modern, dan bergaya jurnalisme teknologi berbobot (5W + 1H, dengan analisis dampak industri).
 2. Format Konten: Gunakan Markdown murni yang rapi (Heading ##, ###, bullet points, penekanan bold, kutipan analitis >). JANGAN gunakan tag HTML mentah seperti <p>, <div>, <span>.
 3. Panjang konten: Target ${wordCountTarget}.
-4. Kategori artikel HARUS salah satu dari: ["AI", "Software", "Hardware", "Gadget", "Infrastruktur", "Regional"]. Khusus kategori "Regional", fokuskan narasi pada fakta peristiwa daerah, kebijakan/pernyataan kepala daerah (Pemda/Gubernur/Walikota), pelayanan fasilitas publik, dan dampaknya bagi warga.
+4. Kategori artikel HARUS salah satu dari: ["AI", "Software", "Hardware", "Gadget", "Infrastruktur"].
 5. Validitas Riset & E-E-A-T: Manfaatkan entitas, narasumber, angka, dan fakta dari HASIL RISET RIIL yang disediakan. Di akhir konten (bagian paling bawah), WAJIB buatkan sub-heading "## Referensi Berita Terkait" berupa poin-poin yang menyebutkan media/sumber fakta yang Anda jadikan rujukan agar kredibilitas jurnalisme dan SEO E-E-A-T artikel terjamin.
 6. Larangan Judul Ganda: DILARANG mengulang judul berita sebagai Heading (# atau ##) di baris pertama 'content'. Bagian 'content' WAJIB langsung dimulai dengan paragraf teks pembuka artikel berita.
 7. Output: WAJIB HANYA berupa objek JSON murni (VALID JSON) tanpa pembuka atau penutup obrolan apa pun di luar JSON.
@@ -659,7 +728,7 @@ PANDUAN PEMANFAATAN RISET:
 - Pada bagian akhir artikel berita, sertakan subjudul "## Referensi Berita Terkait" yang mencantumkan sumber/media di atas secara profesional.`;
   }
 
-  const userPrompt = `Buatkan artikel berita teknologi profesional tentang topik berikut:
+  const userPrompt = `Buatkan artikel berita ${isRegional ? `regional liputan ${regionalScope}` : 'teknologi'} profesional tentang topik berikut:
 "${options.prompt}"
 ${newsContext}
 Target Kategori yang diutamakan: ${targetCategory}
