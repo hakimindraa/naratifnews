@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { db } from "@/db";
 import { articles } from "@/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, asc, notInArray, and } from "drizzle-orm";
 import { formatDistanceToNow } from "date-fns";
 import { id } from "date-fns/locale";
 import LatestNewsSection from "./LatestNewsSection";
@@ -9,20 +9,54 @@ import LatestNewsSection from "./LatestNewsSection";
 export const instant = false;
 
 export default async function Home() {
-  // Ambil artikel yang berstatus published (hingga 54 artikel: 1 featured, 2 baca juga, 50 latest, + 1 untuk cek apakah ada sisa)
+  // Ambil artikel terbitan terbaru hingga 60 artikel
   const publishedArticles = await db
     .select()
     .from(articles)
     .where(eq(articles.status, 'published'))
     .orderBy(desc(articles.publishedAt))
-    .limit(54);
+    .limit(60);
 
+  // 1. Headline Utama
   const featuredArticle = publishedArticles.length > 0 ? publishedArticles[0] : null;
+
+  // 2. Baca Juga (Format Minimalis di bawah Headline)
   const bacaJugaArticles = publishedArticles.slice(1, 3);
-  const rawLatestArticles = publishedArticles.slice(3, 53);
-  const hasMore = publishedArticles.length > 53;
-  // Untuk populer, sementara kita ambil dari urutan 5-10
-  const popularArticles = publishedArticles.slice(5, 10);
+
+  // 3. Berita Sorotan (3 Kartu Pilihan Redaksi tepat di bawah Baca Juga)
+  const sorotanArticles = publishedArticles.slice(3, 6);
+
+  // 4. Populer Hari Ini (5 Artikel)
+  const popularArticles = publishedArticles.slice(6, 11);
+
+  // Kumpulan ID yang sudah dipakai di atas agar Kilas Balik tidak menampilkan artikel yang sama
+  const usedTopIds = publishedArticles.slice(0, 11).map((a) => a.id);
+
+  // 5. Kilas Balik: Mengambil 4 artikel arsip lama dari database
+  let kilasBalikArticles: typeof publishedArticles = [];
+  try {
+    if (usedTopIds.length > 0) {
+      kilasBalikArticles = await db
+        .select()
+        .from(articles)
+        .where(and(eq(articles.status, 'published'), notInArray(articles.id, usedTopIds)))
+        .orderBy(asc(articles.publishedAt))
+        .limit(4);
+    } else {
+      kilasBalikArticles = await db
+        .select()
+        .from(articles)
+        .where(eq(articles.status, 'published'))
+        .orderBy(asc(articles.publishedAt))
+        .limit(4);
+    }
+  } catch (err) {
+    console.warn("Gagal memuat kilas balik:", err);
+  }
+
+  // 6. Berita Terbaru (Feed Utama)
+  const rawLatestArticles = publishedArticles.slice(11, 55);
+  const hasMore = publishedArticles.length > 54;
 
   const initialLatestArticles = rawLatestArticles.map((a) => ({
     id: a.id,
@@ -38,102 +72,242 @@ export default async function Home() {
       {publishedArticles.length === 0 && (
         <div className="text-center py-20 bg-white rounded-xl border border-gray-200">
           <h2 className="text-2xl font-bold text-gray-700 mb-2">Belum Ada Berita yang Terbit</h2>
-          <p className="text-gray-500">Silakan unggah artikel Markdown melalui panel admin dengan waktu terbit (publish_at) di masa lalu agar muncul di sini.</p>
+          <p className="text-gray-500">
+            Silakan unggah artikel Markdown melalui panel admin dengan waktu terbit (publish_at) di masa lalu agar muncul di sini.
+          </p>
         </div>
       )}
 
       {featuredArticle && (
-        <div className="flex flex-col lg:flex-row gap-8">
-          {/* Main Featured Article with Baca Juga */}
-          <div className="lg:w-2/3 flex flex-col">
-            <div className="flex-grow">
-              <div className="flex flex-col w-full bg-white border border-gray-100 overflow-hidden rounded-xl mb-5 shadow-sm group">
-                <Link href={`/berita-teknologi/${featuredArticle.category.toLowerCase()}/${featuredArticle.id}/${featuredArticle.slug}`} className="w-full relative overflow-hidden bg-gray-50 aspect-video block">
-                  <img
-                    src={featuredArticle.coverUrl || ''}
-                    alt={featuredArticle.title}
-                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                  />
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-12">
+          {/* KOLOM KIRI (LEBAR 6 DARI 12): Headline Utama + Baca Juga + Berita Sorotan */}
+          <div className="lg:col-span-6 flex flex-col">
+            {/* Card Headline Utama */}
+            <div className="flex flex-col w-full bg-white border border-gray-100 overflow-hidden rounded-2xl mb-6 shadow-xs hover:shadow-md transition-all group">
+              <Link
+                href={`/berita-teknologi/${featuredArticle.category.toLowerCase()}/${featuredArticle.id}/${featuredArticle.slug}`}
+                className="w-full relative overflow-hidden bg-gray-50 aspect-video block"
+              >
+                <img
+                  src={featuredArticle.coverUrl || ''}
+                  alt={featuredArticle.title}
+                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                />
+              </Link>
+
+              <div className="p-5 sm:p-7 flex flex-col justify-center bg-white">
+                <div className="mb-3 flex items-center gap-2">
+                  <span className="bg-gray-900 text-white text-[10px] sm:text-xs font-bold uppercase tracking-wider px-2.5 py-1 rounded-md shadow-2xs">
+                    {featuredArticle.category}
+                  </span>
+                  <span className="text-xs text-gray-400 font-medium">Headline</span>
+                </div>
+
+                <Link
+                  href={`/berita-teknologi/${featuredArticle.category.toLowerCase()}/${featuredArticle.id}/${featuredArticle.slug}`}
+                >
+                  <h2 className="text-2xl sm:text-3xl font-bold font-heading text-gray-900 group-hover:text-indigo-600 transition-colors mb-3 leading-tight line-clamp-3">
+                    {featuredArticle.title}
+                  </h2>
                 </Link>
 
-                <div className="p-5 sm:p-8 flex flex-col justify-center bg-white relative z-10">
-                  <div className="mb-4">
-                    <span className="bg-gray-900 text-white text-[10px] sm:text-xs font-bold uppercase tracking-wider px-2.5 py-1 rounded-sm shadow-sm">
-                      {featuredArticle.category}
-                    </span>
-                  </div>
-                  <Link href={`/berita-teknologi/${featuredArticle.category.toLowerCase()}/${featuredArticle.id}/${featuredArticle.slug}`}>
-                    <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold font-heading text-gray-900 group-hover:text-gray-600 transition-colors mb-3 leading-tight line-clamp-3">
-                      {featuredArticle.title}
-                    </h2>
-                  </Link>
-                  <div className="flex items-center text-xs sm:text-sm text-gray-500 font-medium mt-1 mb-5">
-                    <span className="font-bold text-gray-800">{featuredArticle.author}</span>
-                    <span className="mx-2">•</span>
-                    <span>
-                      {featuredArticle.publishedAt
-                        ? formatDistanceToNow(new Date(featuredArticle.publishedAt), { addSuffix: true, locale: id })
-                        : ''}
-                    </span>
-                  </div>
+                <div className="flex items-center text-xs sm:text-sm text-gray-500 font-medium mt-1">
+                  <span className="font-bold text-gray-800">{featuredArticle.author}</span>
+                  <span className="mx-2">•</span>
+                  <span>
+                    {featuredArticle.publishedAt
+                      ? formatDistanceToNow(new Date(featuredArticle.publishedAt), { addSuffix: true, locale: id })
+                      : ''}
+                  </span>
+                </div>
 
-                  {/* BACA JUGA */}
-                  {bacaJugaArticles.length > 0 && (
-                    <div className="mt-4 pt-4 sm:pt-5 border-t border-dashed border-gray-200">
-                        <div className="text-[10px] sm:text-xs font-black text-red-600 uppercase tracking-widest mb-2 sm:mb-3">Baca Juga</div>
-                        <ul className="space-y-2 sm:space-y-3">
-                          {bacaJugaArticles.map(bj => (
-                            <li key={bj.id} className="group/link">
-                              <Link href={`/berita-teknologi/${bj.category.toLowerCase()}/${bj.id}/${bj.slug}`} className="flex items-start gap-1.5 sm:gap-2">
-                                <svg className="w-4 h-4 sm:w-5 sm:h-5 text-red-500 shrink-0 mt-0.5 sm:mt-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
-                                <span className="text-sm sm:text-base font-bold text-gray-800 group-hover/link:text-gray-600 transition-colors line-clamp-2 leading-snug">{bj.title}</span>
-                              </Link>
-                            </li>
-                          ))}
-                        </ul>
-                    </div>
-                  )}
+                {/* BACA JUGA (Format Minimalis Inline ala Kompas) */}
+                {bacaJugaArticles.length > 0 && (
+                  <div className="mt-5 pt-4 border-t border-gray-100 space-y-2">
+                    {bacaJugaArticles.map((bj) => (
+                      <div key={bj.id} className="text-xs sm:text-sm leading-relaxed">
+                        <span className="font-semibold text-gray-700 mr-1.5">Baca juga:</span>
+                        <Link
+                          href={`/berita-teknologi/${bj.category.toLowerCase()}/${bj.id}/${bj.slug}`}
+                          className="text-sky-600 hover:text-sky-700 font-medium hover:underline transition-colors"
+                        >
+                          {bj.title}
+                        </Link>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* BERITA SOROTAN (3 Kartu Pilihan Redaksi) */}
+            {sorotanArticles.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between pb-2 border-b border-gray-200">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+                    <h3 className="text-sm sm:text-base font-bold font-heading text-gray-900 uppercase tracking-wider">
+                      Berita Sorotan
+                    </h3>
+                  </div>
+                  <span className="text-[11px] text-gray-400 font-medium sm:hidden">Geser ➔</span>
+                  <span className="text-[11px] text-gray-400 font-medium hidden sm:inline">Pilihan Redaksi</span>
+                </div>
+
+                <div className="flex overflow-x-auto sm:grid sm:grid-cols-3 gap-3.5 pb-2 sm:pb-0 scrollbar-hide snap-x -mx-4 px-4 sm:mx-0 sm:px-0">
+                  {sorotanArticles.map((art) => (
+                    <Link
+                      key={art.id}
+                      href={`/berita-teknologi/${art.category.toLowerCase()}/${art.id}/${art.slug}`}
+                      className="group flex flex-col bg-white rounded-xl border border-gray-100 overflow-hidden shadow-2xs hover:shadow-sm transition-all w-[240px] sm:w-auto shrink-0 snap-start"
+                    >
+                      <div className="aspect-video w-full overflow-hidden bg-gray-50 relative">
+                        <img
+                          src={art.coverUrl || ''}
+                          alt={art.title}
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        />
+                      </div>
+                      <div className="p-3 flex flex-col justify-between flex-1">
+                        <div>
+                          <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider block mb-1">
+                            {art.category}
+                          </span>
+                          <h4 className="font-bold text-gray-900 group-hover:text-indigo-600 transition-colors line-clamp-2 text-xs sm:text-sm leading-snug">
+                            {art.title}
+                          </h4>
+                        </div>
+                        <span className="text-[10px] text-gray-400 mt-2 block">
+                          {art.publishedAt
+                            ? formatDistanceToNow(new Date(art.publishedAt), { addSuffix: true, locale: id })
+                            : ''}
+                        </span>
+                      </div>
+                    </Link>
+                  ))}
                 </div>
               </div>
+            )}
+          </div>
+
+          {/* KOLOM TENGAH (LEBAR 3 DARI 12): Populer Hari Ini */}
+          <div className="lg:col-span-3 flex flex-col lg:border-l lg:border-gray-200/80 lg:pl-6">
+            <div className="flex items-center justify-between mb-5 pb-2 border-b border-gray-200">
+              <h3 className="text-base font-bold font-heading text-gray-900 flex items-center gap-2">
+                <span>Populer Hari Ini</span>
+              </h3>
+            </div>
+
+            <div className="flex flex-col divide-y divide-gray-100">
+              {popularArticles.length === 0 ? (
+                <p className="text-gray-400 text-xs py-4">Belum ada artikel populer.</p>
+              ) : (
+                popularArticles.map((article, index) => (
+                  <Link
+                    key={article.id}
+                    href={`/berita-teknologi/${article.category.toLowerCase()}/${article.id}/${article.slug}`}
+                    className="py-3.5 first:pt-0 group flex items-start gap-3.5 cursor-pointer"
+                  >
+                    <span className="text-3xl sm:text-4xl font-black font-heading text-gray-200 group-hover:text-indigo-500 transition-colors shrink-0 leading-none w-7 text-center">
+                      {index + 1}
+                    </span>
+                    <div className="min-w-0">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-0.5">
+                        {article.category}
+                      </span>
+                      <h4 className="font-bold text-gray-900 group-hover:text-indigo-600 transition-colors line-clamp-2 text-xs sm:text-sm leading-snug">
+                        {article.title}
+                      </h4>
+                    </div>
+                  </Link>
+                ))
+              )}
             </div>
           </div>
 
-          {/* Popular List (Sidebar) */}
-          <div className="lg:w-1/3 flex flex-col">
-            <div className="flex items-center mb-6">
-              <h3 className="text-xl font-bold font-heading text-gray-900">Populer Hari Ini</h3>
-              <div className="ml-4 flex-grow h-px bg-gray-200"></div>
+          {/* KOLOM KANAN (LEBAR 3 DARI 12): Kilas Balik */}
+          <div className="lg:col-span-3 flex flex-col lg:border-l lg:border-gray-200/80 lg:pl-6">
+            <div className="flex items-center justify-between mb-5 pb-2 border-b border-gray-200">
+              <h3 className="text-base font-bold font-heading text-gray-900 flex items-center gap-2">
+                <span>Kilas Balik</span>
+              </h3>
+              <span className="text-[11px] text-gray-400 font-medium">Arsip</span>
             </div>
-            <div className="flex flex-col gap-6">
-              {popularArticles.length === 0 ? (
-                <p className="text-gray-500 text-sm">Belum cukup artikel untuk ditampilkan di populer.</p>
+
+            <div className="space-y-4">
+              {kilasBalikArticles.length === 0 ? (
+                <p className="text-gray-400 text-xs py-4">Belum ada arsip kilas balik.</p>
               ) : (
-                popularArticles.map((article, index) => (
-                  <div key={article.id} className="flex gap-4 group cursor-pointer">
-                    <div className="text-5xl font-black font-heading text-gray-100 group-hover:text-gray-300 transition-colors -mt-2">
-                      {index + 1}
-                    </div>
-                    <div>
-                      <div className="text-gray-900 text-xs font-bold uppercase tracking-wider mb-1">
-                        {article.category}
+                <>
+                  {/* Kartu Utama Kilas Balik */}
+                  {kilasBalikArticles[0] && (
+                    <Link
+                      href={`/berita-teknologi/${kilasBalikArticles[0].category.toLowerCase()}/${kilasBalikArticles[0].id}/${kilasBalikArticles[0].slug}`}
+                      className="group block bg-gray-50/80 rounded-xl border border-gray-100 overflow-hidden shadow-2xs hover:shadow-xs transition-all"
+                    >
+                      <div className="aspect-video w-full overflow-hidden bg-gray-100 relative">
+                        <img
+                          src={kilasBalikArticles[0].coverUrl || ''}
+                          alt={kilasBalikArticles[0].title}
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        />
                       </div>
-                      <h4 className="font-bold text-gray-900 group-hover:text-gray-600 transition-colors line-clamp-2 text-base leading-snug">
-                        <Link href={`/berita-teknologi/${article.category.toLowerCase()}/${article.id}/${article.slug}`}>{article.title}</Link>
-                      </h4>
-                    </div>
+                      <div className="p-3">
+                        <div className="flex items-center justify-between text-[10px] text-gray-400 mb-1">
+                          <span className="font-bold uppercase text-purple-700">{kilasBalikArticles[0].category}</span>
+                          <span>
+                            {kilasBalikArticles[0].publishedAt
+                              ? formatDistanceToNow(new Date(kilasBalikArticles[0].publishedAt), { addSuffix: true, locale: id })
+                              : ''}
+                          </span>
+                        </div>
+                        <h4 className="font-bold text-gray-900 group-hover:text-indigo-600 transition-colors line-clamp-2 text-xs sm:text-sm leading-snug">
+                          {kilasBalikArticles[0].title}
+                        </h4>
+                      </div>
+                    </Link>
+                  )}
+
+                  {/* List Thumbnail Kecil Kilas Balik Berikutnya */}
+                  <div className="divide-y divide-gray-100 pt-1">
+                    {kilasBalikArticles.slice(1).map((kb) => (
+                      <Link
+                        key={kb.id}
+                        href={`/berita-teknologi/${kb.category.toLowerCase()}/${kb.id}/${kb.slug}`}
+                        className="py-3 first:pt-0 group flex items-center gap-3"
+                      >
+                        <div className="w-16 h-12 rounded-lg overflow-hidden bg-gray-100 shrink-0 border border-gray-100">
+                          <img
+                            src={kb.coverUrl || ''}
+                            alt={kb.title}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <h4 className="font-bold text-gray-900 group-hover:text-indigo-600 transition-colors line-clamp-2 text-xs leading-snug">
+                            {kb.title}
+                          </h4>
+                          <span className="text-[10px] text-gray-400 block mt-1">
+                            {kb.publishedAt
+                              ? formatDistanceToNow(new Date(kb.publishedAt), { addSuffix: true, locale: id })
+                              : ''}
+                          </span>
+                        </div>
+                      </Link>
+                    ))}
                   </div>
-                ))
+                </>
               )}
             </div>
           </div>
         </div>
       )}
 
-      {/* Latest Articles Grid with Load More */}
+      {/* Bagian Bawah: Feed Berita Terbaru dengan Load More */}
       <LatestNewsSection
         initialArticles={initialLatestArticles}
         initialHasMore={hasMore}
-        initialOffset={3 + rawLatestArticles.length}
+        initialOffset={11 + rawLatestArticles.length}
       />
     </div>
   );
