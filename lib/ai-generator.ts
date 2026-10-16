@@ -10,6 +10,8 @@ export interface NewsSource {
   pubDate: string;
   snippet?: string;
   region?: 'ID' | 'GLOBAL';
+  url?: string;
+  timeAgo?: string;
 }
 
 export interface GeneratedArticleDraft {
@@ -32,6 +34,7 @@ export interface GenerateArticleOptions {
   length?: 'ringkas' | 'standar' | 'mendalam';
   provider?: AIProvider;
   enableWebSearch?: boolean;
+  prefetchedSources?: NewsSource[];
 }
 
 function cleanHtml(html: string): string {
@@ -147,6 +150,40 @@ function extractKeywords(prompt: string, category = 'AI', region?: string): { lo
   };
 }
 
+export function parsePubDateTime(dateStr?: string): number {
+  if (!dateStr) return 0;
+  const parsed = new Date(dateStr).getTime();
+  return isNaN(parsed) ? 0 : parsed;
+}
+
+export function formatTimeAgo(dateStr?: string): string {
+  if (!dateStr) return 'Baru saja';
+  const timestamp = parsePubDateTime(dateStr);
+  if (!timestamp) return 'Terkini';
+
+  const diffMs = Date.now() - timestamp;
+  if (diffMs < 0) return 'Baru saja';
+
+  const diffMinutes = Math.floor(diffMs / 60000);
+  if (diffMinutes < 1) return 'Baru saja';
+  if (diffMinutes < 60) return `${diffMinutes} menit lalu`;
+
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) return `${diffHours} jam lalu`;
+
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays === 1) return 'Kemarin';
+  if (diffDays < 7) return `${diffDays} hari lalu`;
+
+  return `${diffDays} hari lalu`;
+}
+
+export function sortByNewest(items: NewsSource[]): NewsSource[] {
+  return [...items].sort((a, b) => {
+    return parsePubDateTime(b.pubDate) - parsePubDateTime(a.pubDate);
+  });
+}
+
 async function fetchFromRssUrl(url: string, region: 'ID' | 'GLOBAL', maxItems = 4): Promise<NewsSource[]> {
   try {
     const controller = new AbortController();
@@ -172,13 +209,16 @@ async function fetchFromRssUrl(url: string, region: 'ID' | 'GLOBAL', maxItems = 
       const pubDateMatch = itemXml.match(/<pubDate>([\s\S]*?)<\/pubDate>/i);
       const sourceMatch = itemXml.match(/<source[^>]*>([\s\S]*?)<\/source>/i);
       const descMatch = itemXml.match(/<description>([\s\S]*?)<\/description>/i);
+      const linkMatch = itemXml.match(/<link>([\s\S]*?)<\/link>/i);
 
       const rawTitle = titleMatch ? cleanHtml(titleMatch[1]) : '';
       const source = sourceMatch ? cleanHtml(sourceMatch[1]) : (region === 'ID' ? 'Media Nasional' : 'Global Tech Media');
       const pubDate = pubDateMatch ? pubDateMatch[1].trim() : '';
       const rawSnippet = descMatch ? cleanHtml(descMatch[1]) : '';
+      const rawLink = linkMatch ? cleanHtml(linkMatch[1]).trim() : '';
       // Potong snippet agar padat dan informatif
       const snippet = rawSnippet.length > 250 ? `${rawSnippet.slice(0, 247)}...` : rawSnippet;
+      const timeAgo = pubDate ? formatTimeAgo(pubDate) : undefined;
 
       if (rawTitle) {
         items.push({
@@ -187,6 +227,8 @@ async function fetchFromRssUrl(url: string, region: 'ID' | 'GLOBAL', maxItems = 
           pubDate,
           snippet: snippet || undefined,
           region,
+          url: rawLink || undefined,
+          timeAgo,
         });
       }
     }
@@ -204,39 +246,57 @@ export async function fetchGoogleNewsResearch(
 ): Promise<NewsSource[]> {
   try {
     const isRegional = category.toLowerCase() === 'regional';
+    const cleanRegion = (region && region !== 'Umum' && !region.toLowerCase().includes('semua')) ? region.trim() : '';
     const { localQuery, globalQuery } = extractKeywords(query, category, region);
 
-    // Filter Waktu 24 Jam Terakhir (when:1d) untuk menjamin berita yang didapat adalah peristiwa terkini hari ini
-    const localUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(localQuery + ' when:1d')}&hl=id&gl=ID&ceid=ID:id`;
+    let combined: NewsSource[] = [];
 
-    // Eksekusi: Khusus Regional hanya mencari di Google News Indonesia (Media Nasional & Lokal), TIDAK ke Global US
-    let localSources: NewsSource[] = [];
-    let globalSources: NewsSource[] = [];
-
+    // TIER 1: Prioritas Berita Super Terkini (1-4 Jam Terakhir: when:4h)
     if (isRegional) {
-      localSources = await fetchFromRssUrl(localUrl, 'ID', maxItems);
+      // REGIONAL: Murni Google News ID lokal, sama sekali tidak memanggil Global US
+      const localUrl4h = `https://news.google.com/rss/search?q=${encodeURIComponent(localQuery + ' when:4h')}&hl=id&gl=ID&ceid=ID:id`;
+      combined = await fetchFromRssUrl(localUrl4h, 'ID', maxItems);
     } else {
-      const globalUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(globalQuery + ' when:1d')}&hl=en-US&gl=US&ceid=US:en`;
+      // TEKNOLOGI: Dual Engine (Google News ID + Google News US) 4 jam terakhir
+      const localUrl4h = `https://news.google.com/rss/search?q=${encodeURIComponent(localQuery + ' when:4h')}&hl=id&gl=ID&ceid=ID:id`;
+      const globalUrl4h = `https://news.google.com/rss/search?q=${encodeURIComponent(globalQuery + ' when:4h')}&hl=en-US&gl=US&ceid=US:en`;
       const [localRes, globalRes] = await Promise.allSettled([
-        fetchFromRssUrl(localUrl, 'ID', 4),
-        fetchFromRssUrl(globalUrl, 'GLOBAL', 4),
+        fetchFromRssUrl(localUrl4h, 'ID', 4),
+        fetchFromRssUrl(globalUrl4h, 'GLOBAL', 4),
       ]);
-      localSources = localRes.status === 'fulfilled' ? localRes.value : [];
-      globalSources = globalRes.status === 'fulfilled' ? globalRes.value : [];
+      const l = localRes.status === 'fulfilled' ? localRes.value : [];
+      const g = globalRes.status === 'fulfilled' ? globalRes.value : [];
+      combined = [...l, ...g];
     }
 
-    let combined = [...localSources, ...globalSources];
-
-    // Fallback jika hasil query spesifik 1 hari terakhir kosong: cari rentang 2 hari (when:2d)
+    // TIER 2: Fallback 24 Jam Terakhir (when:1d) jika berita 4 jam terakhir minim (< 2 artikel)
     if (combined.length < 2) {
-      const fallbackUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(localQuery + ' when:2d')}&hl=id&gl=ID&ceid=ID:id`;
-      const fallbackItems = await fetchFromRssUrl(fallbackUrl, 'ID', 4);
+      if (isRegional) {
+        const localUrl1d = `https://news.google.com/rss/search?q=${encodeURIComponent(localQuery + ' when:1d')}&hl=id&gl=ID&ceid=ID:id`;
+        const moreLocal = await fetchFromRssUrl(localUrl1d, 'ID', maxItems);
+        combined = [...combined, ...moreLocal];
+      } else {
+        const localUrl1d = `https://news.google.com/rss/search?q=${encodeURIComponent(localQuery + ' when:1d')}&hl=id&gl=ID&ceid=ID:id`;
+        const globalUrl1d = `https://news.google.com/rss/search?q=${encodeURIComponent(globalQuery + ' when:1d')}&hl=en-US&gl=US&ceid=US:en`;
+        const [localRes, globalRes] = await Promise.allSettled([
+          fetchFromRssUrl(localUrl1d, 'ID', 4),
+          fetchFromRssUrl(globalUrl1d, 'GLOBAL', 4),
+        ]);
+        const l = localRes.status === 'fulfilled' ? localRes.value : [];
+        const g = globalRes.status === 'fulfilled' ? globalRes.value : [];
+        combined = [...combined, ...l, ...g];
+      }
+    }
+
+    // TIER 3: Fallback 48 Jam Terakhir (when:2d) jika masih minim
+    if (combined.length < 2) {
+      const fallbackUrl2d = `https://news.google.com/rss/search?q=${encodeURIComponent(localQuery + ' when:2d')}&hl=id&gl=ID&ceid=ID:id`;
+      const fallbackItems = await fetchFromRssUrl(fallbackUrl2d, 'ID', 4);
       combined = [...combined, ...fallbackItems];
     }
 
-    // Fallback jika masih minim: gunakan kata kunci kategori dalam 2 hari terakhir (Terisolasi dari kata 'teknologi' jika Regional)
+    // TIER 4: Fallback kata kunci umum kategori dalam 48 jam jika masih minim
     if (combined.length < 2) {
-      const cleanRegion = (region && region !== 'Umum' && !region.toLowerCase().includes('semua')) ? region.trim() : '';
       const fallbackCatQuery = isRegional
         ? `berita daerah pemda pelayanan publik ${cleanRegion} when:2d`.trim()
         : `${category} teknologi when:2d`;
@@ -244,6 +304,9 @@ export async function fetchGoogleNewsResearch(
       const fallbackCatItems = await fetchFromRssUrl(fallbackCatUrl, 'ID', 4);
       combined = [...combined, ...fallbackCatItems];
     }
+
+    // PENGURUTAN PRESISI: Urutkan dari timestamp detik/jam paling baru di posisi paling atas
+    combined = sortByNewest(combined);
 
     // Ambil riwayat judul artikel yang sudah pernah ada di database agar tidak meliput berita yang sudah pernah ditulis
     let recentDbTitles: string[] = [];
@@ -300,7 +363,8 @@ export async function fetchGoogleNewsResearch(
       }
     }
 
-    return uniqueSources;
+    // Pastikan hasil akhir tetap terurut dari waktu terbit paling baru
+    return sortByNewest(uniqueSources);
   } catch (err) {
     console.warn('Google News search failed or timed out:', err);
     return [];
@@ -621,7 +685,9 @@ export async function requestArticleFromModelRouter(
 
   // 1. Lakukan riset Google News secara mendalam jika diaktifkan (Default: Aktif)
   let researchSources: NewsSource[] = [];
-  if (options.enableWebSearch !== false) {
+  if (options.prefetchedSources && options.prefetchedSources.length > 0) {
+    researchSources = options.prefetchedSources;
+  } else if (options.enableWebSearch !== false) {
     researchSources = await fetchGoogleNewsResearch(options.prompt, 6, targetCategory, options.region);
   }
 
@@ -719,8 +785,9 @@ FORMAT STRUKTUR JSON YANG WAJIB ANDA HASILKAN:
     newsContext = `\n\nHASIL RISET DUAL-ENGINE TERKINI (Google News Indonesia & Global):
 ${researchSources.map((item, idx) => {
   const regionLabel = item.region === 'GLOBAL' ? '[Media Global]' : '[Media Nasional]';
+  const timeLabel = item.timeAgo ? ` (${item.timeAgo})` : '';
   const snippetStr = item.snippet ? `\n   Konteks/Fakta: "${item.snippet}"` : '';
-  return `${idx + 1}. ${regionLabel} [${item.source} - ${item.pubDate}]: ${item.title}${snippetStr}`;
+  return `${idx + 1}. ${regionLabel} [${item.source} - ${item.pubDate}${timeLabel}]: ${item.title}${snippetStr}`;
 }).join('\n')}\n
 PANDUAN PEMANFAATAN RISET:
 - Gunakan data, peristiwa, nama perusahaan, narasumber, dan tren dari hasil riset di atas sebagai inti tulisan.

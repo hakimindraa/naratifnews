@@ -8,7 +8,12 @@ import {
   setTelegramCommands,
   SendMessageOptions,
 } from '@/lib/telegram';
-import { requestArticleFromModelRouter, requestSadurArticleFromSource } from '@/lib/ai-generator';
+import {
+  requestArticleFromModelRouter,
+  requestSadurArticleFromSource,
+  fetchGoogleNewsResearch,
+  NewsSource,
+} from '@/lib/ai-generator';
 import { scrapeArticleFromUrl } from '@/lib/url-scraper';
 import { findSimilarArticles, checkSourceUrlHistory } from '@/lib/duplicate-detector';
 import { db } from '@/db';
@@ -217,9 +222,35 @@ async function runArticleGeneration({
     activeMessageId = sendRes.data?.result?.message_id;
   }
 
-  // Timer simulasi transisi ke Fase 2 (70% Progres - Penulisan Naskah)
-  const timerFase2 = setTimeout(() => {
+  const startTime = performance.now();
+
+  try {
+    // 1. Eksekusi Riset Google News Nyata Terlebih Dahulu
+    let researchSources: NewsSource[] = [];
+    if (enableWebSearch !== false) {
+      researchSources = await fetchGoogleNewsResearch(
+        topic,
+        6,
+        category,
+        isRegional ? (cleanRegion || 'Umum') : undefined
+      );
+    }
+
+    // 2. FASE 2: Tampilkan Live Temuan Berita & Masuk Tahap Penulisan Naskah
     if (activeMessageId) {
+      let sourcesPreviewBox = '';
+      if (researchSources.length > 0) {
+        const sourceItems = researchSources.slice(0, 2).map((s, idx) => {
+          const cleanTitle = s.title.replace(/<[^>]*>/g, '').trim();
+          const shortTitle = cleanTitle.length > 60 ? `${cleanTitle.slice(0, 57)}...` : cleanTitle;
+          const timeTag = s.timeAgo ? `⏱️ ${s.timeAgo}` : '⏱️ Terkini';
+          const linkPart = s.url ? ` • <a href="${s.url}">Link Berita ↗</a>` : '';
+          return `│ ${idx + 1}. <b>${s.source}</b> (${timeTag})\n│    <i>"${shortTitle}"</i>${linkPart}`;
+        }).join('\n');
+
+        sourcesPreviewBox = `\n┌── 🔍 <b>Temuan Riset Google News (${researchSources.length} Berita)</b>\n${sourceItems}\n└──\n`;
+      }
+
       const fase2Text = `⏳ <b>PROSES LIPUTAN AI BERJALAN</b>
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 💡 <b>Topik:</b> <i>"${topic}"</i>
@@ -228,23 +259,19 @@ async function runArticleGeneration({
 │ 📂 Kategori : <b>${category || 'AI'}${cleanRegion ? ` (${cleanRegion})` : ''}</b>
 │ 🎯 Target   : <b>${statusLabel}</b>
 │ 🤖 Engine   : <b>${providerLabel}</b>
-└──
-
+└──${sourcesPreviewBox}
 <b>Tahapan Eksekusi:</b>
-✅ <b>Riset fakta berita selesai</b>
+✅ <b>Riset fakta berita berhasil didapatkan</b>
 🔄 <b>[2/3] AI sedang meracik naskah jurnalistik...</b>
 ⏳ [3/3] Validasi arsip & simpan database
 
 <code>[▰▰▰▰▰▰▰▱▱▱] 70% • Penulisan Naskah</code>
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ⏱️ <i>Menyusun struktur naskah, sudut pandang berita, dan kutipan...</i>`;
-      editTelegramMessage(chatId, activeMessageId, fase2Text).catch(() => {});
+      await editTelegramMessage(chatId, activeMessageId, fase2Text).catch(() => {});
     }
-  }, 3500);
 
-  const startTime = performance.now();
-
-  try {
+    // 3. Panggil AI untuk menulis naskah berdasarkan fakta riset di atas
     const draftArticle = await requestArticleFromModelRouter({
       prompt: topic,
       category,
@@ -252,11 +279,10 @@ async function runArticleGeneration({
       length,
       provider: provider || 'gemini',
       enableWebSearch,
+      prefetchedSources: researchSources,
     });
 
-    clearTimeout(timerFase2);
-
-    // FASE 3: Finalisasi Database (90% Progres)
+    // 4. FASE 3: Finalisasi Database (90% Progres)
     if (activeMessageId) {
       const fase3Text = `⏳ <b>PROSES LIPUTAN AI BERJALAN</b>
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -322,6 +348,22 @@ async function runArticleGeneration({
           )}% dengan: "${similarityInfo.matchedArticle.title}"</code>\n`
         : '';
 
+    // Siapkan daftar sumber berita rujukan dengan tautan aktif untuk pesan sukses
+    const finalSources = (draftArticle.researchSources && draftArticle.researchSources.length > 0)
+      ? draftArticle.researchSources
+      : researchSources;
+
+    const sourcesSection = finalSources && finalSources.length > 0
+      ? `\n┌── 🌐 <b>Sumber Berita Rujukan (${finalSources.length})</b>\n${finalSources.slice(0, 3).map((s) => {
+          const cleanTitle = s.title.replace(/<[^>]*>/g, '').trim();
+          const shortTitle = cleanTitle.length > 45 ? `${cleanTitle.slice(0, 42)}...` : cleanTitle;
+          const timeTag = s.timeAgo ? ` (${s.timeAgo})` : '';
+          return s.url
+            ? `│ • <b>${s.source}</b>${timeTag}: <a href="${s.url}">${shortTitle} ↗</a>`
+            : `│ • <b>${s.source}</b>${timeTag}: <i>${shortTitle}</i>`;
+        }).join('\n')}\n└──`
+      : '';
+
     // Revalidasi cache web
     revalidatePath('/', 'layout');
 
@@ -339,7 +381,7 @@ async function runArticleGeneration({
 │ 🌐 Riset    : <b>${enableWebSearch ? (isRegional ? 'Google News Daerah (100% ID)' : 'Google News Global Aktif') : 'Murni Analisis AI'}</b>
 │ ⏱️ Durasi   : <b>${(durationMs / 1000).toFixed(1)}s</b> (via <i>${draftArticle.modelUsed || providerLabel}</i>)
 │ 🏷️ Tag      : ${tagsFormatted || '<code>#berita</code>'}
-└──${similarityNote}
+└──${sourcesSection}${similarityNote}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ✅ <i>Artikel telah terbit di portal Naratif. Anda dapat menambahkan foto sampul lewat Web Admin.</i>`;
 
@@ -363,7 +405,7 @@ async function runArticleGeneration({
 │ 🌐 Riset    : <b>${enableWebSearch ? (isRegional ? 'Google News Daerah (100% ID)' : 'Google News Global Aktif') : 'Murni Analisis AI'}</b>
 │ ⏱️ Durasi   : <b>${(durationMs / 1000).toFixed(1)}s</b> (via <i>${draftArticle.modelUsed || providerLabel}</i>)
 │ 🏷️ Tag      : ${tagsFormatted || '<code>#draf</code>'}
-└──${similarityNote}
+└──${sourcesSection}${similarityNote}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📌 <i>Artikel siap ditinjau di Dasbor Redaksi sebelum diterbitkan. Silakan tambahkan foto sampul lewat editor web:</i>`;
 
@@ -379,7 +421,6 @@ async function runArticleGeneration({
       });
     }
   } catch (err: any) {
-    clearTimeout(timerFase2);
     console.error('Telegram generation error:', err);
     await updateOrSendMessage(
       chatId,

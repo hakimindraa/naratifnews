@@ -35,6 +35,7 @@ import {
 } from 'lucide-react';
 import {
   generateArticleAction,
+  searchNewsResearchAction,
   getGenerationDataAction,
   deleteGenerationLogAction,
   clearFailedLogsAction,
@@ -174,9 +175,25 @@ export default function GeneratorStudioPage() {
     category: string;
     status: string;
     durationMs: number;
-    researchSources?: { title: string; source: string; pubDate: string; region?: 'ID' | 'GLOBAL' }[];
+    researchSources?: {
+      title: string;
+      source: string;
+      pubDate: string;
+      region?: 'ID' | 'GLOBAL';
+      url?: string;
+      timeAgo?: string;
+    }[];
     similarityInfo?: any;
   } | null>(null);
+
+  const [liveResearchSources, setLiveResearchSources] = useState<{
+    title: string;
+    source: string;
+    pubDate: string;
+    region?: 'ID' | 'GLOBAL';
+    url?: string;
+    timeAgo?: string;
+  }[]>([]);
 
   const steps = enableWebSearch
     ? [
@@ -247,17 +264,41 @@ export default function GeneratorStudioPage() {
     setIsLoading(true);
     setErrorMessage(null);
     setLastGenerated(null);
+    setLiveResearchSources([]);
     setCurrentStep(0);
 
-    // Animasi stepper tahapan
-    const stepInterval = setInterval(() => {
-      setCurrentStep((prev) => {
-        if (prev < steps.length - 1) return prev + 1;
-        return prev;
-      });
-    }, 2800);
+    let prefetched: any[] = [];
+    let stepInterval: NodeJS.Timeout | null = null;
 
     try {
+      // 1. Eksekusi Riset Google News Nyata Terlebih Dahulu (jika enableWebSearch aktif)
+      if (enableWebSearch) {
+        const searchRes = await searchNewsResearchAction(
+          prompt,
+          selectedCategory,
+          selectedCategory === 'Regional' ? selectedRegion : undefined
+        );
+        if (searchRes.success && searchRes.sources && searchRes.sources.length > 0) {
+          prefetched = searchRes.sources;
+          setLiveResearchSources(searchRes.sources);
+        }
+      }
+
+      // Langkah 1: Menganalisis temuan fakta
+      setCurrentStep(1);
+
+      // Jeda singkat agar pengguna dapat melihat live temuan berita sebelum AI mulai menyusun naskah
+      await new Promise((r) => setTimeout(r, 650));
+      setCurrentStep(2);
+
+      // Animasi stepper untuk proses penyusunan naskah hingga finalisasi
+      stepInterval = setInterval(() => {
+        setCurrentStep((prev) => {
+          if (prev < steps.length - 1) return prev + 1;
+          return prev;
+        });
+      }, 2800);
+
       const res = await generateArticleAction({
         prompt,
         category: selectedCategory,
@@ -267,9 +308,10 @@ export default function GeneratorStudioPage() {
         length: articleLength,
         provider: selectedProvider,
         enableWebSearch,
+        prefetchedSources: prefetched.length > 0 ? prefetched : undefined,
       });
 
-      clearInterval(stepInterval);
+      if (stepInterval) clearInterval(stepInterval);
       setCurrentStep(steps.length);
 
       if (res.success && res.article) {
@@ -280,7 +322,7 @@ export default function GeneratorStudioPage() {
           category: res.article.category,
           status: res.article.status,
           durationMs: res.durationMs,
-          researchSources: res.researchSources || [],
+          researchSources: res.researchSources || prefetched || [],
           similarityInfo: res.similarityInfo || null,
         });
         setPrompt('');
@@ -291,10 +333,11 @@ export default function GeneratorStudioPage() {
 
       await loadInitialData();
     } catch (err: any) {
-      clearInterval(stepInterval);
+      if (stepInterval) clearInterval(stepInterval);
       setErrorMessage(err?.message || 'Terjadi kesalahan sistem.');
       await loadInitialData();
     } finally {
+      if (stepInterval) clearInterval(stepInterval);
       setIsLoading(false);
     }
   };
@@ -825,6 +868,56 @@ export default function GeneratorStudioPage() {
                 );
               })}
             </div>
+
+            {/* LIVE RESEARCH SOURCES PREVIEW (TRANSPARAN SAAT PROSES BERJALAN) */}
+            {liveResearchSources.length > 0 && (
+              <div className="mt-3.5 pt-3.5 border-t border-indigo-200/80 space-y-2.5 animate-in fade-in duration-300">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                  <p className="text-xs font-bold text-indigo-950 flex items-center gap-1.5">
+                    <Globe className="w-3.5 h-3.5 text-indigo-700 shrink-0" />
+                    <span>Temuan Riset Google News Terkini ({liveResearchSources.length} Berita Terdeteksi):</span>
+                  </p>
+                  <span className="self-start sm:self-auto text-[10px] font-semibold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full shrink-0 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+                    Terverifikasi
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {liveResearchSources.slice(0, 4).map((item, idx) => (
+                    <a
+                      key={idx}
+                      href={item.url || '#'}
+                      target={item.url ? '_blank' : undefined}
+                      rel="noreferrer"
+                      className="group flex flex-col justify-between p-3 rounded-xl bg-white/95 border border-indigo-200/90 hover:border-indigo-400 hover:bg-white hover:shadow-xs transition-all gap-1.5"
+                      title={`${item.title} (${item.pubDate})`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span
+                          className="font-bold text-xs text-indigo-950 truncate max-w-[62%]"
+                          title={item.source}
+                        >
+                          {item.source}
+                        </span>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {item.timeAgo && (
+                            <span className="text-[10px] font-semibold bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full whitespace-nowrap shrink-0">
+                              ⏱️ {item.timeAgo}
+                            </span>
+                          )}
+                          {item.url && (
+                            <ExternalLink className="w-3.5 h-3.5 text-indigo-600 group-hover:text-indigo-900 group-hover:translate-x-0.5 transition-all shrink-0" />
+                          )}
+                        </div>
+                      </div>
+                      <p className="text-xs text-gray-700 font-medium group-hover:text-gray-950 line-clamp-2 leading-relaxed">
+                        {item.title}
+                      </p>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -899,24 +992,52 @@ export default function GeneratorStudioPage() {
 
             {/* Research Sources Preview */}
             {lastGenerated.researchSources && lastGenerated.researchSources.length > 0 && (
-              <div className="pt-3 border-t border-emerald-200/80">
-                <p className="text-xs font-bold text-emerald-950 flex items-center gap-1.5 mb-2">
-                  <Globe className="w-3.5 h-3.5 text-emerald-700" />
-                  <span>
-                    Riset Google News Berhasil ({lastGenerated.researchSources.length} Berita Referensi Terkini Terintegrasi):
+              <div className="pt-3.5 border-t border-emerald-200/80 space-y-2.5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                  <p className="text-xs font-bold text-emerald-950 flex items-center gap-1.5">
+                    <Globe className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                    <span>
+                      Riset Google News Berhasil ({lastGenerated.researchSources.length} Berita Referensi Terkini Terintegrasi):
+                    </span>
+                  </p>
+                  <span className="self-start sm:self-auto text-[10px] font-semibold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full shrink-0 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                    Terverifikasi
                   </span>
-                </p>
-                <div className="flex flex-wrap gap-2">
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   {lastGenerated.researchSources.map((item, idx) => (
-                    <div
+                    <a
                       key={idx}
-                      className="inline-flex items-center gap-1.5 bg-white/80 border border-emerald-200 px-2.5 py-1 rounded-md text-[11px] text-gray-700 max-w-sm"
-                      title={item.title}
+                      href={item.url || '#'}
+                      target={item.url ? '_blank' : undefined}
+                      rel="noreferrer"
+                      className="group flex flex-col justify-between p-3 rounded-xl bg-white/95 border border-emerald-200/90 hover:border-emerald-400 hover:bg-white hover:shadow-xs transition-all gap-1.5"
+                      title={`${item.title} (${item.pubDate})`}
                     >
-                      <span className="font-bold text-emerald-800">{item.source}</span>
-                      <span className="text-gray-300">•</span>
-                      <span className="truncate">{item.title}</span>
-                    </div>
+                      <div className="flex items-center justify-between gap-2">
+                        <span
+                          className="font-bold text-xs text-emerald-900 truncate max-w-[62%]"
+                          title={item.source}
+                        >
+                          {item.source}
+                        </span>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {item.timeAgo && (
+                            <span className="text-[10px] font-semibold bg-emerald-100/90 text-emerald-800 px-2 py-0.5 rounded-full whitespace-nowrap shrink-0">
+                              ⏱️ {item.timeAgo}
+                            </span>
+                          )}
+                          {item.url && (
+                            <ExternalLink className="w-3.5 h-3.5 text-emerald-600 group-hover:text-emerald-900 group-hover:translate-x-0.5 transition-all shrink-0" />
+                          )}
+                        </div>
+                      </div>
+                      <p className="text-xs text-gray-700 font-medium group-hover:text-gray-950 line-clamp-2 leading-relaxed">
+                        {item.title}
+                      </p>
+                    </a>
                   ))}
                 </div>
               </div>

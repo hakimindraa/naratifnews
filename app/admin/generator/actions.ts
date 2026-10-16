@@ -2,7 +2,7 @@
 
 import { db } from '@/db';
 import { articles, aiGenerationLogs } from '@/db/schema';
-import { requestArticleFromModelRouter } from '@/lib/ai-generator';
+import { requestArticleFromModelRouter, fetchGoogleNewsResearch, NewsSource } from '@/lib/ai-generator';
 import { findSimilarArticles, SimilarityCheckResult } from '@/lib/duplicate-detector';
 import { revalidatePath } from 'next/cache';
 import { desc, eq } from 'drizzle-orm';
@@ -16,6 +16,24 @@ export interface GeneratePayload {
   length: 'standar' | 'mendalam';
   provider?: 'gemini' | 'groq' | '9router';
   enableWebSearch?: boolean;
+  prefetchedSources?: NewsSource[];
+}
+
+/**
+ * Server action mandiri untuk riset berita terkini secara real-time
+ * Digunakan agar UI Web Admin dapat menampilkan temuan berita sebelum AI mulai menyusun naskah
+ */
+export async function searchNewsResearchAction(
+  query: string,
+  category = 'AI',
+  region?: string
+): Promise<{ success: boolean; sources: NewsSource[]; error?: string }> {
+  try {
+    const sources = await fetchGoogleNewsResearch(query, 6, category, region);
+    return { success: true, sources };
+  } catch (err: any) {
+    return { success: false, sources: [], error: err?.message || 'Gagal meriset berita' };
+  }
 }
 
 export async function generateArticleAction(payload: GeneratePayload) {
@@ -34,6 +52,7 @@ export async function generateArticleAction(payload: GeneratePayload) {
       length: payload.length,
       provider: payload.provider || 'gemini',
       enableWebSearch: payload.enableWebSearch !== false,
+      prefetchedSources: payload.prefetchedSources,
     });
 
     // 2. Simpan artikel ke database Neon DB
