@@ -36,7 +36,7 @@ export default function LoginPage() {
           <Lock className="w-12 h-12" />
         </div>
         <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900 font-heading">
-          Naratif Admin
+          Ada Fakta Admin
         </h2>
         <p className="mt-2 text-center text-sm text-gray-600">
           Masuk untuk mengelola portal berita

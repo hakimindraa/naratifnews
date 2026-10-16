@@ -104,7 +104,7 @@ export async function compressImageUnder100KB(
 
         if (blob) {
           const rawName = file.name.replace(/\.[^/.]+$/, '').replace(/[^a-zA-Z0-9_-]/g, '-');
-          const cleanName = rawName || 'naratif-cover';
+          const cleanName = rawName || 'adafakta-cover';
           const compressedFile = new File([blob], `${cleanName}.webp`, {
             type: 'image/webp',
           });

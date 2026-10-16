@@ -67,7 +67,7 @@ export default function CoverImagePicker({
     if (res.success && res.url) {
       onCoverChange(res.url);
       if (onCaptionChange && !coverCaption) {
-        onCaptionChange(`Ilustrasi sampul berita. (Dok. Naratif / ImgBB)`);
+        onCaptionChange(`Ilustrasi sampul berita. (Dok. Ada Fakta / ImgBB)`);
       }
     } else {
       setUploadError(res.error || 'Gagal mengunggah gambar ke ImgBB.');

@@ -17,7 +17,7 @@ export const BOT_COMMANDS = [
 
 export async function GET(req: NextRequest) {
   try {
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.naratif.web.id';
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.adafakta.web.id';
     const webhookUrl = `${siteUrl}/api/telegram/webhook`;
 
     // Daftarkan webhook dan daftar menu perintah ke server Telegram

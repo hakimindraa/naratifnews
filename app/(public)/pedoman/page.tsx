@@ -4,7 +4,7 @@ import { ChevronRight, BookOpen } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Pedoman Pemberitaan Media Siber",
-  description: "Pedoman pemberitaan media siber yang menjadi landasan etika dan standar jurnalisme Naratif.",
+  description: "Pedoman pemberitaan media siber yang menjadi landasan etika dan standar jurnalisme Ada Fakta.",
 };
 
 export default function PedomanPage() {
@@ -27,7 +27,7 @@ export default function PedomanPage() {
           Pedoman Pemberitaan Media Siber
         </h1>
         <p className="text-gray-600 text-sm">
-          Landasan operasional redaksi Naratif sesuai dengan standar kemerdekaan pers dan etika jurnalistik digital.
+          Landasan operasional redaksi Ada Fakta sesuai dengan standar kemerdekaan pers dan etika jurnalistik digital.
         </p>
       </div>
 
@@ -35,7 +35,7 @@ export default function PedomanPage() {
         <section className="space-y-3">
           <h2 className="text-xl font-bold font-heading text-gray-900">1. Ruang Lingkup</h2>
           <p>
-            Media Siber adalah segala bentuk media yang menggunakan wahana internet dan melaksanakan kegiatan jurnalistik, serta memenuhi persyaratan Undang-Undang Pokok Pers dan Standar Perusahaan Pers. Pedoman ini berlaku bagi seluruh produk jurnalistik yang diterbitkan di situs web <strong>Naratif</strong>.
+            Media Siber adalah segala bentuk media yang menggunakan wahana internet dan melaksanakan kegiatan jurnalistik, serta memenuhi persyaratan Undang-Undang Pokok Pers dan Standar Perusahaan Pers. Pedoman ini berlaku bagi seluruh produk jurnalistik yang diterbitkan di situs web <strong>Ada Fakta</strong>.
           </p>
         </section>
 
@@ -51,7 +51,7 @@ export default function PedomanPage() {
         <section className="space-y-3">
           <h2 className="text-xl font-bold font-heading text-gray-900">3. Ralat, Koreksi, dan Hak Jawab</h2>
           <p>
-            Redaksi Naratif wajib melayani hak jawab dan hak koreksi yang diajukan oleh pembaca atau pihak yang merasa dirugikan oleh pemberitaan. Ralat dan koreksi akan ditautkan langsung pada artikel yang bersangkutan dengan keterangan pembaruan yang transparan.
+            Redaksi Ada Fakta wajib melayani hak jawab dan hak koreksi yang diajukan oleh pembaca atau pihak yang merasa dirugikan oleh pemberitaan. Ralat dan koreksi akan ditautkan langsung pada artikel yang bersangkutan dengan keterangan pembaruan yang transparan.
           </p>
         </section>
 
@@ -65,7 +65,7 @@ export default function PedomanPage() {
         <section className="space-y-3">
           <h2 className="text-xl font-bold font-heading text-gray-900">5. Hak Cipta & Pengutipan</h2>
           <p>
-            Seluruh konten artikel, analisis, dan visual Naratif dilindungi oleh undang-undang hak cipta. Media lain diperkenankan mengutip konten Naratif dengan kewajiban mencantumkan atribusi sumber yang jelas dan menyertakan tautan aktif (*dofollow link*) ke artikel asli Naratif.
+            Seluruh konten artikel, analisis, dan visual Ada Fakta dilindungi oleh undang-undang hak cipta. Media lain diperkenankan mengutip konten Ada Fakta dengan kewajiban mencantumkan atribusi sumber yang jelas dan menyertakan tautan aktif (*dofollow link*) ke artikel asli Ada Fakta.
           </p>
         </section>
       </div>

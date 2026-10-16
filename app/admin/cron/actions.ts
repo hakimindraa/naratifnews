@@ -96,7 +96,7 @@ export async function pruneOldLogs() {
  * Mengambil data lengkap untuk Dashboard Cron Hub
  */
 export async function getCronHubData(): Promise<CronHubData> {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.naratif.web.id';
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.adafakta.web.id';
   const cronSecret = process.env.CRON_SECRET || '';
 
   // 1. Baca konfigurasi sistem
@@ -395,7 +395,7 @@ export async function saveCronJobApiKeyAction(apiKey: string) {
  */
 export async function testIndexingPingAction(targetUrl?: string) {
   try {
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.naratif.web.id';
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.adafakta.web.id';
     const url = targetUrl || siteUrl;
     const { notifySearchEngines } = await import('@/lib/indexing');
     const result = await notifySearchEngines(url);

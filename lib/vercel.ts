@@ -78,7 +78,7 @@ export async function getLatestVercelDeployments(limit = 4): Promise<VercelStatu
       return {
         id: d.uid || d.id,
         name: d.name,
-        url: d.url ? `https://${d.url}` : 'https://naratif.web.id',
+        url: d.url ? `https://${d.url}` : 'https://www.adafakta.web.id',
         state,
         target: d.target || 'production',
         createdAt: d.created || Date.now(),

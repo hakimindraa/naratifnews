@@ -102,7 +102,7 @@ export default function EditForm({ article }: { article: any }) {
             className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-gray-900 text-sm font-mono"
           />
           <p className="text-xs text-gray-500">
-            URL: /berita-teknologi/{(article.category || 'software').toLowerCase()}/{article.id}/[slug]
+            URL: /berita/{(article.category || 'software').toLowerCase()}/{article.id}/[slug]
           </p>
         </div>
 

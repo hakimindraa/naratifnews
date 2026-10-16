@@ -25,7 +25,7 @@ function escapeXml(unsafe: string): string {
 
 export async function GET() {
   await connection();
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.naratif.web.id';
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.adafakta.web.id';
 
   try {
     const recentArticles = await db
@@ -48,7 +48,7 @@ export async function GET() {
 
     const itemsXml = recentArticles
       .map((art) => {
-        const articleUrl = `${siteUrl}/berita-teknologi/${art.category.toLowerCase()}/${art.id}/${art.slug}`;
+        const articleUrl = `${siteUrl}/berita/${art.category.toLowerCase()}/${art.id}/${art.slug}`;
         const pubDate = art.publishedAt
           ? new Date(art.publishedAt).toUTCString()
           : new Date(art.createdAt).toUTCString();
@@ -64,7 +64,7 @@ export async function GET() {
       <guid isPermaLink="true">${articleUrl}</guid>
       <description>${escapeXml(description)}</description>
       <category>${escapeXml(art.category)}</category>
-      <author>${escapeXml(art.author || 'Redaksi Naratif')}</author>
+      <author>${escapeXml(art.author || 'Redaksi Ada Fakta')}</author>
       <pubDate>${pubDate}</pubDate>
       ${
         art.coverUrl
@@ -78,9 +78,9 @@ export async function GET() {
     const rssXml = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>Naratif Tekno - Berita Teknologi &amp; Tren AI Terkini</title>
+    <title>Ada Fakta</title>
     <link>${siteUrl}</link>
-    <description>Portal berita teknologi independen Indonesia yang menyajikan kabar kecerdasan buatan, gadget, software, dan infrastruktur digital.</description>
+    <description>Portal berita dan informasi seputar perkembangan teknologi, sains, isu regional, dan peristiwa terkini.</description>
     <language>id-ID</language>
     <lastBuildDate>${new Date().toUTCString()}</lastBuildDate>
     <atom:link href="${siteUrl}/rss.xml" rel="self" type="application/rss+xml"/>

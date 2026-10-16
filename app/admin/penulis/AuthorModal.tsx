@@ -149,7 +149,7 @@ export default function AuthorModal({
                 {authorToEdit ? 'Edit Profil Penulis' : 'Tambah Penulis Baru'}
               </h3>
               <p className="text-xs text-gray-500">
-                Profil jurnalis untuk identitas dan kredibilitas berita Naratif
+                Profil jurnalis untuk identitas dan kredibilitas berita Ada Fakta
               </p>
             </div>
           </div>

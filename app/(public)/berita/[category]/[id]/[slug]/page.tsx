@@ -42,17 +42,17 @@ export async function generateMetadata({
   const plainTextContent = article.content.replace(/[#*`_\[\]()]/g, ' ').replace(/\s+/g, ' ').substring(0, 160).trim() + '...';
   
   // URL lengkap artikel dari domain aktif
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.naratif.web.id';
-  const articleUrl = `${siteUrl}/berita-teknologi/${category}/${articleId}/${slug}`;
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.adafakta.web.id';
+  const articleUrl = `${siteUrl}/berita/${category}/${articleId}/${slug}`;
 
   return {
-    title: `${article.title} - Naratif Tekno`,
+    title: `${article.title} - Ada Fakta`,
     description: plainTextContent,
     openGraph: {
       title: article.title,
       description: plainTextContent,
       url: articleUrl,
-      siteName: 'Naratif Tekno',
+      siteName: 'Ada Fakta',
       images: [
         {
           url: article.coverUrl || '', // WhatsApp/Facebook akan mengambil gambar ini
@@ -64,7 +64,7 @@ export async function generateMetadata({
       locale: 'id_ID',
       type: 'article',
       publishedTime: article.publishedAt ? new Date(article.publishedAt).toISOString() : undefined,
-      authors: [article.author || 'Redaksi Naratif'],
+      authors: [article.author || 'Redaksi Ada Fakta'],
     },
     twitter: {
       card: 'summary_large_image',
@@ -122,8 +122,8 @@ export default async function ArticlePage({
     authorProfile = found || null;
   }
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.naratif.web.id';
-  const articleUrl = `${siteUrl}/berita-teknologi/${category}/${articleId}/${slug}`;
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.adafakta.web.id';
+  const articleUrl = `${siteUrl}/berita/${category}/${articleId}/${slug}`;
 
   // Ambil artikel populer
   const popularArticles = await db
@@ -142,7 +142,7 @@ export default async function ArticlePage({
   if (!/baca juga\s*:/i.test(processedContent)) {
     const relatedCandidate = popularArticles.find((p) => p.id !== article.id);
     if (relatedCandidate) {
-      const relatedUrl = `/berita-teknologi/${relatedCandidate.category.toLowerCase().replace(/\s+/g, '-')}/${relatedCandidate.id}/${relatedCandidate.slug}`;
+      const relatedUrl = `/berita/${relatedCandidate.category.toLowerCase().replace(/\s+/g, '-')}/${relatedCandidate.id}/${relatedCandidate.slug}`;
       const bacaJugaSnippet = `> **Baca Juga:** [${relatedCandidate.title}](${relatedUrl})`;
 
       const parts = processedContent.split(/\n\s*\n/);
@@ -200,13 +200,13 @@ export default async function ArticlePage({
     author: [
       {
         '@type': 'Person',
-        name: article.author || 'Redaksi Naratif',
+        name: article.author || 'Redaksi Ada Fakta',
         url: `${siteUrl}/redaksi`,
       },
     ],
     publisher: {
       '@type': 'NewsMediaOrganization',
-      name: 'Naratif Tekno',
+      name: 'Ada Fakta',
       url: siteUrl,
       logo: {
         '@type': 'ImageObject',
@@ -229,7 +229,7 @@ export default async function ArticlePage({
       <nav className="flex text-sm text-gray-500 mb-6 items-center">
         <Link href="/" className="hover:text-gray-900 transition-colors">Home</Link>
         <ChevronRight className="w-4 h-4 mx-2" />
-        <Link href={`/berita-teknologi/${category}`} className="hover:text-gray-900 transition-colors">{article.category}</Link>
+        <Link href={`/berita/${category}`} className="hover:text-gray-900 transition-colors">{article.category}</Link>
         <ChevronRight className="w-4 h-4 mx-2" />
         <span className="text-gray-900 truncate max-w-xs sm:max-w-md">{article.title}</span>
       </nav>
@@ -510,14 +510,14 @@ export default async function ArticlePage({
               </div>
               <div className="flex-1 min-w-0">
                 <h4 className="font-bold text-gray-900 text-sm sm:text-base leading-snug">
-                  {authorProfile?.name || article.author || 'Redaksi Naratif'}
+                  {authorProfile?.name || article.author || 'Redaksi Ada Fakta'}
                 </h4>
                 <div className="text-xs text-gray-500 font-normal mt-0.5">
                   {authorProfile?.role || 'Tim Redaksi'}
                 </div>
                 <p className="text-xs sm:text-sm text-gray-600 mt-2 leading-relaxed">
                   {authorProfile?.bio ||
-                    'Bagian dari tim editorial Naratif Media yang berdedikasi menyajikan berita teknologi, sains, dan kabar daerah yang akurat dan berbobot.'}
+                    'Bagian dari tim editorial Ada Fakta yang berdedikasi menyajikan berita teknologi, sains, dan kabar daerah yang akurat dan berbobot.'}
                 </p>
               </div>
             </div>
@@ -541,14 +541,14 @@ export default async function ArticlePage({
               </div>
             )}
 
-            {/* Widget Komunitas & Media Sosial Naratif */}
+            {/* Widget Komunitas & Media Sosial Ada Fakta */}
             <div className="mb-8 p-4 sm:p-5 bg-gradient-to-br from-gray-50 via-white to-gray-50 rounded-2xl border border-gray-200 shadow-sm space-y-3.5">
               <div>
                 <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-gray-900 bg-gray-100 px-2.5 py-1 rounded-md">
                   Komunitas & Media
                 </span>
                 <h3 className="font-bold font-heading text-gray-900 text-base sm:text-lg mt-2 leading-snug">
-                  Terhubung dengan Naratif
+                  Terhubung dengan Ada Fakta
                 </h3>
                 <p className="text-xs text-gray-500 mt-1 leading-relaxed">
                   Dapatkan kabar teknologi terhangat, ulasan gadget, dan tren AI langsung di platform favorit Anda.
@@ -568,7 +568,7 @@ export default async function ArticlePage({
                   </div>
                   <div className="text-left min-w-0">
                     <div className="font-bold text-gray-900 text-sm leading-tight truncate">Saluran WhatsApp</div>
-                    <div className="text-[11px] text-emerald-700 font-medium truncate">naratifnews • Update Kilat</div>
+                    <div className="text-[11px] text-emerald-700 font-medium truncate">adafakta • Update Kilat</div>
                   </div>
                 </div>
                 <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-3 py-1 rounded-full shrink-0 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
@@ -587,7 +587,7 @@ export default async function ArticlePage({
                     </div>
                     <div className="text-left min-w-0">
                       <div className="font-bold text-gray-900 text-sm leading-tight truncate">Instagram</div>
-                      <div className="text-[11px] text-pink-600 font-semibold truncate">@naratif.web.id</div>
+                      <div className="text-[11px] text-pink-600 font-semibold truncate">@adafakta.web.id</div>
                     </div>
                   </div>
                   <span className="text-[10px] font-bold tracking-wider uppercase text-amber-700 bg-amber-100/90 border border-amber-200 px-2 py-0.5 rounded-full shrink-0 flex items-center gap-1 whitespace-nowrap">
@@ -617,7 +617,7 @@ export default async function ArticlePage({
                         {pop.category}
                       </div>
                       <h4 className="font-bold text-gray-900 group-hover:text-gray-600 transition-colors line-clamp-2 text-sm leading-snug">
-                        <Link href={`/berita-teknologi/${pop.category.toLowerCase()}/${pop.id}/${pop.slug}`}>{pop.title}</Link>
+                        <Link href={`/berita/${pop.category.toLowerCase()}/${pop.id}/${pop.slug}`}>{pop.title}</Link>
                       </h4>
                     </div>
                   </div>

@@ -18,7 +18,7 @@ export async function loginAdmin(formData: FormData) {
 
   // Set cookie
   const cookieStore = await cookies();
-  cookieStore.set('naratif_session', sessionToken, {
+  cookieStore.set('adafakta_session', sessionToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
@@ -30,6 +30,6 @@ export async function loginAdmin(formData: FormData) {
 
 export async function logoutAdmin() {
   const cookieStore = await cookies();
-  cookieStore.delete('naratif_session');
+  cookieStore.delete('adafakta_session');
   redirect('/admin/login');
 }

@@ -486,7 +486,7 @@ export default function CronHubPage() {
                     </div>
                     <div>
                       <h2 className="text-base font-bold text-gray-900 tracking-tight">
-                        Naratif Autopilot AI
+                        Ada Fakta Autopilot AI
                       </h2>
                       <div className="flex items-center gap-2 mt-0.5">
                         <code className="text-[11px] bg-purple-50 text-purple-700 px-2 py-0.5 rounded font-mono font-medium">
@@ -716,7 +716,7 @@ export default function CronHubPage() {
                   </span>
                 </div>
                 <p className="text-[11px] text-gray-300 truncate font-mono">
-                  Key: naratif-bing-auto (Aktif)
+                  Key: adafakta-bing-auto (Aktif)
                 </p>
               </div>
 

@@ -291,7 +291,7 @@ export async function triggerAutopilotNowAction() {
 
 export async function getCronConfigInfo() {
   const secret = process.env.CRON_SECRET || '';
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.naratif.web.id';
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.adafakta.web.id';
   return {
     cronUrl: `${siteUrl}/api/cron/autopilot`,
     cronSecret: secret,

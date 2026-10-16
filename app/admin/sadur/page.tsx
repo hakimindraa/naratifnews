@@ -1,6 +1,6 @@
 'use client';
 
-// Halaman Sadur Berita URL (Naratif News)
+// Halaman Sadur Berita URL (Ada Fakta)
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
@@ -366,7 +366,7 @@ export default function SadurPage() {
               3
             </span>
             <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider">
-              Preferensi Penulisan Ulang (Saduran Naratif)
+              Preferensi Penulisan Ulang (Saduran Ada Fakta)
             </h3>
           </div>
 
@@ -506,7 +506,7 @@ export default function SadurPage() {
                   }`}
                 >
                   <span className="text-xs font-bold block">🚀 Langsung Terbit</span>
-                  <span className="text-[10px] text-gray-500">Tayang di naratif.web.id</span>
+                  <span className="text-[10px] text-gray-500">Tayang di adafakta.web.id</span>
                 </button>
 
                 <button
@@ -567,7 +567,7 @@ export default function SadurPage() {
           {/* Rincian Artikel */}
           <div className="bg-white/80 p-4 rounded-xl border border-emerald-200/60 space-y-2">
             <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Judul Artikel Baru Naratif:
+              Judul Artikel Baru Ada Fakta:
             </div>
             <h4 className="text-base font-bold text-gray-900 leading-snug break-words">
               📰 {sadurResult.title}
@@ -602,7 +602,7 @@ export default function SadurPage() {
 
             {sadurResult.status === 'published' && (
               <a
-                href={`/berita-teknologi/${sadurResult.category.toLowerCase()}/${sadurResult.articleId}/${sadurResult.slug}`}
+                href={`/berita/${sadurResult.category.toLowerCase()}/${sadurResult.articleId}/${sadurResult.slug}`}
                 target="_blank"
                 rel="noreferrer"
                 className="px-4 py-2.5 rounded-xl bg-white hover:bg-gray-50 text-gray-800 font-bold text-xs border border-gray-300 shadow-2xs transition-all flex items-center justify-center gap-1.5 text-center"

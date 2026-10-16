@@ -320,7 +320,7 @@ async function runArticleGeneration({
         excerpt: draftArticle.excerpt,
         content: draftArticle.content,
         category: draftArticle.category,
-        author: 'Redaksi Naratif (Telegram AI)',
+        author: 'Redaksi Ada Fakta (Telegram AI)',
         tags: draftArticle.tags,
         coverUrl: null, // Sampul dapat ditambahkan manual via web admin
         coverCaption: draftArticle.coverCaption,
@@ -371,7 +371,7 @@ async function runArticleGeneration({
     // Revalidasi cache web
     revalidatePath('/', 'layout');
 
-    const articleUrl = `${siteUrl}/berita-teknologi/${newArticle.category.toLowerCase()}/${newArticle.id}/${newArticle.slug}`;
+    const articleUrl = `${siteUrl}/berita/${newArticle.category.toLowerCase()}/${newArticle.id}/${newArticle.slug}`;
     const editUrl = `${siteUrl}/admin/edit/${newArticle.id}`;
     const tagsFormatted = (newArticle.tags || []).map((t: string) => `<code>#${t}</code>`).join(' ');
 
@@ -387,7 +387,7 @@ async function runArticleGeneration({
 │ 🏷️ Tag      : ${tagsFormatted || '<code>#berita</code>'}
 └──${sourcesSection}${similarityNote}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-✅ <i>Artikel telah terbit di portal Naratif. Anda dapat menambahkan foto sampul lewat Web Admin.</i>`;
+✅ <i>Artikel telah terbit di portal Ada Fakta. Anda dapat menambahkan foto sampul lewat Web Admin.</i>`;
 
       await updateOrSendMessage(chatId, activeMessageId, successText, {
         inlineKeyboard: [
@@ -474,7 +474,7 @@ async function runArticleRevision({
 
     const startTime = performance.now();
 
-    const revisionSystemPrompt = `Anda adalah editor senior portal berita Naratif.
+    const revisionSystemPrompt = `Anda adalah editor senior portal berita Ada Fakta.
 Tugas Anda adalah merevisi artikel berita yang sudah ada sesuai dengan instruksi yang diberikan redaksi.
 
 ATURAN REVISI:
@@ -565,7 +565,7 @@ Silakan hasilkan objek JSON revisi sesuai aturan di atas.`;
     revalidatePath('/admin');
     revalidatePath(`/admin/edit/${existing.id}`);
 
-    const articleUrl = `${siteUrl}/berita-teknologi/${updated.category.toLowerCase()}/${updated.id}/${updated.slug}`;
+    const articleUrl = `${siteUrl}/berita/${updated.category.toLowerCase()}/${updated.id}/${updated.slug}`;
     const editUrl = `${siteUrl}/admin/edit/${updated.id}`;
 
     const successText = `✅ <b>ARTIKEL #${updated.id} BERHASIL DIREVISI!</b>
@@ -578,7 +578,7 @@ Silakan hasilkan objek JSON revisi sesuai aturan di atas.`;
 │ 📝 Catatan  : <i>${revisedData.changelog || 'Naskah berita telah disempurnakan sesuai instruksi redaksi.'}</i>
 └──
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-✅ <i>Perubahan naskah sudah langsung aktif di portal Naratif.</i>`;
+✅ <i>Perubahan naskah sudah langsung aktif di portal Ada Fakta.</i>`;
 
     await updateOrSendMessage(chatId, activeMsgId, successText, {
       inlineKeyboard: [
@@ -663,7 +663,7 @@ async function runSadurArticleGeneration({
         excerpt: result.excerpt,
         content: result.content,
         category: result.category,
-        author: 'Redaksi Naratif (Saduran AI)',
+        author: 'Redaksi Ada Fakta (Saduran AI)',
         tags: result.tags,
         coverUrl: null,
         coverCaption: result.coverCaption,
@@ -701,7 +701,7 @@ async function runSadurArticleGeneration({
     revalidatePath('/admin');
     revalidatePath('/admin/sadur');
 
-    const articleUrl = `${siteUrl}/berita-teknologi/${newArticle.category.toLowerCase()}/${newArticle.id}/${newArticle.slug}`;
+    const articleUrl = `${siteUrl}/berita/${newArticle.category.toLowerCase()}/${newArticle.id}/${newArticle.slug}`;
     const editUrl = `${siteUrl}/admin/edit/${newArticle.id}`;
     const tagsFormatted = (newArticle.tags || []).map((t: string) => `<code>#${t}</code>`).join(' ');
 
@@ -716,7 +716,7 @@ async function runSadurArticleGeneration({
 │ 🏷️ Topik    : ${tagsFormatted || '<code>#saduran</code>'}
 └──${similarityNote}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-✅ <i>Naskah telah terbit di portal Naratif lengkap dengan atribusi sumber berita.</i>`;
+✅ <i>Naskah telah terbit di portal Ada Fakta lengkap dengan atribusi sumber berita.</i>`;
 
     await updateOrSendMessage(chatId, activeMsgId, successMessage, {
       inlineKeyboard: [
@@ -995,16 +995,16 @@ async function runManualArticlePublication({
   // 5. Revalidate cache halaman
   revalidatePath('/', 'layout');
   revalidatePath('/admin');
-  revalidatePath(`/berita-teknologi/${data.category.toLowerCase()}`);
+  revalidatePath(`/berita/${data.category.toLowerCase()}`);
 
   // 6. Instant Indexing jika langsung diterbitkan
   if (isPublish) {
-    const articleUrl = `${siteUrl}/berita-teknologi/${newArticle.category.toLowerCase()}/${newArticle.id}/${newArticle.slug}`;
+    const articleUrl = `${siteUrl}/berita/${newArticle.category.toLowerCase()}/${newArticle.id}/${newArticle.slug}`;
     notifySearchEngines(articleUrl).catch((err) => console.warn('Manual Indexing Error:', err));
   }
 
   const wordCount = data.content.trim().split(/\s+/).filter(Boolean).length;
-  const articleUrl = `${siteUrl}/berita-teknologi/${newArticle.category.toLowerCase()}/${newArticle.id}/${newArticle.slug}`;
+  const articleUrl = `${siteUrl}/berita/${newArticle.category.toLowerCase()}/${newArticle.id}/${newArticle.slug}`;
   const editUrl = `${siteUrl}/admin/edit/${newArticle.id}`;
 
   const statusLabel = isPublish ? '🟢 <b>Tayang Publik (Published)</b>' : '🟡 <b>Draf Review (Draft)</b>';
@@ -1153,7 +1153,7 @@ async function sendWelcomeMessage(
 
   const welcomeText = `✨━━━━━━━━━━━━━━━━━━━━━━━━━━━━✨
 Halo <b>${firstName}</b> 👋
-Selamat datang di <b>Naratif Redaksi Bot</b>
+Selamat datang di <b>Ada Fakta Redaksi Bot</b>
 ✨━━━━━━━━━━━━━━━━━━━━━━━━━━━━✨
 
 ┌── 👤 <b>Profil Editor</b>
@@ -1162,7 +1162,7 @@ Selamat datang di <b>Naratif Redaksi Bot</b>
 │ 🏷️ Akses: 🛡️ <b>Redaksi Inti</b>
 └──
 
-┌── 📊 <b>Status Portal Naratif</b>
+┌── 📊 <b>Status Portal Ada Fakta</b>
 │ 📁 Total Arsip : <b>${total} artikel</b>
 │ 🚀 Tayang Web  : <b>${published} artikel</b>
 │ 📝 Draf Review : <b>${draft} artikel</b>
@@ -1209,7 +1209,7 @@ async function sendStatsMessage(chatId: number | string, messageId: number | und
     autopilotBox = `\n\n┌── 🤖 <b>Jadwal Autopublish AI</b>\n│ Status : ${auto.isEnabled ? '🟢 <b>Aktif</b>' : '🔴 <b>Nonaktif</b>'}\n│ Berikutnya : <b>${auto.nextRunLabel}</b>\n│ Hitung Mundur : ⏳ <b>${auto.countdown}</b> (Kategori: <b>${auto.nextCategory}</b>)\n└──`;
   } catch {}
 
-  const statsText = `📊 <b>STATISTIK PORTAL NARATIF</b>
+  const statsText = `📊 <b>STATISTIK PORTAL ADA FAKTA</b>
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Laporan performa publikasi & infrastruktur server
 
@@ -1269,7 +1269,7 @@ async function sendAutopilotMessage(
 
   const autopilotText = `🤖 <b>STATUS & JADWAL AUTOPILOT REDAKSI</b>
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Pusat kendali autopublish berita otomatis AI Naratif
+Pusat kendali autopublish berita otomatis AI Ada Fakta
 
 ┌── ⚙️ <b>Konfigurasi Sistem</b>
 │ • Status Sistem : ${statusBadge}
@@ -1284,7 +1284,7 @@ Pusat kendali autopublish berita otomatis AI Naratif
 │ • Siklus Rutin   : <code>07:00 • 13:00 • 19:00 WIB</code>
 └──
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-💡 <i>Artikel diriset otomatis dari Google News Indonesia terkini dan dianalisis sesuai kaidah jurnalistik Naratif.</i>`;
+💡 <i>Artikel diriset otomatis dari Google News Indonesia terkini dan dianalisis sesuai kaidah jurnalistik Ada Fakta.</i>`;
 
   const inlineKeyboard = [
     [
@@ -1304,7 +1304,7 @@ Pusat kendali autopublish berita otomatis AI Naratif
 export async function POST(req: NextRequest) {
   try {
     const update = await req.json();
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.naratif.web.id';
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.adafakta.web.id';
     const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID?.trim();
 
     // ==========================================
@@ -1326,7 +1326,7 @@ export async function POST(req: NextRequest) {
         await updateOrSendMessage(
           chatId,
           messageId,
-          `⛔ <b>Akses Terbatas</b>\n\nMaaf <b>${firstName}</b>, bot ini dikunci khusus untuk Redaksi Naratif.\nID Telegram Anda: <code>${userId}</code>`
+          `⛔ <b>Akses Terbatas</b>\n\nMaaf <b>${firstName}</b>, bot ini dikunci khusus untuk Redaksi Ada Fakta.\nID Telegram Anda: <code>${userId}</code>`
         );
         return NextResponse.json({ ok: true });
       }
@@ -1748,7 +1748,7 @@ Format    : <b>${lengthLabel}</b>
     if (adminChatId && String(userId) !== adminChatId && String(chatId) !== adminChatId) {
       await sendTelegramMessage(
         chatId,
-        `⛔ <b>Akses Terbatas</b>\n\nMaaf <b>${firstName}</b>, bot ini dikunci khusus untuk Redaksi Naratif.\nID Telegram Anda: <code>${userId}</code>`
+        `⛔ <b>Akses Terbatas</b>\n\nMaaf <b>${firstName}</b>, bot ini dikunci khusus untuk Redaksi Ada Fakta.\nID Telegram Anda: <code>${userId}</code>`
       );
       return NextResponse.json({ ok: true });
     }
@@ -1788,7 +1788,7 @@ Format    : <b>${lengthLabel}</b>
       }
 
       const clearText = `✨━━━━━━━━━━━━━━━━━━━━━━━━━━━━✨
-<b>NARATIF REDAKSI BOT</b>
+<b>ADA FAKTA REDAKSI BOT</b>
 Layar obrolan berhasil dirapikan.
 ✨━━━━━━━━━━━━━━━━━━━━━━━━━━━━✨
 
@@ -2129,9 +2129,9 @@ Fitur ini membaca berita dari URL media luar, mengekstrak fakta penting, dan men
 
     // 9. COMMAND: /help, /bantuan
     if (rawText === '/help' || rawText === '/bantuan') {
-      const helpText = `❓ <b>PANDUAN LENGKAP NARATIF BOT</b>
+      const helpText = `❓ <b>PANDUAN LENGKAP ADA FAKTA BOT</b>
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Pusat kendali otomatisasi berita AI Naratif
+Pusat kendali otomatisasi berita AI Ada Fakta
 
 ┌── ✍️ <b>Pembuatan Berita Bertahap</b>
 │ • <code>/menu</code> — Wizard interaktif 5 langkah

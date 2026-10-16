@@ -89,9 +89,9 @@ export default function PengaturanPage() {
     cronSecret: string;
     siteUrl: string;
   }>({
-    cronUrl: 'https://www.naratif.web.id/api/cron/autopilot',
+    cronUrl: 'https://www.adafakta.web.id/api/cron/autopilot',
     cronSecret: '',
-    siteUrl: 'https://www.naratif.web.id',
+    siteUrl: 'https://www.adafakta.web.id',
   });
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
@@ -256,7 +256,7 @@ export default function PengaturanPage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] text-gray-500">
         <RefreshCw className="w-8 h-8 animate-spin text-indigo-600 mb-3" />
-        <p className="text-sm font-medium">Memuat konfigurasi Naratif...</p>
+        <p className="text-sm font-medium">Memuat konfigurasi Ada Fakta...</p>
       </div>
     );
   }
@@ -501,7 +501,7 @@ export default function PengaturanPage() {
                         <span>🚀 Langsung Terbit</span>
                       </div>
                       <p className="text-[11px] text-gray-500 mt-1">
-                        Otomatis tayang di portal naratif.web.id
+                        Otomatis tayang di portal adafakta.web.id
                       </p>
                     </button>
 
@@ -727,7 +727,7 @@ export default function PengaturanPage() {
                     Buka Dashboard <a href="https://cron-job.org" target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline font-bold inline-flex items-center gap-0.5">cron-job.org <ExternalLink className="w-3 h-3" /></a> dan klik <b>Create Cronjob</b>.
                   </p>
                   <p className="text-gray-500 mt-0.5">
-                    Beri nama cron job, misal: <code className="bg-gray-100 px-1.5 py-0.5 rounded font-mono text-gray-800">Naratif Autopilot Redaksi</code>.
+                    Beri nama cron job, misal: <code className="bg-gray-100 px-1.5 py-0.5 rounded font-mono text-gray-800">Ada Fakta Autopilot Redaksi</code>.
                   </p>
                 </div>
               </div>

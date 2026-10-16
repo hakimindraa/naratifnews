@@ -136,7 +136,7 @@ export default function ImgbbMediaModal({
       setResultUrl(res.url);
       setResultThumb(res.thumbUrl || res.url);
       if (onSelectUrl) {
-        onSelectUrl(res.url, `Ilustrasi liputan. (Dok. Naratif)`);
+        onSelectUrl(res.url, `Ilustrasi liputan. (Dok. Ada Fakta)`);
         onClose();
       }
     } else {
@@ -427,7 +427,7 @@ export default function ImgbbMediaModal({
 
         {/* Footer */}
         <div className="px-5 py-3 border-t border-gray-100 bg-gray-50/70 flex items-center justify-between text-xs text-gray-500 shrink-0">
-          <span>Tersedia untuk artikel, cover, dan media redaksi Naratif.</span>
+          <span>Tersedia untuk artikel, cover, dan media redaksi Ada Fakta.</span>
           <button
             type="button"
             onClick={onClose}

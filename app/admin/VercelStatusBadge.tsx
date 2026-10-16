@@ -89,7 +89,7 @@ export default function VercelStatusBadge() {
   }, [isOpen]);
 
   const handleTriggerRedeploy = async () => {
-    if (!confirm('Deploy ulang build produksi Naratif di Vercel sekarang?')) return;
+    if (!confirm('Deploy ulang build produksi Ada Fakta di Vercel sekarang?')) return;
     setRedeploying(true);
     setRedeployNotice(null);
 
@@ -278,7 +278,7 @@ export default function VercelStatusBadge() {
                   </a>
 
                   <a
-                    href="https://www.naratif.web.id"
+                    href="https://www.adafakta.web.id"
                     target="_blank"
                     rel="noreferrer"
                     className="text-emerald-400 hover:text-emerald-300 font-semibold inline-flex items-center gap-1 hover:underline"

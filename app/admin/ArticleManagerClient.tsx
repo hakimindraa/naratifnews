@@ -641,7 +641,7 @@ export default function ArticleManagerClient({ initialArticles }: ArticleManager
                   {/* Buka di Web (Khusus Published) */}
                   {isPublished && (
                     <a
-                      href={`/berita-teknologi/${article.category.toLowerCase().replace(/\s+/g, '-')}/${article.id}/${article.slug}`}
+                      href={`/berita/${article.category.toLowerCase().replace(/\s+/g, '-')}/${article.id}/${article.slug}`}
                       target="_blank"
                       rel="noreferrer"
                       className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-semibold text-xs shadow-2xs transition-colors"
@@ -760,7 +760,7 @@ export default function ArticleManagerClient({ initialArticles }: ArticleManager
                       </button>
                     ) : (
                       <a
-                        href={`/berita-teknologi/${article.category.toLowerCase().replace(/\s+/g, '-')}/${article.id}/${article.slug}`}
+                        href={`/berita/${article.category.toLowerCase().replace(/\s+/g, '-')}/${article.id}/${article.slug}`}
                         target="_blank"
                         rel="noreferrer"
                         className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs transition-colors flex-1 justify-center"

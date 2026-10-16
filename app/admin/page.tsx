@@ -94,13 +94,13 @@ export default async function AdminDashboard() {
         <div>
           <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-indigo-50 border border-indigo-100 text-indigo-700 text-xs font-bold mb-2">
             <Sparkles className="w-3.5 h-3.5" />
-            <span>Naratif Redaksi</span>
+            <span>Ada Fakta Redaksi</span>
           </div>
           <h1 className="text-xl sm:text-2xl font-extrabold text-gray-900 font-heading">
             Dasbor Redaksi
           </h1>
           <p className="text-gray-500 text-xs sm:text-sm mt-1">
-            Kelola arsip berita, tinjau draf hasil generate AI, dan terbitkan artikel Naratif secara langsung.
+            Kelola arsip berita, tinjau draf hasil generate AI, dan terbitkan artikel Ada Fakta secara langsung.
           </p>
         </div>
 

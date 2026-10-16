@@ -23,6 +23,15 @@ const nextConfig: NextConfig = {
       },
     },
   },
+  async redirects() {
+    return [
+      {
+        source: '/berita-teknologi/:path*',
+        destination: '/berita/:path*',
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

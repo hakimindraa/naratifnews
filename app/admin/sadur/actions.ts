@@ -1,6 +1,6 @@
 'use server';
 
-// Server Actions untuk Sadur Berita URL (Naratif)
+// Server Actions untuk Sadur Berita URL (Ada Fakta)
 import { db } from '@/db';
 import { articles, aiGenerationLogs } from '@/db/schema';
 import { scrapeArticleFromUrl, ScrapedSourceData } from '@/lib/url-scraper';
@@ -99,7 +99,7 @@ export async function generateSadurArticleAction(params: GenerateSadurParams) {
         excerpt: result.excerpt,
         content: result.content,
         category: result.category,
-        author: 'Redaksi Naratif',
+        author: 'Redaksi Ada Fakta',
         tags: result.tags,
         coverUrl: null,
         coverCaption: result.coverCaption,
@@ -135,8 +135,8 @@ export async function generateSadurArticleAction(params: GenerateSadurParams) {
 
     // Instant Indexing: Beritahu Google & Bing jika artikel langsung diterbitkan
     if (params.status === 'published') {
-      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.naratif.web.id';
-      const articleUrl = `${siteUrl}/berita-teknologi/${newArticle.category.toLowerCase()}/${newArticle.id}/${newArticle.slug}`;
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.adafakta.web.id';
+      const articleUrl = `${siteUrl}/berita/${newArticle.category.toLowerCase()}/${newArticle.id}/${newArticle.slug}`;
       notifySearchEngines(articleUrl).catch((err) => console.warn('Sadur Indexing Error:', err));
     }
 

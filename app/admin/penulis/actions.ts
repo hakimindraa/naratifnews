@@ -40,13 +40,13 @@ export async function getAuthorsWithStatsAction(): Promise<{
         {
           name: 'Desk Teknologi',
           role: 'Tim Redaksi',
-          bio: 'Tim liputan editorial Naratif yang mengulas gadget, inovasi hardware, software, dan perkembangan sains harian.',
+          bio: 'Tim liputan editorial Ada Fakta yang mengulas gadget, inovasi hardware, software, dan perkembangan sains harian.',
           avatarUrl: null,
         },
         {
-          name: 'Redaksi Naratif (AI)',
+          name: 'Redaksi Ada Fakta (AI)',
           role: 'Asisten Redaksi Cerdas',
-          bio: 'Sistem kurasi dan asisten editorial kecerdasan buatan Naratif untuk pemrosesan data dan saduran berita global.',
+          bio: 'Sistem kurasi dan asisten editorial kecerdasan buatan Ada Fakta untuk pemrosesan data dan saduran berita global.',
           avatarUrl: null,
         },
       ];

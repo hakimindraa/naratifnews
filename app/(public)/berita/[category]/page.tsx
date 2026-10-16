@@ -28,11 +28,11 @@ export async function generateMetadata({
   const categoryName = categoryMap[rawCat] || (category.charAt(0).toUpperCase() + category.slice(1));
   const isRegional = rawCat === 'regional';
   const title = isRegional
-    ? `Berita Regional Terkini & Kebijakan Daerah - Naratif`
-    : `Berita ${categoryName} Terkini - Naratif Tekno`;
+    ? `Berita Regional Terkini & Kebijakan Daerah - Ada Fakta`
+    : `Berita ${categoryName} Terkini - Ada Fakta`;
   const description = isRegional
-    ? `Kumpulan berita regional terkini, dinamika pemerintahan daerah, dan isu fasilitas publik di Naratif.`
-    : `Kumpulan berita, analisis, dan informasi terkini seputar ${categoryName} di Naratif.`;
+    ? `Kumpulan berita regional terkini, dinamika pemerintahan daerah, dan isu fasilitas publik di Ada Fakta.`
+    : `Kumpulan berita, analisis, dan informasi terkini seputar ${categoryName} di Ada Fakta.`;
 
   return {
     title,
@@ -110,7 +110,7 @@ export default async function CategoryPage({
             ) : (
               categoryArticles.map((article) => (
                 <div key={article.id} className="group cursor-pointer flex flex-col sm:flex-row gap-6 pb-8 border-b border-gray-100 last:border-0">
-                  <Link href={`/berita-teknologi/${category.toLowerCase()}/${article.id}/${article.slug}`} className="sm:w-1/3 shrink-0">
+                  <Link href={`/berita/${category.toLowerCase()}/${article.id}/${article.slug}`} className="sm:w-1/3 shrink-0">
                     <div className="relative w-full h-48 sm:h-32 overflow-hidden rounded-xl shadow-sm">
                       <img
                         src={article.coverUrl || ''}
@@ -124,7 +124,7 @@ export default async function CategoryPage({
                       {article.category}
                     </div>
                     <h2 className="text-xl font-bold font-heading text-gray-900 group-hover:text-gray-600 transition-colors line-clamp-2 mb-2 leading-snug">
-                      <Link href={`/berita-teknologi/${category.toLowerCase()}/${article.id}/${article.slug}`}>{article.title}</Link>
+                      <Link href={`/berita/${category.toLowerCase()}/${article.id}/${article.slug}`}>{article.title}</Link>
                     </h2>
                     <p className="text-gray-600 text-sm line-clamp-2 mb-3 flex-grow">
                       {article.excerpt}
@@ -161,7 +161,7 @@ export default async function CategoryPage({
                         {article.category}
                       </div>
                       <h4 className="font-bold text-gray-900 group-hover:text-gray-600 transition-colors line-clamp-2 text-sm leading-snug">
-                        <Link href={`/berita-teknologi/${article.category.toLowerCase()}/${article.id}/${article.slug}`}>{article.title}</Link>
+                        <Link href={`/berita/${article.category.toLowerCase()}/${article.id}/${article.slug}`}>{article.title}</Link>
                       </h4>
                     </div>
                   </div>

@@ -111,7 +111,7 @@ export default async function Home() {
             {/* Card Headline Utama */}
             <div className="flex flex-col w-full bg-white border border-gray-100 overflow-hidden rounded-2xl mb-6 shadow-xs hover:shadow-md transition-all group">
               <Link
-                href={`/berita-teknologi/${featuredArticle.category.toLowerCase()}/${featuredArticle.id}/${featuredArticle.slug}`}
+                href={`/berita/${featuredArticle.category.toLowerCase()}/${featuredArticle.id}/${featuredArticle.slug}`}
                 className="w-full relative overflow-hidden bg-gray-50 aspect-video block"
               >
                 <img
@@ -130,7 +130,7 @@ export default async function Home() {
                 </div>
 
                 <Link
-                  href={`/berita-teknologi/${featuredArticle.category.toLowerCase()}/${featuredArticle.id}/${featuredArticle.slug}`}
+                  href={`/berita/${featuredArticle.category.toLowerCase()}/${featuredArticle.id}/${featuredArticle.slug}`}
                 >
                   <h2 className="text-2xl sm:text-3xl font-bold font-heading text-gray-900 group-hover:text-indigo-600 transition-colors mb-3 leading-tight line-clamp-3">
                     {featuredArticle.title}
@@ -150,7 +150,7 @@ export default async function Home() {
                       <div key={bj.id} className="text-xs sm:text-sm leading-relaxed">
                         <span className="font-semibold text-gray-700 mr-1.5">Baca juga:</span>
                         <Link
-                          href={`/berita-teknologi/${bj.category.toLowerCase()}/${bj.id}/${bj.slug}`}
+                          href={`/berita/${bj.category.toLowerCase()}/${bj.id}/${bj.slug}`}
                           className="text-sky-600 hover:text-sky-700 font-medium hover:underline transition-colors"
                         >
                           {bj.title}
@@ -179,7 +179,7 @@ export default async function Home() {
                   {sorotanArticles.map((art) => (
                     <Link
                       key={art.id}
-                      href={`/berita-teknologi/${art.category.toLowerCase()}/${art.id}/${art.slug}`}
+                      href={`/berita/${art.category.toLowerCase()}/${art.id}/${art.slug}`}
                       className="group flex flex-col bg-white rounded-xl border border-gray-100 overflow-hidden shadow-2xs hover:shadow-sm transition-all w-[240px] sm:w-auto shrink-0 snap-start"
                     >
                       <div className="aspect-video w-full overflow-hidden bg-gray-50 relative">
@@ -230,7 +230,7 @@ export default async function Home() {
                     popularArticles.map((article, index) => (
                       <Link
                         key={article.id}
-                        href={`/berita-teknologi/${article.category.toLowerCase()}/${article.id}/${article.slug}`}
+                        href={`/berita/${article.category.toLowerCase()}/${article.id}/${article.slug}`}
                         className="py-3.5 first:pt-0 group flex items-start gap-3.5 cursor-pointer"
                       >
                         <span className="text-3xl sm:text-4xl font-black font-heading text-gray-200 group-hover:text-indigo-500 transition-colors shrink-0 leading-none w-7 text-center">
@@ -267,7 +267,7 @@ export default async function Home() {
                       {/* Kartu Utama Kilas Balik */}
                       {kilasBalikArticles[0] && (
                         <Link
-                          href={`/berita-teknologi/${kilasBalikArticles[0].category.toLowerCase()}/${kilasBalikArticles[0].id}/${kilasBalikArticles[0].slug}`}
+                          href={`/berita/${kilasBalikArticles[0].category.toLowerCase()}/${kilasBalikArticles[0].id}/${kilasBalikArticles[0].slug}`}
                           className="group block bg-gray-50/80 rounded-xl border border-gray-100 overflow-hidden shadow-2xs hover:shadow-xs transition-all"
                         >
                           <div className="aspect-video w-full overflow-hidden bg-gray-100 relative">
@@ -298,7 +298,7 @@ export default async function Home() {
                         {kilasBalikArticles.slice(1).map((kb) => (
                           <Link
                             key={kb.id}
-                            href={`/berita-teknologi/${kb.category.toLowerCase()}/${kb.id}/${kb.slug}`}
+                            href={`/berita/${kb.category.toLowerCase()}/${kb.id}/${kb.slug}`}
                             className="py-3 first:pt-0 group flex items-center gap-3"
                           >
                             <div className="w-16 h-12 rounded-lg overflow-hidden bg-gray-100 shrink-0 border border-gray-100">

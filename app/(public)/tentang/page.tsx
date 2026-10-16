@@ -4,7 +4,7 @@ import { ChevronRight, Target, ShieldCheck, Zap, Users } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Tentang Kami",
-  description: "Profil, visi, misi, dan komitmen Naratif dalam menghadirkan informasi dan berita teknologi terpercaya di Indonesia.",
+  description: "Profil, visi, misi, dan komitmen Ada Fakta dalam menghadirkan informasi dan berita terpercaya di Indonesia.",
 };
 
 export default function TentangPage() {
@@ -20,7 +20,7 @@ export default function TentangPage() {
       {/* Header */}
       <div className="border-b border-gray-200 pb-8 mb-8">
         <h1 className="text-3xl sm:text-4xl font-black font-heading text-gray-900 tracking-tight mb-4">
-          Tentang <span className="text-gray-900">Naratif</span>
+          Tentang <span className="text-gray-900">Ada Fakta</span>
         </h1>
         <p className="text-lg text-gray-600 leading-relaxed">
           Portal berita dan informasi terfokus seputar perkembangan teknologi, pemrograman, kecerdasan buatan (AI), hardware, dan inovasi digital setiap hari.
@@ -30,10 +30,10 @@ export default function TentangPage() {
       {/* Story */}
       <div className="prose prose-lg max-w-none text-gray-800 space-y-6 mb-12 leading-relaxed">
         <p>
-          <strong>Naratif</strong> hadir sebagai respon terhadap derasnya arus informasi teknologi yang sering kali rumit dan dipenuhi sensasionalisme. Kami percaya bahwa pemahaman tentang teknologi masa depan harus mudah diakses, akurat, dan dapat dipahami oleh semua kalangan, mulai dari antusias gadget, pengembang perangkat lunak, hingga masyarakat umum.
+          <strong>Ada Fakta</strong> hadir sebagai respon terhadap derasnya arus informasi yang sering kali rumit dan dipenuhi sensasionalisme. Kami percaya bahwa pemahaman tentang peristiwa, daerah, dan teknologi masa depan harus mudah diakses, akurat, dan dapat dipahami oleh semua kalangan masyarakat.
         </p>
         <p>
-          Didirikan dengan komitmen menyajikan jurnalisme teknologi yang beretika, tim redaksi Naratif memverifikasi setiap kabar, mengulas gawai secara objektif, serta menyajikan panduan teknologi yang aplikatif.
+          Didirikan dengan komitmen menyajikan jurnalisme yang beretika, tim redaksi Ada Fakta memverifikasi setiap kabar secara objektif dan mendalam.
         </p>
       </div>
 

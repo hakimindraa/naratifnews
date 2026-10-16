@@ -84,7 +84,7 @@ export async function getAutopilotScheduleInfo(): Promise<AutopilotScheduleInfo>
       countdown = hours > 0 ? `${hours} jam ${mins} mnt lagi` : `${mins} mnt lagi`;
     }
   } else {
-    // 2. Fallback cerdas ke slot jadwal rilis redaksi Naratif (07:00, 13:00, 19:00 WIB)
+    // 2. Fallback cerdas ke slot jadwal rilis redaksi Ada Fakta (07:00, 13:00, 19:00 WIB)
     const nowWib = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
     const currentHour = nowWib.getHours();
     const currentMinute = nowWib.getMinutes();

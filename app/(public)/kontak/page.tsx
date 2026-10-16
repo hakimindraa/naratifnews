@@ -4,7 +4,7 @@ import { ChevronRight, Mail, MessageSquare, MapPin, Globe } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Kontak Kami",
-  description: "Hubungi redaksi Naratif untuk siaran pers, kemitraan media, maupun pertanyaan seputar berita teknologi.",
+  description: "Hubungi redaksi Ada Fakta untuk siaran pers, kemitraan media, maupun pertanyaan seputar berita.",
 };
 
 export default function KontakPage() {
@@ -20,7 +20,7 @@ export default function KontakPage() {
       {/* Header */}
       <div className="border-b border-gray-200 pb-8 mb-8">
         <h1 className="text-3xl sm:text-4xl font-black font-heading text-gray-900 tracking-tight mb-3">
-          Kontak <span className="text-gray-900">Naratif</span>
+          Kontak <span className="text-gray-900">Ada Fakta</span>
         </h1>
         <p className="text-gray-600">
           Kami terbuka untuk saran, kerja sama media, serta pengiriman siaran pers dan rilis produk.
@@ -37,8 +37,8 @@ export default function KontakPage() {
             <div>
               <h2 className="font-bold text-gray-900 text-base">Surel Redaksi</h2>
               <p className="text-xs text-gray-500 mb-2">Kirim siaran pers, klarifikasi, atau hak jawab:</p>
-              <a href="mailto:redaksi@naratif.web.id" className="text-gray-900 hover:underline font-semibold text-sm">
-                redaksi@naratif.web.id
+              <a href="mailto:redaksi@adafakta.web.id" className="text-gray-900 hover:underline font-semibold text-sm">
+                redaksi@adafakta.web.id
               </a>
             </div>
           </div>
@@ -56,7 +56,7 @@ export default function KontakPage() {
                 rel="noopener noreferrer"
                 className="text-emerald-700 hover:underline font-semibold text-sm"
               >
-                Saluran WhatsApp Naratifnews ↗
+                Saluran WhatsApp Ada Fakta ↗
               </a>
             </div>
           </div>
@@ -68,7 +68,7 @@ export default function KontakPage() {
             <div>
               <h2 className="font-bold text-gray-900 text-base">Domain Resmi</h2>
               <p className="text-xs text-gray-500 mb-2">Website portal berita:</p>
-              <span className="text-gray-900 font-semibold text-sm">https://www.naratif.web.id</span>
+              <span className="text-gray-900 font-semibold text-sm">https://www.adafakta.web.id</span>
             </div>
           </div>
         </div>
@@ -80,7 +80,7 @@ export default function KontakPage() {
             <ul className="text-sm text-gray-600 space-y-3 leading-relaxed list-disc pl-4">
               <li>Materi rilis harus berkaitan dengan bidang teknologi, gadget, sains, atau transformasi digital.</li>
               <li>Lampirkan narasi berita, gambar pendukung beresolusi tinggi, serta kontak narasumber untuk verifikasi.</li>
-              <li>Redaksi Naratif berhak menyunting materi sesuai dengan kaidah tata bahasa dan kode etik jurnalistik kami tanpa mengubah substansi fakta.</li>
+              <li>Redaksi Ada Fakta berhak menyunting materi sesuai dengan kaidah tata bahasa dan kode etik jurnalistik kami tanpa mengubah substansi fakta.</li>
             </ul>
           </div>
           <div className="mt-6 pt-4 border-t border-gray-200 text-xs text-gray-500">

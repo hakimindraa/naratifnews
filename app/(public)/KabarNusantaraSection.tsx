@@ -100,7 +100,7 @@ export default function KabarNusantaraSection({ articles }: KabarNusantaraSectio
         <div className="flex items-center gap-3">
           <span className="text-[11px] text-gray-400 font-medium sm:hidden">Geser ➔</span>
           <Link
-            href="/berita-teknologi/regional"
+            href="/berita/regional"
             className="text-[11px] text-gray-400 hover:text-gray-900 font-medium transition-colors hidden sm:inline"
           >
             Berita Daerah ➔
@@ -116,7 +116,7 @@ export default function KabarNusantaraSection({ articles }: KabarNusantaraSectio
           return (
             <Link
               key={art.id}
-              href={`/berita-teknologi/regional/${art.id}/${art.slug}`}
+              href={`/berita/regional/${art.id}/${art.slug}`}
               className="group flex flex-col bg-white rounded-xl border border-gray-100 overflow-hidden shadow-2xs hover:shadow-sm transition-all w-[240px] sm:w-auto shrink-0 snap-start"
             >
               <div className="aspect-video w-full overflow-hidden bg-gray-50 relative">

@@ -67,7 +67,7 @@ export default function LatestNewsSection({
         {articlesList.map((article) => (
           <div key={article.id} className="group cursor-pointer">
             <Link
-              href={`/berita-teknologi/${article.category.toLowerCase()}/${article.id}/${article.slug}`}
+              href={`/berita/${article.category.toLowerCase()}/${article.id}/${article.slug}`}
               className="flex flex-col gap-2 sm:gap-0 sm:h-full items-start"
             >
               {/* Thumbnail Image */}

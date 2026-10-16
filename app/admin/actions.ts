@@ -192,8 +192,8 @@ export async function quickPublishArticleAction(id: number) {
       .returning();
 
     if (updated) {
-      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.naratif.web.id';
-      const articleUrl = `${siteUrl}/berita-teknologi/${(updated.category || 'software').toLowerCase()}/${updated.id}/${updated.slug}`;
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.adafakta.web.id';
+      const articleUrl = `${siteUrl}/berita/${(updated.category || 'software').toLowerCase()}/${updated.id}/${updated.slug}`;
       notifySearchEngines(articleUrl).catch((err) => console.warn('Quick Publish Indexing Error:', err));
     }
 
@@ -228,9 +228,9 @@ export async function bulkPublishArticlesAction(ids: number[]) {
       });
 
     // Pemicu Instant Indexing ke Google & Bing untuk semua artikel yang terbit
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.naratif.web.id';
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.adafakta.web.id';
     for (const art of updatedArticles) {
-      const articleUrl = `${siteUrl}/berita-teknologi/${(art.category || 'software').toLowerCase()}/${art.id}/${art.slug}`;
+      const articleUrl = `${siteUrl}/berita/${(art.category || 'software').toLowerCase()}/${art.id}/${art.slug}`;
       notifySearchEngines(articleUrl).catch((err) => console.warn('Bulk Publish Indexing Error:', err));
     }
 
@@ -339,8 +339,8 @@ export async function updateArticle(id: number, formData: FormData) {
       })
       .where(eq(articles.id, id));
 
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.naratif.web.id';
-    const articleUrl = `${siteUrl}/berita-teknologi/${(category || 'software').toLowerCase()}/${id}/${slug}`;
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.adafakta.web.id';
+    const articleUrl = `${siteUrl}/berita/${(category || 'software').toLowerCase()}/${id}/${slug}`;
 
     if (status === 'published') {
       notifySearchEngines(articleUrl).catch((err) => console.warn('Update Article Indexing Error:', err));
@@ -374,7 +374,7 @@ export async function updateArticle(id: number, formData: FormData) {
 
     revalidatePath('/', 'layout');
     revalidatePath('/admin');
-    revalidatePath(`/berita-teknologi/${(category || 'software').toLowerCase()}/${id}/${slug}`);
+    revalidatePath(`/berita/${(category || 'software').toLowerCase()}/${id}/${slug}`);
     return { success: true };
   } catch (error) {
     return { error: 'Gagal mengupdate artikel' };
@@ -471,8 +471,8 @@ export async function createArticle(formData: FormData) {
     }).returning({ id: articles.id, slug: articles.slug });
 
     if (status === 'published') {
-      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.naratif.web.id';
-      const articleUrl = `${siteUrl}/berita-teknologi/${catFormatted.toLowerCase()}/${newArticle.id}/${newArticle.slug}`;
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.adafakta.web.id';
+      const articleUrl = `${siteUrl}/berita/${catFormatted.toLowerCase()}/${newArticle.id}/${newArticle.slug}`;
       notifySearchEngines(articleUrl).catch((err) => console.warn('Create Article Indexing Error:', err));
     }
 
@@ -529,7 +529,7 @@ export async function getInternalLinkArticles(query?: string): Promise<InternalL
       title: r.title,
       slug: r.slug,
       category: r.category,
-      url: `/berita-teknologi/${r.category.toLowerCase().replace(/\s+/g, '-')}/${r.id}/${r.slug}`,
+      url: `/berita/${r.category.toLowerCase().replace(/\s+/g, '-')}/${r.id}/${r.slug}`,
       publishedAt: r.publishedAt ? new Date(r.publishedAt).toISOString() : null,
     }));
   } catch (error) {

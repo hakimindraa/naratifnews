@@ -41,7 +41,7 @@ export default function AdSlot({ config, clientId, className = '' }: AdSlotProps
     return (
       <div className={`w-full my-6 overflow-hidden rounded-2xl border border-gray-100 bg-white p-2.5 shadow-xs ${className}`}>
         <div className="flex items-center justify-between px-2 pb-1.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
-          <span>Sponsor Naratif</span>
+          <span>Sponsor Ada Fakta</span>
           <span className="text-[9px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">Promosi</span>
         </div>
         <a
@@ -52,7 +52,7 @@ export default function AdSlot({ config, clientId, className = '' }: AdSlotProps
         >
           <img
             src={config.bannerImage}
-            alt={config.bannerAlt || 'Sponsor Naratif'}
+            alt={config.bannerAlt || 'Sponsor Ada Fakta'}
             className="w-full h-auto object-cover max-h-72 rounded-xl group-hover:scale-[1.01] transition-transform duration-300"
           />
         </a>

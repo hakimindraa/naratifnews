@@ -53,7 +53,7 @@ export default async function PublicLayout({
 
             <div className="flex-1 flex justify-center">
               <a href="/" className="text-3xl md:text-5xl font-black font-heading tracking-tighter">
-                <span className="text-gray-900">naratif</span><span className="text-gray-400">tekno</span>
+                <span className="text-gray-900">ada</span><span className="text-gray-400">fakta</span>
               </a>
             </div>
 
@@ -72,7 +72,7 @@ export default async function PublicLayout({
             <nav className="bg-gray-900 text-white rounded-lg shadow-sm">
               <div className="px-4 sm:px-5 lg:px-6 overflow-x-auto scrollbar-hide flex items-center justify-start md:justify-center h-10 md:h-12 space-x-6 md:space-x-8">
                 {['Software', 'Hardware', 'AI', 'Infrastruktur', 'Gadget', 'Regional'].map((cat) => (
-                  <a key={cat} href={`/berita-teknologi/${cat.toLowerCase().replace(' ', '-')}`} className="text-xs md:text-sm font-bold whitespace-nowrap hover:text-gray-300 transition-colors uppercase tracking-wide">
+                  <a key={cat} href={`/berita/${cat.toLowerCase().replace(' ', '-')}`} className="text-xs md:text-sm font-bold whitespace-nowrap hover:text-gray-300 transition-colors uppercase tracking-wide">
                     {cat}
                   </a>
                 ))}
@@ -114,7 +114,7 @@ export default async function PublicLayout({
               <div className="flex items-center">
                 <span className="bg-red-600 text-white text-[10px] md:text-xs font-black px-2.5 py-1 rounded-sm mr-3 shrink-0 uppercase tracking-wider shadow-sm">Breaking</span>
                 <div className="truncate text-xs md:text-sm font-semibold text-gray-800">
-                  <Link href={`/berita-teknologi/${breakingNews.category.toLowerCase()}/${breakingNews.id}/${breakingNews.slug}`} className="hover:text-gray-900 hover:underline transition-colors">
+                  <Link href={`/berita/${breakingNews.category.toLowerCase()}/${breakingNews.id}/${breakingNews.slug}`} className="hover:text-gray-900 hover:underline transition-colors">
                     {breakingNews.title}
                   </Link>
                 </div>
@@ -143,8 +143,8 @@ export default async function PublicLayout({
       <footer className="bg-gray-900 text-white mt-12 py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center">
           <div className="mb-6 md:mb-0 text-center md:text-left">
-            <a href="/" className="text-3xl font-bold font-heading text-white tracking-tight">Naratif</a>
-            <p className="text-gray-400 mt-2 text-sm max-w-sm">Portal berita dan informasi terfokus seputar perkembangan teknologi, pemrograman, hardware, dan inovasi digital setiap hari.</p>
+            <a href="/" className="text-3xl font-bold font-heading text-white tracking-tight">Ada Fakta</a>
+            <p className="text-gray-400 mt-2 text-sm max-w-sm">Portal berita dan informasi seputar perkembangan teknologi, sains, isu regional, dan peristiwa terkini.</p>
           </div>
           <div className="flex flex-wrap justify-center gap-6 text-sm font-medium text-gray-300">
             <Link href="/tentang" className="hover:text-white transition-colors">Tentang</Link>
@@ -155,7 +155,7 @@ export default async function PublicLayout({
           </div>
         </div>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 pt-8 border-t border-gray-800 text-center text-gray-500 text-xs">
-          &copy; 2026 Naratif. All rights reserved.
+          &copy; 2026 Ada Fakta. All rights reserved.
         </div>
       </footer>
     </>

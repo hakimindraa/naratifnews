@@ -19,7 +19,7 @@ export interface IndexingResult {
  */
 export async function submitToIndexNow(urls: string[]) {
   const indexNowKey = process.env.INDEXNOW_KEY || 'e89f7a42b1094d45a98715ecb916f183';
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.naratif.web.id';
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.adafakta.web.id';
   const host = new URL(siteUrl).host;
 
   // Filter dan pastikan URL valid dan unik

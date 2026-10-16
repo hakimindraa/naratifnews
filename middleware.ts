@@ -8,7 +8,7 @@ export async function middleware(request: NextRequest) {
   const isProtectedRoute = path.startsWith('/admin') && path !== '/admin/login';
 
   if (isProtectedRoute) {
-    const cookie = request.cookies.get('naratif_session')?.value;
+    const cookie = request.cookies.get('adafakta_session')?.value;
     
     if (!cookie) {
       return NextResponse.redirect(new URL('/admin/login', request.url));
@@ -27,7 +27,7 @@ export async function middleware(request: NextRequest) {
 
   // Mencegah user yang sudah login pergi ke halaman login lagi
   if (path === '/admin/login') {
-    const cookie = request.cookies.get('naratif_session')?.value;
+    const cookie = request.cookies.get('adafakta_session')?.value;
     if (cookie) {
       try {
         const session = await decrypt(cookie);

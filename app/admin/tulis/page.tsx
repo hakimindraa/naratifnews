@@ -6,7 +6,7 @@ import TulisForm from './TulisForm';
 export const instant = false;
 
 export const metadata: Metadata = {
-  title: 'Tulis Artikel Baru - Naratif Admin',
+  title: 'Tulis Artikel Baru - Ada Fakta Admin',
 };
 
 export default function TulisArtikelPage() {

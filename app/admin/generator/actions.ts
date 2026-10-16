@@ -67,7 +67,7 @@ export async function generateArticleAction(payload: GeneratePayload) {
         excerpt: draft.excerpt,
         content: draft.content,
         category: draft.category,
-        author: 'Redaksi Naratif (AI)',
+        author: 'Redaksi Ada Fakta (AI)',
         tags: draft.tags,
         coverUrl: cleanCoverUrl,
         coverCaption: draft.coverCaption,

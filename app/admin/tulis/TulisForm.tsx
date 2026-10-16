@@ -129,7 +129,7 @@ export default function TulisForm() {
             className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-gray-900 text-sm font-mono"
           />
           <p className="text-xs text-gray-500">
-            URL: /berita-teknologi/{category.toLowerCase()}/[id]/{slug || 'judul-artikel'}
+            URL: /berita/{category.toLowerCase()}/[id]/{slug || 'judul-artikel'}
           </p>
         </div>
 
@@ -277,7 +277,7 @@ export default function TulisForm() {
             onChange={(e) => setContent(e.target.value)}
             required 
             rows={14}
-            placeholder={`Tulis isi berita dalam format Markdown di sini...\n\nContoh:\n## Sub-judul Pembahasan\nParagraf penjelasan berita...\n\n> **Baca Juga:** [Judul Artikel Lain](/berita-teknologi/...)\n\n> Kutipan penting narasumber...\n\n- Poin pertama\n- Poin kedua`}
+            placeholder={`Tulis isi berita dalam format Markdown di sini...\n\nContoh:\n## Sub-judul Pembahasan\nParagraf penjelasan berita...\n\n> **Baca Juga:** [Judul Artikel Lain](/berita/...)\n\n> Kutipan penting narasumber...\n\n- Poin pertama\n- Poin kedua`}
             className="w-full p-4 border border-gray-300 rounded-xl font-mono text-sm focus:ring-2 focus:ring-gray-900 focus:border-gray-900 leading-relaxed"
           />
         ) : (

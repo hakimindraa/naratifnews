@@ -4,7 +4,7 @@ import { ChevronRight, Award, Mail } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Susunan Redaksi",
-  description: "Susunan tim dan dewan redaksi Naratif - Portal Berita Teknologi Terpercaya.",
+  description: "Susunan tim dan dewan redaksi Ada Fakta - Portal Berita Faktual Terpercaya.",
 };
 
 export default function RedaksiPage() {
@@ -23,7 +23,7 @@ export default function RedaksiPage() {
           Susunan <span className="text-gray-900">Redaksi</span>
         </h1>
         <p className="text-gray-600">
-          Tim jurnalis, editor, dan analis di balik sajian berita serta ulasan teknologi Naratif.
+          Tim jurnalis, editor, dan analis di balik sajian berita serta ulasan Ada Fakta.
         </p>
       </div>
 
@@ -42,7 +42,7 @@ export default function RedaksiPage() {
             </div>
             <div>
               <div className="text-xs text-gray-400 uppercase font-semibold">Pemimpin Redaksi</div>
-              <div className="font-bold text-gray-900 text-lg mt-0.5">Tim Redaksi Naratif</div>
+              <div className="font-bold text-gray-900 text-lg mt-0.5">Tim Redaksi Ada Fakta</div>
             </div>
           </div>
         </section>
@@ -67,15 +67,15 @@ export default function RedaksiPage() {
             </div>
             <div>
               <div className="text-xs text-gray-400 uppercase font-semibold">Reporter & Analis</div>
-              <div className="font-bold text-gray-900 mt-0.5">Staf Jurnalis Naratif</div>
+              <div className="font-bold text-gray-900 mt-0.5">Staf Jurnalis Ada Fakta</div>
             </div>
             <div>
               <div className="text-xs text-gray-400 uppercase font-semibold">Riset & Verifikasi Data</div>
-              <div className="font-bold text-gray-900 mt-0.5">Tim Riset Naratif</div>
+              <div className="font-bold text-gray-900 mt-0.5">Tim Riset Ada Fakta</div>
             </div>
             <div>
               <div className="text-xs text-gray-400 uppercase font-semibold">Desain & Visual</div>
-              <div className="font-bold text-gray-900 mt-0.5">Tim Kreatif Naratif</div>
+              <div className="font-bold text-gray-900 mt-0.5">Tim Kreatif Ada Fakta</div>
             </div>
           </div>
         </section>
@@ -87,11 +87,11 @@ export default function RedaksiPage() {
             <p className="text-xs text-gray-600 mt-1">Punya rilis produk atau informasi teknologi terbaru? Kirimkan kepada kami.</p>
           </div>
           <a
-            href="mailto:redaksi@naratif.web.id"
+            href="mailto:redaksi@adafakta.web.id"
             className="flex items-center gap-2 bg-gray-900 hover:bg-black text-white px-4 py-2.5 rounded-xl font-bold text-sm transition-colors shrink-0"
           >
             <Mail className="w-4 h-4" />
-            <span>redaksi@naratif.web.id</span>
+            <span>redaksi@adafakta.web.id</span>
           </a>
         </div>
       </div>

@@ -14,12 +14,19 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://www.naratif.web.id'),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://www.adafakta.web.id'),
   title: {
-    default: "Naratif - Informasi Berita Teknologi",
-    template: "%s | Naratif",
+    default: "Ada Fakta: Berita Terkini Hari Ini, Fakta Aktual Terpercaya",
+    template: "%s | Ada Fakta",
   },
-  description: "Portal berita dan informasi seputar perkembangan teknologi, software, gadget, AI, dan inovasi digital terkini.",
+  description: "Portal berita dan informasi seputar perkembangan teknologi, software, gadget, AI, dan kabar terkini.",
+  openGraph: {
+    title: "Ada Fakta: Berita Terkini Hari Ini, Fakta Aktual Terpercaya",
+    description: "Portal berita dan informasi seputar perkembangan teknologi, software, gadget, AI, dan kabar terkini.",
+    siteName: "Ada Fakta",
+    locale: "id_ID",
+    type: "website",
+  },
   verification: {
     google: "NA1fdypaSoCCl78MmgJf3I5WDVSDC9AIn_I9g9zAqrU",
   },

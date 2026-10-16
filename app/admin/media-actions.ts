@@ -38,7 +38,7 @@ export async function uploadImageToImgbb(formData: FormData): Promise<ImgbbUploa
 
   const file = formData.get('file') as File | null;
   const imageUrl = formData.get('imageUrl') as string | null;
-  const name = (formData.get('name') as string | null) || 'naratif-image';
+  const name = (formData.get('name') as string | null) || 'adafakta-image';
 
   if (!file && !imageUrl) {
     return { error: 'Pilih berkas gambar atau masukkan URL gambar yang valid.' };
@@ -120,7 +120,7 @@ export async function searchEditorialPhotos(query: string): Promise<{
 
     const res = await fetch(url, {
       headers: {
-        'User-Agent': 'NaratifNews/1.0 (Editorial Media Tool; contact@naratif.id)',
+        'User-Agent': 'AdaFaktaNews/1.0 (Editorial Media Tool; contact@adafakta.web.id)',
       },
       next: { revalidate: 3600 },
     });

@@ -212,7 +212,7 @@ export default function GeneratorStudioPage() {
           : 'Menganalisis instruksi topik & sudut pandang berita teknologi...',
         'Menghubungi AI Studio (Gemini) & menyusun naskah mendalam (Markdown)...',
         'Memformat metadata, tags, dan keterangan gambar...',
-        'Menyimpan otomatis ke database Neon DB Naratif...',
+        'Menyimpan otomatis ke database Neon DB Ada Fakta...',
       ];
 
   const [deletingId, setDeletingId] = useState<number | null>(null);
@@ -382,13 +382,13 @@ export default function GeneratorStudioPage() {
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-300 text-xs font-semibold uppercase tracking-wider mb-2.5 border border-indigo-500/30">
               <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-              <span>Naratif AI Studio</span>
+              <span>Ada Fakta AI Studio</span>
             </div>
             <h1 className="text-xl sm:text-2xl lg:text-3xl font-black tracking-tight font-heading">
               Studio Generator Berita Otomatis
             </h1>
             <p className="text-gray-300 text-xs sm:text-sm mt-1.5 max-w-2xl leading-relaxed">
-              Kendalikan AI untuk meriset fakta Google News, menyusun naskah jurnalistik mendalam, dan menerbitkan artikel ke Naratif dalam hitungan detik.
+              Kendalikan AI untuk meriset fakta Google News, menyusun naskah jurnalistik mendalam, dan menerbitkan artikel ke Ada Fakta dalam hitungan detik.
             </p>
           </div>
 
@@ -978,7 +978,7 @@ export default function GeneratorStudioPage() {
                 </Link>
                 {lastGenerated.status === 'published' && (
                   <a
-                    href={`/berita-teknologi/${lastGenerated.category.toLowerCase().replace(/\s+/g, '-')}/${lastGenerated.id}/${lastGenerated.slug}`}
+                    href={`/berita/${lastGenerated.category.toLowerCase().replace(/\s+/g, '-')}/${lastGenerated.id}/${lastGenerated.slug}`}
                     target="_blank"
                     rel="noreferrer"
                     className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 transition-colors shadow-2xs"
@@ -1056,7 +1056,7 @@ export default function GeneratorStudioPage() {
                 Riwayat Eksekusi AI ({logs.length})
               </h3>
               <p className="text-xs text-gray-500 mt-0.5">
-                Daftar artikel yang telah digenerate oleh AI Studio di Naratif.
+                Daftar artikel yang telah digenerate oleh AI Studio di Ada Fakta.
               </p>
             </div>
 

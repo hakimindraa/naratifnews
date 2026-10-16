@@ -109,11 +109,11 @@ export default function AdminLayoutClient({ children }: AdminLayoutClientProps) 
         <div className="h-16 flex items-center justify-between px-5 border-b border-gray-800 shrink-0">
           <Link href="/admin" className="flex items-center gap-2.5 group">
             <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center font-bold text-white shadow-xs group-hover:bg-indigo-500 transition-colors">
-              N
+              A
             </div>
             <div>
               <span className="font-bold text-base tracking-tight font-heading block leading-none">
-                Naratif Admin
+                Ada Fakta Admin
               </span>
               <span className="text-[10px] text-gray-400 font-medium flex items-center gap-1.5 mt-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -220,9 +220,9 @@ export default function AdminLayoutClient({ children }: AdminLayoutClientProps) 
       <header className="md:hidden bg-gray-900 text-white px-4 h-15 flex items-center justify-between border-b border-gray-800 sticky top-0 z-20">
         <Link href="/admin" className="flex items-center gap-2 font-bold text-base font-heading">
           <div className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center font-bold text-white text-xs">
-            N
+            A
           </div>
-          <span>Naratif Admin</span>
+          <span>Ada Fakta Admin</span>
         </Link>
 
         <div className="flex items-center gap-2">
@@ -348,7 +348,7 @@ export default function AdminLayoutClient({ children }: AdminLayoutClientProps) 
         <header className="hidden md:flex h-16 items-center justify-between px-6 lg:px-8 border-b border-gray-200/80 bg-white/95 backdrop-blur-sm sticky top-0 z-20">
           <div className="flex items-center gap-2">
             <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">
-              Portal Redaksi Naratif
+              Portal Redaksi Ada Fakta
             </span>
           </div>
 
@@ -381,7 +381,7 @@ export default function AdminLayoutClient({ children }: AdminLayoutClientProps) 
           {children}
         </main>
         <footer className="py-4 text-center text-xs text-gray-500 border-t border-gray-200/80 bg-white/60">
-          &copy; 2026 Naratif Media. Panel Redaksi Terintegrasi AI.
+          &copy; 2026 Ada Fakta. Panel Redaksi Terintegrasi AI.
         </footer>
       </div>
 

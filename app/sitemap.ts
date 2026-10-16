@@ -6,7 +6,7 @@ import { eq, desc } from 'drizzle-orm';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   await connection();
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.naratif.web.id';
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.adafakta.web.id';
 
   let articleUrls: MetadataRoute.Sitemap = [];
 
@@ -24,7 +24,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       .orderBy(desc(articles.publishedAt));
 
     articleUrls = publishedArticles.map((article) => ({
-      url: `${siteUrl}/berita-teknologi/${article.category.toLowerCase()}/${article.id}/${article.slug}`,
+      url: `${siteUrl}/berita/${article.category.toLowerCase()}/${article.id}/${article.slug}`,
       lastModified: article.updatedAt || article.publishedAt || new Date(),
       changeFrequency: 'daily' as const,
       priority: 0.8,
@@ -38,7 +38,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const categories = ['software', 'hardware', 'ai', 'infrastruktur', 'gadget', 'regional'];
   const categoryUrls: MetadataRoute.Sitemap = categories.map((cat) => ({
-    url: `${siteUrl}/berita-teknologi/${cat}`,
+    url: `${siteUrl}/berita/${cat}`,
     lastModified: new Date(),
     changeFrequency: 'daily' as const,
     priority: 0.7,

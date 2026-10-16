@@ -4,7 +4,7 @@ import { ChevronRight, ShieldCheck } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Kebijakan Privasi",
-  description: "Kebijakan privasi Naratif mengenai pengumpulan, penggunaan, dan perlindungan data pengunjung situs.",
+  description: "Kebijakan privasi Ada Fakta mengenai pengumpulan, penggunaan, dan perlindungan data pengunjung situs.",
 };
 
 export default function PrivasiPage() {
@@ -27,7 +27,7 @@ export default function PrivasiPage() {
           Kebijakan Privasi
         </h1>
         <p className="text-gray-600 text-sm">
-          Terakhir diperbarui: Oktober 2026 • Berlaku untuk seluruh pengunjung situs https://www.naratif.web.id
+          Terakhir diperbarui: Oktober 2026 • Berlaku untuk seluruh pengunjung situs https://www.adafakta.web.id
         </p>
       </div>
 
@@ -35,21 +35,21 @@ export default function PrivasiPage() {
         <section className="space-y-3">
           <h2 className="text-xl font-bold font-heading text-gray-900">1. Pendahuluan</h2>
           <p>
-            Privasi pengunjung situs <strong>Naratif</strong> (selanjutnya disebut "kami") adalah prioritas utama kami. Dokumen Kebijakan Privasi ini menjelaskan jenis informasi pribadi yang dikumpulkan dan dicatat oleh situs kami serta bagaimana informasi tersebut digunakan.
+            Privasi pengunjung situs <strong>Ada Fakta</strong> (selanjutnya disebut "kami") adalah prioritas utama kami. Dokumen Kebijakan Privasi ini menjelaskan jenis informasi pribadi yang dikumpulkan dan dicatat oleh situs kami serta bagaimana informasi tersebut digunakan.
           </p>
         </section>
 
         <section className="space-y-3">
           <h2 className="text-xl font-bold font-heading text-gray-900">2. Log Files (Berkas Catatan)</h2>
           <p>
-            Seperti kebanyakan situs web standar, Naratif menggunakan berkas log. Berkas-berkas ini mencatat pengunjung saat mereka mengunjungi situs web. Informasi yang dikumpulkan dalam berkas log mencakup alamat Protokol Internet (IP), jenis browser, Penyedia Layanan Internet (ISP), stempel tanggal/waktu, halaman rujukan/keluar, dan kemungkinan jumlah klik. Informasi ini tidak dikaitkan dengan informasi apa pun yang dapat diidentifikasi secara pribadi dan digunakan semata-mata untuk menganalisis tren, mengelola situs, serta mengumpulkan data demografis umum.
+            Seperti kebanyakan situs web standar, Ada Fakta menggunakan berkas log. Berkas-berkas ini mencatat pengunjung saat mereka mengunjungi situs web. Informasi yang dikumpulkan dalam berkas log mencakup alamat Protokol Internet (IP), jenis browser, Penyedia Layanan Internet (ISP), stempel tanggal/waktu, halaman rujukan/keluar, dan kemungkinan jumlah klik. Informasi ini tidak dikaitkan dengan informasi apa pun yang dapat diidentifikasi secara pribadi dan digunakan semata-mata untuk menganalisis tren, mengelola situs, serta mengumpulkan data demografis umum.
           </p>
         </section>
 
         <section className="space-y-3">
           <h2 className="text-xl font-bold font-heading text-gray-900">3. Cookie dan Web Beacon</h2>
           <p>
-            Naratif menggunakan "cookie" untuk menyimpan informasi tentang preferensi pengunjung dan halaman-halaman di situs web yang diakses atau dikunjungi. Informasi ini digunakan untuk mengoptimalkan pengalaman pengguna dengan menyesuaikan konten halaman web kami berdasarkan jenis browser pengunjung atau informasi lainnya.
+            Ada Fakta menggunakan "cookie" untuk menyimpan informasi tentang preferensi pengunjung dan halaman-halaman di situs web yang diakses atau dikunjungi. Informasi ini digunakan untuk mengoptimalkan pengalaman pengguna dengan menyesuaikan konten halaman web kami berdasarkan jenis browser pengunjung atau informasi lainnya.
           </p>
         </section>
 

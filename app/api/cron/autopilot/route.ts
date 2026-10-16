@@ -18,7 +18,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.naratif.web.id';
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.adafakta.web.id';
 
     // 2. Baca konfigurasi Autopilot dari tabel system_settings
     const settingsRows = await db.select().from(systemSettings);
@@ -122,7 +122,7 @@ export async function GET(request: Request) {
         excerpt: draftArticle.excerpt,
         content: draftArticle.content,
         category: draftArticle.category,
-        author: 'Redaksi Naratif (Autopilot AI)',
+        author: 'Redaksi Ada Fakta (Autopilot AI)',
         tags: draftArticle.tags,
         coverUrl: null,
         coverCaption: draftArticle.coverCaption,
@@ -148,7 +148,7 @@ export async function GET(request: Request) {
       createdAt: now,
     });
 
-    // 9. Revalidasi Cache Halaman Web Naratif
+    // 9. Revalidasi Cache Halaman Web Ada Fakta
     revalidatePath('/', 'layout');
 
     // 10. Kirim Notifikasi Laporan ke Bot Telegram Pemilik Web
@@ -162,7 +162,7 @@ export async function GET(request: Request) {
         }
       } catch {}
 
-      const articleUrl = `${siteUrl}/berita-teknologi/${newArticle.category.toLowerCase()}/${newArticle.id}/${newArticle.slug}`;
+      const articleUrl = `${siteUrl}/berita/${newArticle.category.toLowerCase()}/${newArticle.id}/${newArticle.slug}`;
       const editUrl = `${siteUrl}/admin/edit/${newArticle.id}`;
       const statusText = isPublish ? '🚀 <code>Langsung Terbit (Published)</code>' : '📝 <code>Disimpan ke Draf (Draft)</code>';
 
@@ -180,7 +180,7 @@ export async function GET(request: Request) {
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ${
   isPublish
-    ? '✅ <i>Artikel telah otomatis tayang di portal Naratif.</i>'
+    ? '✅ <i>Artikel telah otomatis tayang di portal Ada Fakta.</i>'
     : '📝 <i>Artikel tersimpan sebagai Draf untuk ditinjau redaktur.</i>'
 }`;
 
@@ -200,7 +200,7 @@ ${
 
     // 11. Instant Indexing: Beritahu Google & Bing (IndexNow) secara instan di latar belakang
     if (isPublish) {
-      const fullArticleUrl = `${siteUrl}/berita-teknologi/${newArticle.category.toLowerCase()}/${newArticle.id}/${newArticle.slug}`;
+      const fullArticleUrl = `${siteUrl}/berita/${newArticle.category.toLowerCase()}/${newArticle.id}/${newArticle.slug}`;
       notifySearchEngines(fullArticleUrl).catch((err) =>
         console.warn('Autopilot Search Engine Indexing Notification Error:', err)
       );

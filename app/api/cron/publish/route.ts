@@ -15,7 +15,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.naratif.web.id';
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.adafakta.web.id';
 
     // 2. Cari semua artikel yang statusnya "scheduled" dan waktunya sudah lewat atau sama dengan sekarang
     const now = new Date();
@@ -51,7 +51,7 @@ export async function GET(request: Request) {
 
       // Instant Indexing: Kirim URL artikel yang baru terbit ke Google & Bing (IndexNow)
       const publishedUrls = updatedArticles.map(
-        (art) => `${siteUrl}/berita-teknologi/${(art.category || 'ai').toLowerCase()}/${art.id}/${art.slug}`
+        (art) => `${siteUrl}/berita/${(art.category || 'ai').toLowerCase()}/${art.id}/${art.slug}`
       );
       notifySearchEngines(publishedUrls).catch((err) =>
         console.warn('Publish Cron Indexing Notification Error:', err)

@@ -28,7 +28,7 @@ export const DEFAULT_ADS_SETTINGS: AdSettingsData = {
     slotId: '',
     bannerImage: '',
     bannerUrl: '',
-    bannerAlt: 'Sponsor Naratif',
+    bannerAlt: 'Sponsor Ada Fakta',
   },
   inArticle: {
     enabled: false,
@@ -36,7 +36,7 @@ export const DEFAULT_ADS_SETTINGS: AdSettingsData = {
     slotId: '',
     bannerImage: '',
     bannerUrl: '',
-    bannerAlt: 'Sponsor Naratif',
+    bannerAlt: 'Sponsor Ada Fakta',
   },
   sidebar: {
     enabled: false,
@@ -44,7 +44,7 @@ export const DEFAULT_ADS_SETTINGS: AdSettingsData = {
     slotId: '',
     bannerImage: '',
     bannerUrl: '',
-    bannerAlt: 'Sponsor Naratif',
+    bannerAlt: 'Sponsor Ada Fakta',
   },
   footer: {
     enabled: false,
@@ -52,7 +52,7 @@ export const DEFAULT_ADS_SETTINGS: AdSettingsData = {
     slotId: '',
     bannerImage: '',
     bannerUrl: '',
-    bannerAlt: 'Sponsor Naratif',
+    bannerAlt: 'Sponsor Ada Fakta',
   },
 };
 
@@ -113,28 +113,28 @@ export async function saveAdSettings(settings: AdSettingsData): Promise<void> {
     ['ads_header_slot_id', (settings.header.slotId || '').trim()],
     ['ads_header_banner_image', (settings.header.bannerImage || '').trim()],
     ['ads_header_banner_url', (settings.header.bannerUrl || '').trim()],
-    ['ads_header_banner_alt', (settings.header.bannerAlt || 'Sponsor Naratif').trim()],
+    ['ads_header_banner_alt', (settings.header.bannerAlt || 'Sponsor Ada Fakta').trim()],
 
     ['ads_in_article_enabled', settings.inArticle.enabled ? 'true' : 'false'],
     ['ads_in_article_type', settings.inArticle.type],
     ['ads_in_article_slot_id', (settings.inArticle.slotId || '').trim()],
     ['ads_in_article_banner_image', (settings.inArticle.bannerImage || '').trim()],
     ['ads_in_article_banner_url', (settings.inArticle.bannerUrl || '').trim()],
-    ['ads_in_article_banner_alt', (settings.inArticle.bannerAlt || 'Sponsor Naratif').trim()],
+    ['ads_in_article_banner_alt', (settings.inArticle.bannerAlt || 'Sponsor Ada Fakta').trim()],
 
     ['ads_sidebar_enabled', settings.sidebar.enabled ? 'true' : 'false'],
     ['ads_sidebar_type', settings.sidebar.type],
     ['ads_sidebar_slot_id', (settings.sidebar.slotId || '').trim()],
     ['ads_sidebar_banner_image', (settings.sidebar.bannerImage || '').trim()],
     ['ads_sidebar_banner_url', (settings.sidebar.bannerUrl || '').trim()],
-    ['ads_sidebar_banner_alt', (settings.sidebar.bannerAlt || 'Sponsor Naratif').trim()],
+    ['ads_sidebar_banner_alt', (settings.sidebar.bannerAlt || 'Sponsor Ada Fakta').trim()],
 
     ['ads_footer_enabled', settings.footer.enabled ? 'true' : 'false'],
     ['ads_footer_type', settings.footer.type],
     ['ads_footer_slot_id', (settings.footer.slotId || '').trim()],
     ['ads_footer_banner_image', (settings.footer.bannerImage || '').trim()],
     ['ads_footer_banner_url', (settings.footer.bannerUrl || '').trim()],
-    ['ads_footer_banner_alt', (settings.footer.bannerAlt || 'Sponsor Naratif').trim()],
+    ['ads_footer_banner_alt', (settings.footer.bannerAlt || 'Sponsor Ada Fakta').trim()],
   ];
 
   for (const [key, value] of entries) {

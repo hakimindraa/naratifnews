@@ -154,7 +154,7 @@ export async function findSimilarArticles(
 }
 
 /**
- * Mengecek apakah URL sumber sudah pernah disadur sebelumnya di portal Naratif
+ * Mengecek apakah URL sumber sudah pernah disadur sebelumnya di portal Ada Fakta
  */
 export async function checkSourceUrlHistory(targetUrl: string): Promise<{
   isAlreadyScraped: boolean;

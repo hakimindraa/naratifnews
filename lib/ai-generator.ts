@@ -329,7 +329,7 @@ export async function fetchGoogleNewsResearch(
       const simplifiedTitle = item.title.slice(0, 35).toLowerCase();
       if (seenTitles.has(simplifiedTitle)) continue;
 
-      // Cek apakah topik berita ini sudah pernah dibuat artikelnya di Naratif
+      // Cek apakah topik berita ini sudah pernah dibuat artikelnya di Ada Fakta
       const isAlreadyInDb = recentDbTitles.some((dbTitle) => {
         const itemWords = item.title
           .toLowerCase()
@@ -342,7 +342,7 @@ export async function fetchGoogleNewsResearch(
       });
 
       if (isAlreadyInDb) {
-        // Berita ini sudah pernah ditulis di portal Naratif, lewati agar AI mendapat topik yang benar-benar baru
+        // Berita ini sudah pernah ditulis di portal Ada Fakta, lewati agar AI mendapat topik yang benar-benar baru
         continue;
       }
 
@@ -518,7 +518,7 @@ function sanitizeSlug(rawSlug: string): string {
     .replace(/^-+|-+$/g, '');
 
   if (!cleaned) {
-    cleaned = `berita-teknologi-${Date.now()}`;
+    cleaned = `berita-${Date.now()}`;
   } else {
     cleaned = `${cleaned}-${Date.now().toString().slice(-4)}`;
   }
@@ -623,7 +623,7 @@ async function getInternalLinkCandidates(limit = 15): Promise<InternalLinkCandid
       title: r.title,
       slug: r.slug,
       category: r.category,
-      url: `/berita-teknologi/${r.category.toLowerCase().replace(/\s+/g, '-')}/${r.id}/${r.slug}`,
+      url: `/berita/${r.category.toLowerCase().replace(/\s+/g, '-')}/${r.id}/${r.slug}`,
     }));
   } catch (err) {
     console.warn('Gagal memuat kandidat internal link:', err);
@@ -734,7 +734,7 @@ export async function requestArticleFromModelRouter(
   const regionalScope = cleanRegion ? `khusus wilayah ${cleanRegion}` : 'daerah';
 
   const systemPrompt = isRegional
-    ? `Anda adalah wartawan senior liputan daerah dan editor meja berita regional di portal media terkemuka "Naratif" (Indonesia).
+    ? `Anda adalah wartawan senior liputan daerah dan editor meja berita regional di portal media terkemuka "Ada Fakta" (Indonesia).
 Tugas Anda adalah menulis berita liputan ${regionalScope} yang faktual, mendalam, dan relevan bagi kehidupan warga setempat.
 
 ATURAN PENULISAN:
@@ -757,7 +757,7 @@ FORMAT STRUKTUR JSON YANG WAJIB ANDA HASILKAN:
   "coverCaption": "Deskripsi singkat foto/ilustrasi berita (maksimal 100 karakter)",
   "content": "Isi lengkap berita dalam format Markdown..."
 }`
-    : `Anda adalah jurnalis teknologi senior dan editor utama di portal media teknologi terkemuka "Naratif" (Indonesia).
+    : `Anda adalah jurnalis teknologi senior dan editor utama di portal media teknologi terkemuka "Ada Fakta" (Indonesia).
 Tugas Anda adalah menulis artikel berita teknologi yang mendalam, berwawasan tajam, faktual, dan menarik untuk para antusias teknologi, developer, dan praktisi industri.
 
 ATURAN PENULISAN:
@@ -877,7 +877,7 @@ Ingat, balas HANYA dengan dokumen JSON yang valid sesuai format yang ditentukan.
 
   const tags = Array.isArray(parsed.tags) && parsed.tags.length > 0
     ? parsed.tags.map((t: any) => String(t).trim()).filter(Boolean)
-    : [finalCategory, 'Teknologi', 'Naratif'];
+    : [finalCategory, 'Teknologi', 'Ada Fakta'];
 
   const cleanedContent = cleanContentHeading(String(parsed.content).trim(), String(parsed.title).trim());
   const finalContent = injectInternalLinkIfMissing(cleanedContent, internalCandidates, finalCategory);
@@ -959,12 +959,12 @@ export async function requestSadurArticleFromSource(
     ? options.domain.replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/.*$/, '')
     : 'Sumber Terkait';
 
-  const systemPrompt = `Anda adalah jurnalis teknologi senior dan editor penyadur berita di portal media teknologi "Naratif" (Indonesia).
+  const systemPrompt = `Anda adalah jurnalis teknologi senior dan editor penyadur berita di portal media teknologi "Ada Fakta" (Indonesia).
 Tugas Anda adalah membaca laporan berita sumber asli, mengekstrak fakta-fakta kunci, dan MENULIS ULANG (REWRITE / SADUR) menjadi naskah berita orisinal berbahasa Indonesia yang segar, berwawasan tajam, dan memenuhi standar jurnalisme piramida terbalik.
 
 ATURAN PENULISAN:
 1. Bahasa: Bahasa Indonesia baku, modern, dan bergaya jurnalisme teknologi berbobot.
-2. Anti-Plagiarisme: JANGAN melakukan terjemahan harfiah kata demi kata. Susun kembali struktur kalimat dan alur paragraf dengan gaya narasi redaksi Naratif yang mengalir dan dinamis.
+2. Anti-Plagiarisme: JANGAN melakukan terjemahan harfiah kata demi kata. Susun kembali struktur kalimat dan alur paragraf dengan gaya narasi redaksi Ada Fakta yang mengalir dan dinamis.
 3. Faktual & Akurat: Pertahankan semua fakta riil, angka, data teknis, kronologi peristiwa, nama perusahaan, serta nama narasumber dan kutipannya dari artikel sumber.
 4. Format Konten: Gunakan Markdown murni (Heading ##, ###, bullet points, penekanan bold, kutipan analitis >). JANGAN gunakan tag HTML mentah seperti <p>, <div>, <span>.
 5. Panjang konten: Target ${wordCountTarget}.
@@ -987,7 +987,7 @@ FORMAT STRUKTUR JSON YANG WAJIB ANDA HASILKAN:
   "content": "Isi lengkap berita dalam format Markdown..."
 }`;
 
-  const userPrompt = `Silakan sadur dan tulis ulang laporan berita sumber berikut menjadi artikel berita Naratif yang orisinal:
+  const userPrompt = `Silakan sadur dan tulis ulang laporan berita sumber berikut menjadi artikel berita Ada Fakta yang orisinal:
 
 SUMBER ASLI:
 - Judul Sumber: "${options.sourceTitle}"
@@ -1076,7 +1076,7 @@ Ingat, balas HANYA dengan dokumen JSON yang valid sesuai format yang ditentukan.
 
   const tags = Array.isArray(parsed.tags) && parsed.tags.length > 0
     ? parsed.tags.map((t: any) => String(t).trim()).filter(Boolean)
-    : [finalCategory, 'Teknologi', options.domain || 'Naratif'];
+    : [finalCategory, 'Teknologi', options.domain || 'Ada Fakta'];
 
   const cleanedContent = cleanContentHeading(String(parsed.content).trim(), String(parsed.title).trim());
   const finalContent = injectInternalLinkIfMissing(cleanedContent, internalCandidates, finalCategory);

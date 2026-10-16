@@ -1,4 +1,4 @@
-// Layout Redaksi Naratif Admin
+// Layout Redaksi Ada Fakta Admin
 import AdminLayoutClient from './AdminLayoutClient';
 
 export default function AdminLayout({

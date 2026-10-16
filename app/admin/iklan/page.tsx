@@ -245,7 +245,7 @@ export default function IklanPage() {
               rel="noopener noreferrer"
               className="text-[11px] text-indigo-600 hover:underline flex items-center gap-1 font-medium"
             >
-              Lihat naratif.web.id/ads.txt
+              Lihat adafakta.web.id/ads.txt
               <ExternalLink className="w-3 h-3" />
             </a>
           </div>
@@ -393,7 +393,7 @@ export default function IklanPage() {
               </div>
             )}
             <p className="text-[11px] text-gray-500">
-              Google AdSense membutuhkan file ini pada alamat publik: <a href="https://www.naratif.web.id/ads.txt" target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline">https://www.naratif.web.id/ads.txt</a>. File ini melindungi situs Anda dari penipuan inventaris iklan.
+              Google AdSense membutuhkan file ini pada alamat publik: <a href="https://www.adafakta.web.id/ads.txt" target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline">https://www.adafakta.web.id/ads.txt</a>. File ini melindungi situs Anda dari penipuan inventaris iklan.
             </p>
           </div>
         </div>
@@ -468,7 +468,7 @@ export default function IklanPage() {
           <div>
             <div className="text-sm font-bold">Siap Mengaktifkan Perubahan?</div>
             <div className="text-xs text-gray-400">
-              Pengaturan ini akan langsung berefek ke seluruh pengunjung situs naratif.web.id.
+              Pengaturan ini akan langsung berefek ke seluruh pengunjung situs adafakta.web.id.
             </div>
           </div>
         </div>
