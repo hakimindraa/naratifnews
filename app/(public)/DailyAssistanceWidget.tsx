@@ -132,29 +132,26 @@ export default async function DailyAssistanceWidget() {
   // Warna indikator badge AQI
   const aqiBadgeClass =
     data.aqiLevel === "good"
-      ? "bg-emerald-100 text-emerald-800 border-emerald-200"
+      ? "bg-white text-emerald-800 shadow-2xs"
       : data.aqiLevel === "moderate"
-      ? "bg-amber-100 text-amber-800 border-amber-200"
-      : data.aqiLevel === "unhealthy-sensitive"
-      ? "bg-orange-100 text-orange-800 border-orange-200"
-      : "bg-rose-100 text-rose-800 border-rose-200";
+        ? "bg-white text-amber-800 shadow-2xs"
+        : data.aqiLevel === "unhealthy-sensitive"
+          ? "bg-white text-orange-800 shadow-2xs"
+          : "bg-white text-rose-800 shadow-2xs";
 
   return (
     <div className="mt-8 pt-6 sm:mt-6 sm:pt-5 border-t border-gray-200/80 mb-8 sm:mb-0">
       {/* Header Widget */}
       <div className="flex items-center justify-between mb-3.5">
         <div className="flex items-center gap-2">
-          <span className="flex h-2 w-2 relative">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-600"></span>
-          </span>
+
           <h3 className="text-sm font-bold font-heading text-gray-900 tracking-tight flex items-center gap-1.5">
             <span>Info Harian & Tren</span>
           </h3>
         </div>
         <div className="flex items-center gap-2">
           <span className="text-[10px] text-gray-400 font-medium sm:hidden">Geser ➔</span>
-          <span className="text-[10px] text-indigo-600 font-medium hidden sm:inline bg-indigo-50 px-2 py-0.5 rounded-full">
+          <span className="text-[10px] text-indigo-700 font-medium hidden sm:inline bg-indigo-100/70 px-2 py-0.5 rounded-full">
             Live Update
           </span>
         </div>
@@ -162,14 +159,14 @@ export default async function DailyAssistanceWidget() {
 
       {/* Grid Kartu / Horizontal Scroll di Mobile (Sejajar dengan padding halaman tanpa mepet tepi) */}
       <div className="flex sm:grid sm:grid-cols-3 gap-3 sm:gap-2.5 overflow-x-auto pb-3 sm:pb-0 scrollbar-hide snap-x">
-        
+
         {/* KARTU 1: Kurs USD ke IDR */}
-        <div className="w-[180px] sm:w-auto shrink-0 snap-start bg-slate-50/80 hover:bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 sm:p-3 flex flex-col justify-between transition-all group shadow-2xs min-h-[96px]">
+        <div className="w-[180px] sm:w-auto shrink-0 snap-start bg-emerald-100 hover:bg-emerald-200/70 rounded-xl p-3.5 sm:p-3 flex flex-col justify-between transition-colors group shadow-2xs min-h-[96px]">
           <div className="flex items-center justify-between mb-1.5">
-            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+            <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider">
               USD / IDR
             </span>
-            <div className="w-6 h-6 rounded-md bg-emerald-100/80 text-emerald-600 flex items-center justify-center shrink-0">
+            <div className="w-6 h-6 rounded-md bg-white/80 text-emerald-700 flex items-center justify-center shrink-0">
               <DollarSign className="w-3.5 h-3.5" />
             </div>
           </div>
@@ -177,19 +174,19 @@ export default async function DailyAssistanceWidget() {
             <div className="text-sm sm:text-base font-black text-gray-900 tracking-tight">
               Rp {data.usdRate.toLocaleString("id-ID")}
             </div>
-            <span className="text-[10px] text-gray-400 block mt-0.5">
+            <span className="text-[10px] text-emerald-900/70 font-medium block mt-0.5">
               Acuan Pasar Global
             </span>
           </div>
         </div>
 
         {/* KARTU 2: Cuaca & Suhu Hari Ini */}
-        <div className="w-[180px] sm:w-auto shrink-0 snap-start bg-amber-50/40 hover:bg-amber-50/70 border border-amber-200/60 rounded-xl p-3.5 sm:p-3 flex flex-col justify-between transition-all group shadow-2xs min-h-[96px]">
+        <div className="w-[180px] sm:w-auto shrink-0 snap-start bg-amber-100 hover:bg-amber-200/70 rounded-xl p-3.5 sm:p-3 flex flex-col justify-between transition-colors group shadow-2xs min-h-[96px]">
           <div className="flex items-center justify-between mb-1.5">
-            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+            <span className="text-[10px] font-bold text-amber-800 uppercase tracking-wider">
               Jakarta
             </span>
-            <div className="w-6 h-6 rounded-md bg-amber-100 text-amber-600 flex items-center justify-center shrink-0">
+            <div className="w-6 h-6 rounded-md bg-white/80 text-amber-700 flex items-center justify-center shrink-0">
               {data.weatherCode === 0 ? (
                 <Sun className="w-3.5 h-3.5" />
               ) : [51, 53, 55, 61, 63, 65, 80, 81, 82, 95].includes(data.weatherCode) ? (
@@ -203,19 +200,19 @@ export default async function DailyAssistanceWidget() {
             <div className="text-sm sm:text-base font-black text-gray-900 tracking-tight">
               {data.temp}°C
             </div>
-            <span className="text-[10px] text-amber-800/80 font-medium block mt-0.5 truncate">
+            <span className="text-[10px] text-amber-900/80 font-medium block mt-0.5 truncate">
               {data.weatherCondition}
             </span>
           </div>
         </div>
 
         {/* KARTU 3: Kualitas Udara (AQI) */}
-        <div className="w-[180px] sm:w-auto shrink-0 snap-start bg-teal-50/40 hover:bg-teal-50/70 border border-teal-200/60 rounded-xl p-3.5 sm:p-3 flex flex-col justify-between transition-all group shadow-2xs min-h-[96px]">
+        <div className="w-[180px] sm:w-auto shrink-0 snap-start bg-sky-100 hover:bg-sky-200/70 rounded-xl p-3.5 sm:p-3 flex flex-col justify-between transition-colors group shadow-2xs min-h-[96px]">
           <div className="flex items-center justify-between mb-1.5">
-            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+            <span className="text-[10px] font-bold text-sky-800 uppercase tracking-wider">
               Udara (AQI)
             </span>
-            <div className="w-6 h-6 rounded-md bg-teal-100 text-teal-700 flex items-center justify-center shrink-0">
+            <div className="w-6 h-6 rounded-md bg-white/80 text-sky-700 flex items-center justify-center shrink-0">
               <Wind className="w-3.5 h-3.5" />
             </div>
           </div>
@@ -224,28 +221,28 @@ export default async function DailyAssistanceWidget() {
               <span className="text-sm sm:text-base font-black text-gray-900 tracking-tight">
                 {data.aqi}
               </span>
-              <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded-full border ${aqiBadgeClass}`}>
+              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${aqiBadgeClass}`}>
                 {data.aqiStatus}
               </span>
             </div>
-            <span className="text-[10px] text-gray-400 block mt-0.5">
+            <span className="text-[10px] text-sky-900/70 font-medium block mt-0.5">
               Indeks PM2.5
             </span>
           </div>
         </div>
 
         {/* KARTU 4: Trending Topik Google Hari Ini (Lebar 2 Kolom di Desktop) */}
-        <div className="w-[280px] sm:w-auto sm:col-span-2 shrink-0 snap-start bg-gradient-to-br from-indigo-50/50 to-purple-50/30 hover:bg-indigo-50/70 border border-indigo-200/60 rounded-xl p-3.5 sm:p-3 flex flex-col justify-between transition-all group shadow-2xs min-h-[96px]">
+        <div className="w-[280px] sm:w-auto sm:col-span-2 shrink-0 snap-start bg-indigo-100 hover:bg-indigo-200/70 rounded-xl p-3.5 sm:p-3 flex flex-col justify-between transition-colors group shadow-2xs min-h-[96px]">
           <div className="flex items-center justify-between mb-1.5">
             <div className="flex items-center gap-1.5">
-              <div className="w-6 h-6 rounded-md bg-orange-100 text-orange-600 flex items-center justify-center shrink-0">
+              <div className="w-6 h-6 rounded-md bg-white/80 text-indigo-700 flex items-center justify-center shrink-0">
                 <Flame className="w-3.5 h-3.5" />
               </div>
-              <span className="text-[11px] font-bold text-gray-800 tracking-tight">
+              <span className="text-[11px] font-bold text-indigo-950 tracking-tight">
                 Tren Google Hari Ini
               </span>
             </div>
-            <span className="text-[9px] font-bold text-indigo-600 bg-white/90 border border-indigo-100 px-1.5 py-0.5 rounded shadow-2xs">
+            <span className="text-[9px] font-bold text-indigo-700 bg-white/90 px-1.5 py-0.5 rounded shadow-2xs">
               Indonesia
             </span>
           </div>
@@ -255,7 +252,7 @@ export default async function DailyAssistanceWidget() {
               <Link
                 key={idx}
                 href={`/cari?q=${encodeURIComponent(trend)}`}
-                className="inline-flex items-center gap-1 text-[11px] font-medium text-gray-700 bg-white/95 hover:bg-indigo-600 hover:text-white border border-gray-200/80 hover:border-indigo-600 px-2 py-0.5 rounded-lg transition-all shadow-2xs group/tag max-w-[170px]"
+                className="inline-flex items-center gap-1 text-[11px] font-medium text-gray-800 bg-white hover:bg-indigo-600 hover:text-white px-2 py-0.5 rounded-lg transition-colors shadow-2xs group/tag max-w-[170px]"
                 title={`Cari berita seputar: ${trend}`}
               >
                 <span className="text-[10px] font-bold text-indigo-500 group-hover/tag:text-indigo-200">
@@ -268,23 +265,23 @@ export default async function DailyAssistanceWidget() {
         </div>
 
         {/* KARTU 5: Status Layanan Digital (Lebar 1 Kolom di Desktop) */}
-        <div className="w-[190px] sm:w-auto sm:col-span-1 shrink-0 snap-start bg-slate-50/80 hover:bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 sm:p-3 flex flex-col justify-between transition-all group shadow-2xs min-h-[96px]">
+        <div className="w-[190px] sm:w-auto sm:col-span-1 shrink-0 snap-start bg-teal-100 hover:bg-teal-200/70 rounded-xl p-3.5 sm:p-3 flex flex-col justify-between transition-colors group shadow-2xs min-h-[96px]">
           <div className="flex items-center justify-between mb-1.5">
-            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+            <span className="text-[10px] font-bold text-teal-800 uppercase tracking-wider">
               Layanan Digital
             </span>
-            <div className="w-6 h-6 rounded-md bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+            <div className="w-6 h-6 rounded-md bg-white/80 text-teal-700 flex items-center justify-center shrink-0">
               <ShieldCheck className="w-3.5 h-3.5" />
             </div>
           </div>
           <div>
             <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
-              <span className="text-xs sm:text-sm font-bold text-emerald-700">
+              <span className="w-2 h-2 rounded-full bg-teal-600 shrink-0"></span>
+              <span className="text-xs sm:text-sm font-bold text-teal-900">
                 100% Normal
               </span>
             </div>
-            <span className="text-[9.5px] text-gray-400 block mt-0.5 truncate" title="Google, WhatsApp, Cloudflare, AWS">
+            <span className="text-[9.5px] text-teal-900/70 font-medium block mt-0.5 truncate" title="Google, WhatsApp, Cloudflare, AWS">
               Google • WA • Cloudflare • AWS
             </span>
           </div>

@@ -21,9 +21,17 @@ import {
   Tag,
   AlertCircle,
   RefreshCw,
+  CheckCircle,
+  X,
+  Trash2,
 } from 'lucide-react';
 import DeleteButton from './DeleteButton';
-import { quickPublishArticleAction } from './actions';
+import {
+  quickPublishArticleAction,
+  bulkPublishArticlesAction,
+  bulkDeleteArticlesAction,
+  bulkDraftArticlesAction,
+} from './actions';
 
 export interface ArticleItem {
   id: number;
@@ -55,6 +63,11 @@ export default function ArticleManagerClient({ initialArticles }: ArticleManager
 
   const [publishingId, setPublishingId] = useState<number | null>(null);
   const [isPending, startTransition] = useTransition();
+
+  // State Aksi Massal (Bulk Actions)
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [bulkLoadingAction, setBulkLoadingAction] = useState<'publish' | 'delete' | 'draft' | null>(null);
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   const handleQuickPublish = (id: number) => {
     if (!confirm('Publikasikan artikel ini sekarang ke website?')) return;
@@ -97,6 +110,98 @@ export default function ArticleManagerClient({ initialArticles }: ArticleManager
 
     return true;
   });
+
+  // Logika Seleksi Massal
+  const isAllFilteredSelected =
+    filteredArticles.length > 0 &&
+    filteredArticles.every((art) => selectedIds.includes(art.id));
+
+  const isSomeFilteredSelected =
+    filteredArticles.some((art) => selectedIds.includes(art.id)) && !isAllFilteredSelected;
+
+  const handleToggleSelect = (id: number) => {
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]));
+  };
+
+  const handleSelectAllFiltered = () => {
+    if (isAllFilteredSelected) {
+      const filteredIdSet = new Set(filteredArticles.map((a) => a.id));
+      setSelectedIds((prev) => prev.filter((id) => !filteredIdSet.has(id)));
+    } else {
+      const filteredIds = filteredArticles.map((a) => a.id);
+      setSelectedIds((prev) => Array.from(new Set([...prev, ...filteredIds])));
+    }
+  };
+
+  const handleClearSelection = () => {
+    setSelectedIds([]);
+  };
+
+  // Handler Aksi Massal
+  const handleBulkPublish = () => {
+    if (selectedIds.length === 0) return;
+    if (!confirm(`🚀 Publikasikan ${selectedIds.length} artikel terpilih sekarang ke website?`)) return;
+
+    setBulkLoadingAction('publish');
+    startTransition(async () => {
+      const res = await bulkPublishArticlesAction(selectedIds);
+      setBulkLoadingAction(null);
+      if (res.success) {
+        setFeedback({
+          type: 'success',
+          message: `🎉 Berhasil mempublikasikan ${res.count || selectedIds.length} artikel ke website!`,
+        });
+        setSelectedIds([]);
+      } else {
+        setFeedback({ type: 'error', message: res.error || 'Gagal mempublikasikan artikel secara massal.' });
+      }
+    });
+  };
+
+  const handleBulkDraft = () => {
+    if (selectedIds.length === 0) return;
+    if (!confirm(`📝 Ubah status ${selectedIds.length} artikel terpilih menjadi Draf (Draft)?`)) return;
+
+    setBulkLoadingAction('draft');
+    startTransition(async () => {
+      const res = await bulkDraftArticlesAction(selectedIds);
+      setBulkLoadingAction(null);
+      if (res.success) {
+        setFeedback({
+          type: 'success',
+          message: `📝 Berhasil mengubah ${res.count || selectedIds.length} artikel menjadi Draf!`,
+        });
+        setSelectedIds([]);
+      } else {
+        setFeedback({ type: 'error', message: res.error || 'Gagal mengubah status artikel.' });
+      }
+    });
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedIds.length === 0) return;
+    if (
+      !confirm(
+        `⚠️ PERINGATAN HAPUS MASSAL:\nApakah Anda yakin ingin menghapus permanen ${selectedIds.length} artikel terpilih dari database?\n\nTindakan ini TIDAK DAPAT DIBATALKAN!`
+      )
+    )
+      return;
+
+    setBulkLoadingAction('delete');
+    startTransition(async () => {
+      const res = await bulkDeleteArticlesAction(selectedIds);
+      setBulkLoadingAction(null);
+      if (res.success) {
+        setFeedback({
+          type: 'success',
+          message: `🗑️ Berhasil menghapus ${res.count || selectedIds.length} artikel dari database.`,
+        });
+        setSelectedIds([]);
+      } else {
+        setFeedback({ type: 'error', message: res.error || 'Gagal menghapus artikel secara massal.' });
+      }
+    });
+  };
 
   const getSourceBadge = (source: ArticleItem['source']) => {
     switch (source) {
@@ -327,6 +432,67 @@ export default function ArticleManagerClient({ initialArticles }: ArticleManager
             </select>
           </div>
         </div>
+
+        {/* FEEDBACK NOTIFICATION BANNER */}
+        {feedback && (
+          <div
+            className={`mt-3 p-3.5 rounded-xl text-xs sm:text-sm font-semibold flex items-center justify-between gap-3 shadow-2xs border animate-in fade-in duration-200 ${
+              feedback.type === 'success'
+                ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                : 'bg-red-50 text-red-800 border-red-200'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              {feedback.type === 'success' ? (
+                <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+              ) : (
+                <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+              )}
+              <span>{feedback.message}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setFeedback(null)}
+              className="text-gray-400 hover:text-gray-600 p-1 rounded-md cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
+        {/* BARIS PILIH SEMUA / SELECTION HEADER */}
+        {filteredArticles.length > 0 && (
+          <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-gray-100 text-xs text-gray-600">
+            <label className="inline-flex items-center gap-2 font-semibold text-gray-800 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={isAllFilteredSelected}
+                ref={(input) => {
+                  if (input) input.indeterminate = isSomeFilteredSelected;
+                }}
+                onChange={handleSelectAllFiltered}
+                className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+              />
+              <span>
+                {isAllFilteredSelected
+                  ? `Semua terpilih (${filteredArticles.length} artikel)`
+                  : selectedIds.length > 0
+                  ? `${selectedIds.length} dari ${filteredArticles.length} terpilih`
+                  : `Pilih Semua (${filteredArticles.length} artikel)`}
+              </span>
+            </label>
+
+            {selectedIds.length > 0 && (
+              <button
+                type="button"
+                onClick={handleClearSelection}
+                className="text-xs font-bold text-gray-500 hover:text-gray-900 transition-colors cursor-pointer"
+              >
+                Batalkan Pilihan ({selectedIds.length})
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* 3. KONTEN DAFTAR ARTIKEL (EMPTY STATE ATAU LIST/GRID) */}
@@ -365,15 +531,27 @@ export default function ArticleManagerClient({ initialArticles }: ArticleManager
             const isPublished = article.status === 'published';
             const isScheduled = article.status === 'scheduled';
             const isCurrentlyPublishing = publishingId === article.id && isPending;
+            const isSelected = selectedIds.includes(article.id);
 
             return (
               <div
                 key={article.id}
-                className="p-4 sm:p-5 hover:bg-gray-50/70 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-4"
+                className={`p-4 sm:p-5 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-4 ${
+                  isSelected ? 'bg-indigo-50/60 ring-1 ring-inset ring-indigo-200' : 'hover:bg-gray-50/70'
+                }`}
               >
-                {/* Kolom Kiri: Judul, Cuplikan, Kategori, Sumber */}
-                <div className="space-y-2 min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
+                {/* Kolom Kiri: Checkbox + Judul, Cuplikan, Kategori, Sumber */}
+                <div className="flex items-start gap-3.5 min-w-0 flex-1">
+                  <div className="pt-0.5 shrink-0">
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => handleToggleSelect(article.id)}
+                      className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer mt-0.5"
+                    />
+                  </div>
+                  <div className="space-y-2 min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
                     {/* Badge Status */}
                     <span
                       className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${
@@ -433,6 +611,7 @@ export default function ArticleManagerClient({ initialArticles }: ArticleManager
                     )}
                   </div>
                 </div>
+              </div>
 
                 {/* Kolom Kanan: Tombol Aksi Cepat */}
                 <div className="flex items-center gap-2 self-start md:self-center shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-gray-100 w-full md:w-auto justify-end">
@@ -505,26 +684,39 @@ export default function ArticleManagerClient({ initialArticles }: ArticleManager
             const isPublished = article.status === 'published';
             const isScheduled = article.status === 'scheduled';
             const isCurrentlyPublishing = publishingId === article.id && isPending;
+            const isSelected = selectedIds.includes(article.id);
 
             return (
               <div
                 key={article.id}
-                className="bg-white rounded-xl border border-gray-200 p-4 hover:shadow-md transition-all flex flex-col justify-between space-y-3 group"
+                className={`rounded-xl border p-4 hover:shadow-md transition-all flex flex-col justify-between space-y-3 group ${
+                  isSelected
+                    ? 'bg-indigo-50/40 border-indigo-300 ring-2 ring-indigo-500/30'
+                    : 'bg-white border-gray-200'
+                }`}
               >
                 <div className="space-y-2.5">
-                  {/* Header Kartu: Status & Badges */}
+                  {/* Header Kartu: Checkbox + Status & Badges */}
                   <div className="flex items-center justify-between gap-2">
-                    <span
-                      className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${
-                        isPublished
-                          ? 'bg-emerald-100 text-emerald-800'
-                          : isScheduled
-                          ? 'bg-blue-100 text-blue-800'
-                          : 'bg-amber-100 text-amber-900'
-                      }`}
-                    >
-                      {article.status}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => handleToggleSelect(article.id)}
+                        className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                      />
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${
+                          isPublished
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : isScheduled
+                            ? 'bg-blue-100 text-blue-800'
+                            : 'bg-amber-100 text-amber-900'
+                        }`}
+                      >
+                        {article.status}
+                      </span>
+                    </div>
                     {getSourceBadge(article.source)}
                   </div>
 
@@ -597,6 +789,82 @@ export default function ArticleManagerClient({ initialArticles }: ArticleManager
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* 4. BILAH AKSI MENGAMBANG (FLOATING ACTION TOOLBAR) */}
+      {selectedIds.length > 0 && (
+        <div className="fixed bottom-5 sm:bottom-6 left-1/2 -translate-x-1/2 z-50 w-[95%] max-w-2xl animate-in fade-in slide-in-from-bottom-5 duration-200">
+          <div className="bg-gray-900/95 backdrop-blur-md text-white p-2.5 sm:p-3 rounded-2xl shadow-2xl border border-gray-700/80 flex flex-wrap items-center justify-between gap-2.5 sm:gap-3">
+            {/* Counter Badge */}
+            <div className="flex items-center gap-2 pl-2">
+              <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse" />
+              <span className="text-xs sm:text-sm font-bold text-gray-100">
+                <b>{selectedIds.length}</b> dipilih
+              </span>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              {/* Terbitkan Semua */}
+              <button
+                type="button"
+                onClick={handleBulkPublish}
+                disabled={bulkLoadingAction !== null}
+                className="inline-flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-md transition-all active:scale-95 cursor-pointer disabled:opacity-50"
+                title="Terbitkan semua artikel yang dipilih ke website"
+              >
+                {bulkLoadingAction === 'publish' ? (
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Rocket className="w-3.5 h-3.5" />
+                )}
+                <span>Terbitkan ({selectedIds.length})</span>
+              </button>
+
+              {/* Jadikan Draf */}
+              <button
+                type="button"
+                onClick={handleBulkDraft}
+                disabled={bulkLoadingAction !== null}
+                className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-md transition-all active:scale-95 cursor-pointer disabled:opacity-50"
+                title="Ubah semua artikel yang dipilih menjadi draf"
+              >
+                {bulkLoadingAction === 'draft' ? (
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <PenSquare className="w-3.5 h-3.5" />
+                )}
+                <span className="hidden sm:inline">Set Draf</span>
+              </button>
+
+              {/* Hapus Semua */}
+              <button
+                type="button"
+                onClick={handleBulkDelete}
+                disabled={bulkLoadingAction !== null}
+                className="inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-extrabold text-xs shadow-md transition-all active:scale-95 cursor-pointer disabled:opacity-50"
+                title="Hapus permanen semua artikel terpilih"
+              >
+                {bulkLoadingAction === 'delete' ? (
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Trash2 className="w-3.5 h-3.5" />
+                )}
+                <span>Hapus</span>
+              </button>
+
+              {/* Batal */}
+              <button
+                type="button"
+                onClick={handleClearSelection}
+                title="Batalkan pilihan"
+                className="p-2 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

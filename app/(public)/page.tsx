@@ -171,7 +171,6 @@ export default async function Home() {
               <div className="space-y-3">
                 <div className="flex items-center justify-between pb-2 border-b border-gray-200">
                   <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
                     <h3 className="text-sm sm:text-base font-bold font-heading text-gray-900 uppercase tracking-wider">
                       Berita Sorotan
                     </h3>

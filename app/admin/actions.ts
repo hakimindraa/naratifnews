@@ -4,7 +4,7 @@ import matter from 'gray-matter';
 import { db } from '@/db';
 import { articles } from '@/db/schema';
 import { revalidatePath } from 'next/cache';
-import { eq, desc, like, sql } from 'drizzle-orm';
+import { eq, desc, like, sql, inArray } from 'drizzle-orm';
 import { cookies } from 'next/headers';
 import { encrypt } from '@/lib/auth';
 import { redirect } from 'next/navigation';
@@ -202,6 +202,86 @@ export async function quickPublishArticleAction(id: number) {
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message || 'Gagal mempublikasikan artikel' };
+  }
+}
+
+export async function bulkPublishArticlesAction(ids: number[]) {
+  try {
+    if (!ids || ids.length === 0) {
+      return { success: false, error: 'Tidak ada artikel yang dipilih.' };
+    }
+
+    const now = new Date();
+    const updatedArticles = await db
+      .update(articles)
+      .set({
+        status: 'published',
+        publishedAt: now,
+        publishAt: now,
+        updatedAt: now,
+      })
+      .where(inArray(articles.id, ids))
+      .returning({
+        id: articles.id,
+        slug: articles.slug,
+        category: articles.category,
+      });
+
+    // Pemicu Instant Indexing ke Google & Bing untuk semua artikel yang terbit
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.naratif.web.id';
+    for (const art of updatedArticles) {
+      const articleUrl = `${siteUrl}/berita-teknologi/${(art.category || 'software').toLowerCase()}/${art.id}/${art.slug}`;
+      notifySearchEngines(articleUrl).catch((err) => console.warn('Bulk Publish Indexing Error:', err));
+    }
+
+    revalidatePath('/', 'layout');
+    revalidatePath('/admin');
+    return { success: true, count: updatedArticles.length };
+  } catch (error: any) {
+    console.error('Bulk publish error:', error);
+    return { success: false, error: error.message || 'Gagal mempublikasikan artikel secara massal' };
+  }
+}
+
+export async function bulkDeleteArticlesAction(ids: number[]) {
+  try {
+    if (!ids || ids.length === 0) {
+      return { success: false, error: 'Tidak ada artikel yang dipilih.' };
+    }
+
+    await db.delete(articles).where(inArray(articles.id, ids));
+
+    revalidatePath('/', 'layout');
+    revalidatePath('/admin');
+    return { success: true, count: ids.length };
+  } catch (error: any) {
+    console.error('Bulk delete error:', error);
+    return { success: false, error: error.message || 'Gagal menghapus artikel secara massal' };
+  }
+}
+
+export async function bulkDraftArticlesAction(ids: number[]) {
+  try {
+    if (!ids || ids.length === 0) {
+      return { success: false, error: 'Tidak ada artikel yang dipilih.' };
+    }
+
+    const now = new Date();
+    const updatedArticles = await db
+      .update(articles)
+      .set({
+        status: 'draft',
+        updatedAt: now,
+      })
+      .where(inArray(articles.id, ids))
+      .returning({ id: articles.id });
+
+    revalidatePath('/', 'layout');
+    revalidatePath('/admin');
+    return { success: true, count: updatedArticles.length };
+  } catch (error: any) {
+    console.error('Bulk draft error:', error);
+    return { success: false, error: error.message || 'Gagal mengubah status ke draf secara massal' };
   }
 }
 
