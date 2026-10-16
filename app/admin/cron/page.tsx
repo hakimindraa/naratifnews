@@ -382,11 +382,18 @@ export default function CronHubPage() {
                   </span>
                   <span className="text-xs text-gray-500 font-medium">artikel terbit</span>
                 </div>
-                <div className="mt-1 flex items-center gap-1.5 text-xs text-gray-500 truncate">
-                  <span>Giliran:</span>
-                  <span className="px-1.5 py-0.5 rounded bg-purple-50 text-purple-700 font-semibold truncate">
-                    {data.config.nextCategory}
-                  </span>
+                <div className="mt-1 flex items-center justify-between text-xs text-gray-500 gap-1">
+                  <div className="flex items-center gap-1.5 truncate">
+                    <span>Giliran:</span>
+                    <span className="px-1.5 py-0.5 rounded bg-purple-50 text-purple-700 font-semibold truncate">
+                      {data.config.nextCategory}
+                    </span>
+                  </div>
+                  {data.metrics.nextAutopilotCountdown && (
+                    <span className="text-[11px] font-semibold text-purple-700 shrink-0">
+                      ⏱️ {data.metrics.nextAutopilotCountdown}
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
@@ -499,8 +506,28 @@ export default function CronHubPage() {
                   </span>
                 </div>
 
+                {/* Jadwal Autopublish Dinamis Berikutnya */}
+                <div className="flex items-center justify-between p-3 bg-purple-50/70 border border-purple-100/90 rounded-xl text-xs gap-2">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-8 h-8 rounded-lg bg-purple-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
+                      <Clock className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <span className="text-[10px] uppercase tracking-wider text-purple-700 font-bold block">
+                        Jadwal Autopublish Berikutnya
+                      </span>
+                      <span className="font-bold text-gray-900 truncate block text-xs sm:text-[13px] mt-0.5">
+                        {data.metrics.nextAutopilotLabel || 'Hari ini, 13:00 WIB'}
+                      </span>
+                    </div>
+                  </div>
+                  <span className="text-[11px] font-semibold bg-purple-100 text-purple-800 px-2.5 py-1 rounded-full shrink-0 whitespace-nowrap border border-purple-200">
+                    ⏱️ {data.metrics.nextAutopilotCountdown || 'Segera'}
+                  </span>
+                </div>
+
                 {/* Status Chips Ringkas */}
-                <div className="grid grid-cols-3 gap-2.5 pt-2">
+                <div className="grid grid-cols-3 gap-2.5 pt-1">
                   <div className="p-2.5 bg-gray-50/80 rounded-xl border border-gray-100 text-xs">
                     <span className="text-[11px] text-gray-400 block font-medium">Status Target</span>
                     <span className="font-semibold text-gray-800 capitalize mt-0.5 block truncate">

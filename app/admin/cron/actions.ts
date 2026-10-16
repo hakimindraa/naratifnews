@@ -38,6 +38,9 @@ export interface CronHubData {
     nextScheduledTitle: string | null;
     lastAutopilotTime: string | null;
     lastAutopilotStatus: 'success' | 'failed' | 'idle';
+    nextAutopilotTime?: string | null;
+    nextAutopilotLabel?: string;
+    nextAutopilotCountdown?: string;
   };
   logs: CronLogItem[];
   cronJobOrgStatus?: {
@@ -245,7 +248,73 @@ export async function getCronHubData(): Promise<CronHubData> {
     }
   }
 
-  // 6. Jalankan auto-prune di latar belakang tanpa memblokir respon
+  // 6. Hitung Jadwal Autopilot Berikutnya (Next Run Schedule)
+  const autopilotJob = cronJobOrgStatus?.jobs?.find((j) => j.url.includes('/api/cron/autopilot'));
+  let nextAutopilotTime: string | null = null;
+  let nextAutopilotLabel = '';
+  let nextAutopilotCountdown = '';
+
+  const now = new Date();
+
+  if (autopilotJob && autopilotJob.nextExecution) {
+    const target = new Date(autopilotJob.nextExecution);
+    nextAutopilotTime = target.toISOString();
+    const diffMs = target.getTime() - now.getTime();
+    const timeStr = target.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' }) + ' WIB';
+    const isToday = target.toDateString() === now.toDateString();
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const isTomorrow = target.toDateString() === tomorrow.toDateString();
+    const dayPrefix = isToday ? 'Hari ini' : isTomorrow ? 'Besok' : target.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+
+    nextAutopilotLabel = `${dayPrefix}, ${timeStr}`;
+    if (diffMs <= 0) {
+      nextAutopilotCountdown = 'Sedang berjalan';
+    } else {
+      const totalMin = Math.round(diffMs / (1000 * 60));
+      const hours = Math.floor(totalMin / 60);
+      const mins = totalMin % 60;
+      nextAutopilotCountdown = hours > 0 ? `${hours} jam ${mins} mnt lagi` : `${mins} mnt lagi`;
+    }
+  } else {
+    // Fallback cerdas ke slot jadwal redaksi Naratif (07:00, 13:00, 19:00 WIB)
+    const nowWib = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
+    const currentHour = nowWib.getHours();
+    const currentMinute = nowWib.getMinutes();
+    const currentDecimalTime = currentHour + currentMinute / 60;
+
+    const slots = [7, 13, 19];
+    let targetHour = slots[0];
+    let isTomorrow = false;
+
+    if (currentDecimalTime < 7) {
+      targetHour = 7;
+    } else if (currentDecimalTime < 13) {
+      targetHour = 13;
+    } else if (currentDecimalTime < 19) {
+      targetHour = 19;
+    } else {
+      targetHour = 7;
+      isTomorrow = true;
+    }
+
+    const targetDateWib = new Date(nowWib);
+    if (isTomorrow) {
+      targetDateWib.setDate(targetDateWib.getDate() + 1);
+    }
+    targetDateWib.setHours(targetHour, 0, 0, 0);
+
+    nextAutopilotTime = targetDateWib.toISOString();
+    const diffMs = targetDateWib.getTime() - nowWib.getTime();
+    const totalMin = Math.max(0, Math.round(diffMs / (1000 * 60)));
+    const hours = Math.floor(totalMin / 60);
+    const mins = totalMin % 60;
+
+    nextAutopilotLabel = `${isTomorrow ? 'Besok' : 'Hari ini'}, ${String(targetHour).padStart(2, '0')}:00 WIB`;
+    nextAutopilotCountdown = hours > 0 ? `${hours} jam ${mins} mnt lagi` : mins > 0 ? `${mins} mnt lagi` : 'Segera berjalan';
+  }
+
+  // 7. Jalankan auto-prune di latar belakang tanpa memblokir respon
   pruneOldLogs().catch(() => {});
 
   return {
@@ -268,6 +337,9 @@ export async function getCronHubData(): Promise<CronHubData> {
       nextScheduledTitle: nextScheduled[0]?.title || null,
       lastAutopilotTime,
       lastAutopilotStatus,
+      nextAutopilotTime,
+      nextAutopilotLabel,
+      nextAutopilotCountdown,
     },
     logs,
     cronJobOrgStatus,
