@@ -6,6 +6,7 @@ import { formatDistanceToNow } from "date-fns";
 import { id } from "date-fns/locale";
 import LatestNewsSection from "./LatestNewsSection";
 import DailyAssistanceWidget from "./DailyAssistanceWidget";
+import KabarNusantaraSection from "./KabarNusantaraSection";
 
 export const instant = false;
 
@@ -55,7 +56,31 @@ export default async function Home() {
     console.warn("Gagal memuat kilas balik:", err);
   }
 
-  // 6. Berita Terbaru (Feed Utama)
+  // 6. Kabar Nusantara: Mengambil 4 artikel Regional terbitan terbaru
+  let rawRegionalArticles: typeof publishedArticles = [];
+  try {
+    rawRegionalArticles = await db
+      .select()
+      .from(articles)
+      .where(and(eq(articles.status, 'published'), eq(articles.category, 'Regional')))
+      .orderBy(desc(articles.publishedAt))
+      .limit(4);
+  } catch (err) {
+    console.warn("Gagal memuat kabar nusantara:", err);
+  }
+
+  const regionalArticles = rawRegionalArticles.map((a) => ({
+    id: a.id,
+    slug: a.slug,
+    title: a.title,
+    coverUrl: a.coverUrl,
+    category: a.category,
+    tags: a.tags,
+    publishedAt: a.publishedAt ? a.publishedAt.toISOString() : null,
+    author: a.author,
+  }));
+
+  // 7. Berita Terbaru (Feed Utama)
   const rawLatestArticles = publishedArticles.slice(11, 55);
   const hasMore = publishedArticles.length > 54;
 
@@ -312,6 +337,9 @@ export default async function Home() {
           </div>
         </div>
       )}
+
+      {/* Seksi Khusus: Kabar Nusantara (Pojok Daerah) */}
+      <KabarNusantaraSection articles={regionalArticles} />
 
       {/* Bagian Bawah: Feed Berita Terbaru dengan Load More */}
       <LatestNewsSection
