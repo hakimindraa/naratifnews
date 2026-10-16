@@ -291,6 +291,8 @@ export async function updateArticle(id: number, formData: FormData) {
     const slug = formData.get('slug') as string;
     const category = formData.get('category') as string;
     const author = (formData.get('author') as string || 'Redaksi').trim();
+    const authorIdRaw = formData.get('authorId') as string | null;
+    const authorId = authorIdRaw && !isNaN(Number(authorIdRaw)) ? Number(authorIdRaw) : null;
     const excerpt = formData.get('excerpt') as string;
     const coverUrl = formData.get('coverUrl') as string;
     const coverCaption = (formData.get('coverCaption') as string || '').trim();
@@ -324,6 +326,7 @@ export async function updateArticle(id: number, formData: FormData) {
         slug,
         category,
         author: author || 'Redaksi',
+        authorId: authorId,
         coverCaption,
         tags,
         excerpt,
@@ -388,6 +391,8 @@ export async function createArticle(formData: FormData) {
     const publishAtStr = (formData.get('publishAt') as string || '').trim();
     const content = (formData.get('content') as string || '').trim();
     const author = (formData.get('author') as string || 'Redaksi').trim();
+    const authorIdRaw = formData.get('authorId') as string | null;
+    const authorId = authorIdRaw && !isNaN(Number(authorIdRaw)) ? Number(authorIdRaw) : null;
     const tagsStr = (formData.get('tags') as string || '').trim();
 
     if (!title) return { error: 'Judul artikel wajib diisi.' };
@@ -457,6 +462,7 @@ export async function createArticle(formData: FormData) {
       coverUrl,
       coverCaption,
       author: author || 'Redaksi',
+      authorId: authorId,
       tags,
       status,
       publishAt,

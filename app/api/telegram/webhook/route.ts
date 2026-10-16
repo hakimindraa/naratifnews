@@ -6,6 +6,7 @@ import {
   deleteTelegramMessages,
   answerCallbackQuery,
   setTelegramCommands,
+  getTelegramFileUrl,
   SendMessageOptions,
 } from '@/lib/telegram';
 import {
@@ -17,11 +18,13 @@ import {
 import { scrapeArticleFromUrl } from '@/lib/url-scraper';
 import { findSimilarArticles, checkSourceUrlHistory } from '@/lib/duplicate-detector';
 import { db } from '@/db';
-import { articles, aiGenerationLogs } from '@/db/schema';
+import { articles, aiGenerationLogs, authors } from '@/db/schema';
 import { revalidatePath } from 'next/cache';
 import { eq, desc } from 'drizzle-orm';
 import { BOT_COMMANDS } from '../setup/route';
 import { getAutopilotScheduleInfo } from '@/lib/autopilot-schedule';
+import { uploadImageToImgbb } from '@/app/admin/media-actions';
+import { notifySearchEngines } from '@/lib/indexing';
 
 export const maxDuration = 60; // Timeout 60 detik untuk operasi AI
 
@@ -735,6 +738,392 @@ async function runSadurArticleGeneration({
   }
 }
 
+// ==========================================
+// FITUR: TULIS BERITA MANUAL VIA TELEGRAM
+// ==========================================
+
+function parseManualArticleText(rawText: string): {
+  success: boolean;
+  data?: {
+    title: string;
+    category: string;
+    authorName?: string;
+    coverUrl?: string;
+    coverCaption?: string;
+    tags: string[];
+    isDraft: boolean;
+    content: string;
+  };
+  error?: string;
+} {
+  // Bersihkan command /manual atau /post di awal teks
+  const cleaned = rawText
+    .replace(/^\/(?:manual|post)(?:@\w+)?[\r\n\s]*/i, '')
+    .trim();
+
+  if (!cleaned) {
+    return { success: false, error: 'Teks naskah masih kosong.' };
+  }
+
+  const lines = cleaned.split(/\r?\n/);
+  let title = '';
+  let category = 'Software';
+  let authorName = '';
+  let coverUrl = '';
+  let coverCaption = '';
+  let tags: string[] = [];
+  let isDraft = false;
+  let contentStartIndex = -1;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+
+    // Deteksi kata kunci naskah utama: Isi: / Content: / Naskah:
+    const contentMatch = line.match(/^(?:isi|content|naskah)\s*:\s*(.*)$/i);
+    if (contentMatch) {
+      const firstLineContent = contentMatch[1].trim();
+      const remainingLines = lines.slice(i + 1);
+      const fullContent = [firstLineContent, ...remainingLines].filter(Boolean).join('\n').trim();
+      return finalizeParse(fullContent);
+    }
+
+    if (/^(?:judul|title)\s*:\s*(.+)$/i.test(line)) {
+      title = line.replace(/^(?:judul|title)\s*:\s*/i, '').trim();
+    } else if (/^(?:kategori|category)\s*:\s*(.+)$/i.test(line)) {
+      category = line.replace(/^(?:kategori|category)\s*:\s*/i, '').trim();
+    } else if (/^(?:penulis|author)\s*:\s*(.+)$/i.test(line)) {
+      authorName = line.replace(/^(?:penulis|author)\s*:\s*/i, '').trim();
+    } else if (/^(?:cover|sampul|gambar)\s*:\s*(.+)$/i.test(line)) {
+      coverUrl = line.replace(/^(?:cover|sampul|gambar)\s*:\s*/i, '').trim();
+    } else if (/^(?:caption|keterangan)\s*:\s*(.+)$/i.test(line)) {
+      coverCaption = line.replace(/^(?:caption|keterangan)\s*:\s*/i, '').trim();
+    } else if (/^(?:tags?|tagar)\s*:\s*(.+)$/i.test(line)) {
+      const tagStr = line.replace(/^(?:tags?|tagar)\s*:\s*/i, '').trim();
+      tags = tagStr.split(/[,#\s]+/).map(t => t.trim().replace(/^#/, '')).filter(Boolean);
+    } else if (/^(?:status|draf|draft)\s*:\s*(.+)$/i.test(line)) {
+      const statusVal = line.replace(/^(?:status|draf|draft)\s*:\s*/i, '').toLowerCase();
+      if (statusVal.includes('draf') || statusVal.includes('draft') || statusVal.includes('ya') || statusVal.includes('true')) {
+        isDraft = true;
+      }
+    } else if (line === '' && title && contentStartIndex === -1) {
+      // Baris kosong setelah field header, sisa baris di bawahnya adalah naskah
+      contentStartIndex = i + 1;
+      break;
+    }
+  }
+
+  // Jika user tidak menulis "Isi:", ambil sisa baris setelah metadata
+  if (contentStartIndex !== -1) {
+    const fullContent = lines.slice(contentStartIndex).join('\n').trim();
+    return finalizeParse(fullContent);
+  }
+
+  function finalizeParse(content: string) {
+    if (!title) {
+      return {
+        success: false,
+        error: 'Judul artikel wajib diisi. Gunakan format:\n<code>Judul: [Ketik Judul Berita]</code>',
+      };
+    }
+    if (!content || content.length < 30) {
+      return {
+        success: false,
+        error: 'Isi naskah berita terlalu pendek atau belum diisi. Sertakan minimal 1-2 paragraf naskah artikel.',
+      };
+    }
+
+    // Normalisasi Kategori
+    const catLower = category.toLowerCase();
+    let normalizedCategory = 'Software';
+    if (catLower.includes('hard') || catLower.includes('perangkat keras')) normalizedCategory = 'Hardware';
+    else if (catLower.includes('ai') || catLower.includes('kecerdasan') || catLower.includes('intel')) normalizedCategory = 'AI';
+    else if (catLower.includes('infra') || catLower.includes('cloud') || catLower.includes('data center')) normalizedCategory = 'Infrastruktur';
+    else if (catLower.includes('gadget') || catLower.includes('hp') || catLower.includes('smartphone')) normalizedCategory = 'Gadget';
+    else if (catLower.includes('reg') || catLower.includes('daerah') || catLower.includes('wilayah') || catLower.includes('pemda')) normalizedCategory = 'Regional';
+    else if (catLower.includes('soft') || catLower.includes('aplikasi') || catLower.includes('web')) normalizedCategory = 'Software';
+
+    return {
+      success: true,
+      data: {
+        title,
+        category: normalizedCategory,
+        authorName: authorName || undefined,
+        coverUrl: coverUrl || undefined,
+        coverCaption: coverCaption || undefined,
+        tags,
+        isDraft,
+        content,
+      },
+    };
+  }
+
+  return {
+    success: false,
+    error: 'Format belum lengkap. Pastikan mencantumkan <code>Judul: ...</code> dan <code>Isi: ...</code>.',
+  };
+}
+
+async function runManualArticlePublication({
+  chatId,
+  messageId,
+  rawText,
+  hasPhoto,
+  photoFileId,
+  siteUrl,
+}: {
+  chatId: number | string;
+  messageId?: number;
+  rawText: string;
+  hasPhoto: boolean;
+  photoFileId?: string;
+  siteUrl: string;
+}) {
+  const parseResult = parseManualArticleText(rawText);
+  if (!parseResult.success || !parseResult.data) {
+    const errorMsg = `❌ <b>Format Naskah Belum Sesuai</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n${parseResult.error || 'Pastikan mengisi Judul dan Isi naskah.'}\n\nKetik <code>/manual</code> untuk panduan lengkap & templat siap salin.`;
+    await sendTelegramMessage(chatId, errorMsg, {
+      inlineKeyboard: [
+        [{ text: '📋 Dapatkan Templat Kosong', callback_data: 'manual:template' }],
+        [{ text: '🏠 Menu Utama', callback_data: 'btn:start' }],
+      ],
+    });
+    return;
+  }
+
+  const data = parseResult.data;
+
+  // Indikator proses simpan
+  const waitMsg = await sendTelegramMessage(
+    chatId,
+    `⏳ <b>MENYIMPAN ARTIKEL MANUAL...</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n📰 <i>"${data.title}"</i>\n⏱️ <i>Memvalidasi sampul dan data penulis...</i>`
+  );
+  const activeMsgId = waitMsg.data?.result?.message_id;
+
+  // 1. Tangani Foto Sampul jika dikirim via Telegram photo
+  let finalCoverUrl = data.coverUrl || null;
+  if (hasPhoto && photoFileId) {
+    try {
+      const tgFileUrl = await getTelegramFileUrl(photoFileId);
+      if (tgFileUrl) {
+        const fd = new FormData();
+        fd.append('imageUrl', tgFileUrl);
+        fd.append('name', `tg-manual-${Date.now()}`);
+        const upRes = await uploadImageToImgbb(fd);
+        if (upRes.success && upRes.url) {
+          finalCoverUrl = upRes.url;
+        } else {
+          finalCoverUrl = tgFileUrl;
+        }
+      }
+    } catch (photoErr) {
+      console.warn('Gagal memproses foto Telegram ke ImgBB:', photoErr);
+    }
+  }
+
+  // 2. Cocokkan Profil Penulis dengan database authors
+  let resolvedAuthor = 'Redaksi';
+  let resolvedAuthorId: number | null = null;
+
+  try {
+    const allAuthors = await db.select().from(authors);
+    if (data.authorName) {
+      const match = allAuthors.find(
+        (a) => a.name.toLowerCase().trim() === data.authorName!.toLowerCase().trim() ||
+               a.name.toLowerCase().includes(data.authorName!.toLowerCase().trim())
+      );
+      if (match) {
+        resolvedAuthor = match.name;
+        resolvedAuthorId = match.id;
+      } else {
+        resolvedAuthor = data.authorName;
+      }
+    } else if (allAuthors.length > 0) {
+      resolvedAuthor = allAuthors[0].name;
+      resolvedAuthorId = allAuthors[0].id;
+    }
+  } catch (authErr) {
+    console.warn('Gagal memuat profil penulis:', authErr);
+  }
+
+  // 3. Generate Slug & Excerpt
+  let slug = data.title
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/[\s_-]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  if (!slug) slug = `berita-${Date.now()}`;
+
+  const existing = await db.select({ id: articles.id }).from(articles).where(eq(articles.slug, slug)).limit(1);
+  if (existing.length > 0) {
+    slug = `${slug}-${Date.now().toString().slice(-4)}`;
+  }
+
+  let excerpt = data.content
+    .replace(/#+\s+/g, '')
+    .replace(/[*_`\[\]()]/g, '')
+    .substring(0, 160)
+    .trim();
+  if (excerpt.length >= 150) excerpt += '...';
+
+  const isPublish = !data.isDraft;
+  const status = isPublish ? 'published' : 'draft';
+  const now = new Date();
+  const publishedAt = isPublish ? now : null;
+
+  // 4. Simpan ke database Neon
+  const [newArticle] = await db
+    .insert(articles)
+    .values({
+      title: data.title,
+      slug,
+      excerpt,
+      content: data.content,
+      category: data.category,
+      coverUrl: finalCoverUrl,
+      coverCaption: data.coverCaption || null,
+      author: resolvedAuthor,
+      authorId: resolvedAuthorId,
+      tags: data.tags,
+      status,
+      publishAt: now,
+      publishedAt,
+      createdAt: now,
+      updatedAt: now,
+    })
+    .returning();
+
+  // 5. Revalidate cache halaman
+  revalidatePath('/', 'layout');
+  revalidatePath('/admin');
+  revalidatePath(`/berita-teknologi/${data.category.toLowerCase()}`);
+
+  // 6. Instant Indexing jika langsung diterbitkan
+  if (isPublish) {
+    const articleUrl = `${siteUrl}/berita-teknologi/${newArticle.category.toLowerCase()}/${newArticle.id}/${newArticle.slug}`;
+    notifySearchEngines(articleUrl).catch((err) => console.warn('Manual Indexing Error:', err));
+  }
+
+  const wordCount = data.content.trim().split(/\s+/).filter(Boolean).length;
+  const articleUrl = `${siteUrl}/berita-teknologi/${newArticle.category.toLowerCase()}/${newArticle.id}/${newArticle.slug}`;
+  const editUrl = `${siteUrl}/admin/edit/${newArticle.id}`;
+
+  const statusLabel = isPublish ? '🟢 <b>Tayang Publik (Published)</b>' : '🟡 <b>Draf Review (Draft)</b>';
+  const headerIcon = isPublish ? '🎉 <b>BERITA MANUAL BERHASIL DITERBITKAN!</b>' : '📝 <b>BERITA MANUAL TERSIMPAN SEBAGAI DRAF!</b>';
+
+  const successText = `${headerIcon}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📰 <b>${newArticle.title}</b>
+
+┌── 📋 <b>Detail Artikel</b>
+│ 📂 Kategori : <b>${newArticle.category}</b>
+│ ✍️ Penulis  : <b>${newArticle.author}</b>
+│ 📷 Sampul   : ${newArticle.coverUrl ? '<b>Terpasang (CDN ImgBB)</b>' : '<i>Tanpa Sampul</i>'}
+│ 🏷️ Tagar    : ${newArticle.tags && newArticle.tags.length > 0 ? newArticle.tags.map(t => `#${t}`).join(', ') : '-'}
+│ 📊 Panjang  : <b>${wordCount} kata</b>
+│ 🚦 Status   : ${statusLabel}
+└──
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ <i>Naskah langsung tersimpan di database tanpa modifikasi AI.</i>`;
+
+  const inlineKeyboard: any[] = [];
+  if (isPublish) {
+    inlineKeyboard.push([{ text: '📖 Baca di Website', url: articleUrl }]);
+  }
+  inlineKeyboard.push([{ text: '✏️ Buka di Editor Web Admin', url: editUrl }]);
+  inlineKeyboard.push([
+    { text: '✍️ Tulis Berita Lain', callback_data: 'btn:manual' },
+    { text: '🏠 Menu Utama', callback_data: 'btn:start' },
+  ]);
+
+  if (activeMsgId) {
+    await updateOrSendMessage(chatId, activeMsgId, successText, { inlineKeyboard });
+  } else {
+    await sendTelegramMessage(chatId, successText, { inlineKeyboard });
+  }
+}
+
+async function sendManualHelpMessage(chatId: number | string, messageId?: number, siteUrl?: string) {
+  const helpText = `✍️ <b>PANDUAN TULIS BERITA MANUAL (NON-AI)</b>
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Tulis dan terbitkan liputan Anda sendiri langsung ke web tanpa sentuhan atau kurasi AI.
+
+┌── 📌 <b>Format Pesan (Salin & Isi):</b>
+<code>/manual
+Judul: Peluncuran Chipset AI Generasi Baru Resmi Masuk Indonesia
+Kategori: Hardware
+Penulis: Indra Hakim Lesmana
+Tags: hardware, ai, semikonduktor
+
+Isi:
+Pemerintah dan pelaku industri teknologi resmi mengumumkan fasilitas pengujian chipset generasi terbaru di Indonesia.
+
+Langkah ini memperkuat kemandirian infrastruktur komputasi awan nasional.</code>
+└──
+
+💡 <b>Tips Foto dari Galeri HP:</b>
+Kirim foto langsung ke bot Telegram ini, lalu tempelkan teks format di atas pada kolom <b>Caption</b> foto. Bot akan otomatis mengunggahnya ke CDN ImgBB!`;
+
+  await updateOrSendMessage(chatId, messageId, helpText, {
+    inlineKeyboard: [
+      [{ text: '📋 Dapatkan Templat Kosong', callback_data: 'manual:template' }],
+      [{ text: '👤 Lihat Daftar Penulis', callback_data: 'manual:authors' }],
+      [
+        { text: '🏠 Menu Utama', callback_data: 'btn:start' },
+        { text: '❌ Tutup Layar', callback_data: 'btn:close' },
+      ],
+    ],
+  });
+}
+
+async function sendManualTemplateMessage(chatId: number | string, messageId?: number) {
+  const templateText = `📋 <b>TEMPLAT SIAP SALIN (KLIK UNTUK COPY):</b>
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+<code>/manual
+Judul: 
+Kategori: Software
+Penulis: Redaksi
+Tags: teknologi, update
+
+Isi:
+[Tulis paragraf 1 di sini...]
+
+[Tulis paragraf 2 di sini...]</code>
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+<i>Silakan salin teks di atas, lengkapi Judul dan Isi, lalu kirim kembali ke bot ini.</i>`;
+
+  await sendTelegramMessage(chatId, templateText, {
+    inlineKeyboard: [
+      [{ text: '👤 Lihat Daftar Penulis', callback_data: 'manual:authors' }],
+      [{ text: '🏠 Menu Utama', callback_data: 'btn:start' }],
+    ],
+  });
+}
+
+async function sendManualAuthorsList(chatId: number | string, messageId?: number) {
+  let listText = '';
+  try {
+    const list = await db.select().from(authors);
+    if (list.length > 0) {
+      listText = list.map((a, i) => `│ ${i + 1}. <b>${a.name}</b> (${a.role})`).join('\n');
+    }
+  } catch {}
+
+  const text = `👤 <b>DAFTAR PROFIL PENULIS TERSEDIA:</b>
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+┌── 📋 <b>Pilihan Profil</b>
+${listText || '│ • Redaksi (Tim Redaksi)'}
+└──
+
+💡 <i>Tip: Cantumkan salah satu nama di atas pada baris <code>Penulis: [Nama]</code> pada pesan <code>/manual</code> Anda.</i>`;
+
+  await sendTelegramMessage(chatId, text, {
+    inlineKeyboard: [
+      [{ text: '📋 Dapatkan Templat Kosong', callback_data: 'manual:template' }],
+      [{ text: '🏠 Menu Utama', callback_data: 'btn:start' }],
+    ],
+  });
+}
+
 // Tampilan Menu Sambutan Klasik Berbingkai (/start)
 async function sendWelcomeMessage(
   chatId: number | string,
@@ -782,7 +1171,10 @@ Selamat datang di <b>Naratif Redaksi Bot</b>
 👇 <i>Pilih aksi cepat di bawah untuk mulai bekerja:</i>`;
 
   const inlineKeyboard = [
-    [{ text: '✍️ Mulai Buat Berita', callback_data: 'btn:menu' }],
+    [
+      { text: '✍️ Tulis Berita Manual', callback_data: 'btn:manual' },
+      { text: '🤖 Buat Berita AI', callback_data: 'btn:menu' },
+    ],
     [
       { text: '🤖 Jadwal Autopilot', callback_data: 'btn:autopilot' },
       { text: '📊 Cek Statistik', callback_data: 'btn:stats' },
@@ -1056,6 +1448,24 @@ Pilih salah satu bidang liputan redaksi:
         return NextResponse.json({ ok: true });
       }
 
+      // Tombol Tulis Berita Manual (Non-AI)
+      if (data === 'btn:manual') {
+        await sendManualHelpMessage(chatId, messageId, siteUrl);
+        return NextResponse.json({ ok: true });
+      }
+
+      // Tombol Templat Siap Pakai Manual
+      if (data === 'manual:template') {
+        await sendManualTemplateMessage(chatId, messageId);
+        return NextResponse.json({ ok: true });
+      }
+
+      // Tombol Daftar Profil Penulis Manual
+      if (data === 'manual:authors') {
+        await sendManualAuthorsList(chatId, messageId);
+        return NextResponse.json({ ok: true });
+      }
+
       // Langkah 1: Kategori Terpilih
       if (data.startsWith('cat:')) {
         const category = data.slice('cat:'.length);
@@ -1311,7 +1721,7 @@ Format    : <b>${lengthLabel}</b>
     // 2. PENANGANAN PESAN TEKS BIASA / PERINTAH
     // ==========================================
     const message = update?.message;
-    if (!message || !message.text) {
+    if (!message || (!message.text && !message.caption)) {
       return NextResponse.json({ ok: true });
     }
 
@@ -1319,7 +1729,9 @@ Format    : <b>${lengthLabel}</b>
     const messageId = message.message_id;
     const userId = message.from?.id;
     const firstName = message.from?.first_name || 'Redaksi';
-    const rawText = message.text.trim();
+    const rawText = (message.text || message.caption || '').trim();
+    const hasPhoto = Array.isArray(message.photo) && message.photo.length > 0;
+    const photoFileId = hasPhoto ? message.photo[message.photo.length - 1].file_id : undefined;
 
     // 1. COMMAND: /start, /help, /bantuan
     if (
@@ -1338,6 +1750,26 @@ Format    : <b>${lengthLabel}</b>
         chatId,
         `⛔ <b>Akses Terbatas</b>\n\nMaaf <b>${firstName}</b>, bot ini dikunci khusus untuk Redaksi Naratif.\nID Telegram Anda: <code>${userId}</code>`
       );
+      return NextResponse.json({ ok: true });
+    }
+
+    // FITUR: TULIS BERITA MANUAL NON-AI (/manual atau /post)
+    const isManualCmd = rawText.startsWith('/manual') || rawText.startsWith('/post');
+    if (isManualCmd) {
+      const cleanedAfterCmd = rawText.replace(/^\/(?:manual|post)(?:@\w+)?[\s\r\n]*/i, '').trim();
+      if (!cleanedAfterCmd) {
+        await sendManualHelpMessage(chatId, undefined, siteUrl);
+        return NextResponse.json({ ok: true });
+      }
+
+      await runManualArticlePublication({
+        chatId,
+        messageId,
+        rawText,
+        hasPhoto,
+        photoFileId,
+        siteUrl,
+      });
       return NextResponse.json({ ok: true });
     }
 

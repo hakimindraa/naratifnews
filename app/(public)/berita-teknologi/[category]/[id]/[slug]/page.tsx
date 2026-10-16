@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ArrowLeft, ChevronRight, Link2, MessageCircle, Globe, ExternalLink } from "lucide-react";
 import { db } from "@/db";
-import { articles } from "@/db/schema";
+import { articles, authors } from "@/db/schema";
 import { eq, desc, and } from "drizzle-orm";
 import { format } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
@@ -97,6 +97,25 @@ export default async function ArticlePage({
 
   if (!article) {
     notFound();
+  }
+
+  // Ambil profil penulis (jika ada authorId atau nama cocok)
+  let authorProfile = null;
+  if (article.authorId) {
+    const [found] = await db
+      .select()
+      .from(authors)
+      .where(eq(authors.id, article.authorId))
+      .limit(1);
+    authorProfile = found || null;
+  }
+  if (!authorProfile && article.author) {
+    const [found] = await db
+      .select()
+      .from(authors)
+      .where(eq(authors.name, article.author))
+      .limit(1);
+    authorProfile = found || null;
   }
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.naratif.web.id';
@@ -220,13 +239,26 @@ export default async function ArticlePage({
 
           <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-gray-200 mb-6 gap-4">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-full bg-gray-200 overflow-hidden shrink-0">
-                {/* Fake avatar since we don't store author avatars */}
-                <img src="https://ui-avatars.com/api/?name=Naratif+Redaksi&background=random" alt="Author" className="w-full h-full object-cover" />
+              <div className="w-12 h-12 rounded-full bg-gray-100 overflow-hidden shrink-0 border border-indigo-500/40 shadow-2xs flex items-center justify-center">
+                <img
+                  src={
+                    authorProfile?.avatarUrl ||
+                    `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                      authorProfile?.name || article.author || 'Redaksi'
+                    )}&background=4f46e5&color=fff`
+                  }
+                  alt={authorProfile?.name || article.author}
+                  className="w-full h-full object-cover"
+                />
               </div>
               <div>
-                <div className="font-bold text-gray-900">{article.author} - Naratif</div>
-                <div className="text-gray-500 text-sm">
+                <div className="font-bold text-gray-900 text-sm sm:text-base leading-snug">
+                  {authorProfile?.name || article.author || 'Redaksi'}
+                </div>
+                <div className="text-xs text-gray-500 font-normal mt-0.5">
+                  {authorProfile?.role || 'Tim Redaksi'}
+                </div>
+                <div className="text-gray-400 text-xs mt-1">
                   {article.publishedAt ? new Date(article.publishedAt).toLocaleString('id-ID', { weekday: 'long', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' }).replace(' pukul', '') : '-'} WIB
                 </div>
               </div>
@@ -453,6 +485,39 @@ export default async function ArticlePage({
                ))}
              </div>
           )}
+
+          {/* KOTAK TENTANG PENULIS (AUTHOR BOX) */}
+          <div className="mt-8 p-5 sm:p-6 bg-gradient-to-br from-gray-50 to-white rounded-2xl border border-gray-200/90 shadow-2xs">
+            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-3">
+              Tentang Penulis
+            </span>
+            <div className="flex items-start gap-4">
+              <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-full overflow-hidden bg-gray-100 border-2 border-indigo-600/30 shrink-0 shadow-xs flex items-center justify-center">
+                <img
+                  src={
+                    authorProfile?.avatarUrl ||
+                    `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                      authorProfile?.name || article.author || 'Redaksi'
+                    )}&background=4f46e5&color=fff`
+                  }
+                  alt={authorProfile?.name || article.author}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h4 className="font-bold text-gray-900 text-sm sm:text-base leading-snug">
+                  {authorProfile?.name || article.author || 'Redaksi Naratif'}
+                </h4>
+                <div className="text-xs text-gray-500 font-normal mt-0.5">
+                  {authorProfile?.role || 'Tim Redaksi'}
+                </div>
+                <p className="text-xs sm:text-sm text-gray-600 mt-2 leading-relaxed">
+                  {authorProfile?.bio ||
+                    'Bagian dari tim editorial Naratif Media yang berdedikasi menyajikan berita teknologi, sains, dan kabar daerah yang akurat dan berbobot.'}
+                </p>
+              </div>
+            </div>
+          </div>
 
           {/* SLOT IKLAN BAWAH BACAAN (AFTER ARTICLE) */}
           {adSettings.footer?.enabled && (

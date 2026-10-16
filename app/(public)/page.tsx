@@ -137,15 +137,11 @@ export default async function Home() {
                   </h2>
                 </Link>
 
-                <div className="flex items-center text-xs sm:text-sm text-gray-500 font-medium mt-1">
-                  <span className="font-bold text-gray-800">{featuredArticle.author}</span>
-                  <span className="mx-2">•</span>
-                  <span>
-                    {featuredArticle.publishedAt
-                      ? formatDistanceToNow(new Date(featuredArticle.publishedAt), { addSuffix: true, locale: id })
-                      : ''}
-                  </span>
-                </div>
+                {featuredArticle.publishedAt && (
+                  <div className="text-xs text-gray-400 font-medium mt-1">
+                    {formatDistanceToNow(new Date(featuredArticle.publishedAt), { addSuffix: true, locale: id })}
+                  </div>
+                )}
 
                 {/* BACA JUGA (Format Minimalis Inline ala Kompas) */}
                 {bacaJugaArticles.length > 0 && (

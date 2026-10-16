@@ -246,3 +246,23 @@ export async function setTelegramCommands(
   return await res.json();
 }
 
+/**
+ * Mengambil direct link download file / foto dari server Telegram
+ */
+export async function getTelegramFileUrl(fileId: string): Promise<string | null> {
+  const token = getTelegramToken();
+  if (!token) return null;
+
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${token}/getFile?file_id=${encodeURIComponent(fileId)}`);
+    const data = await res.json();
+    if (data.ok && data.result?.file_path) {
+      return `https://api.telegram.org/file/bot${token}/${data.result.file_path}`;
+    }
+  } catch (err) {
+    console.error('Error fetching Telegram file path:', err);
+  }
+  return null;
+}
+
+

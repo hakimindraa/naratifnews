@@ -8,6 +8,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import BacaJugaPickerModal from '../BacaJugaPickerModal';
 import CoverImagePicker from '../CoverImagePicker';
+import AuthorSelector from '../AuthorSelector';
 
 export default function TulisForm() {
   const router = useRouter();
@@ -26,6 +27,7 @@ export default function TulisForm() {
   const [content, setContent] = useState('');
   const [tags, setTags] = useState('');
   const [author, setAuthor] = useState('Redaksi');
+  const [authorId, setAuthorId] = useState<number | undefined>(undefined);
   const [activeTab, setActiveTab] = useState<'edit' | 'preview'>('edit');
   const [publishAt, setPublishAt] = useState('');
 
@@ -74,6 +76,9 @@ export default function TulisForm() {
     formData.append('publishAt', publishAt);
     formData.append('tags', tags);
     formData.append('author', author);
+    if (authorId) {
+      formData.append('authorId', String(authorId));
+    }
 
     startTransition(async () => {
       const result = await createArticle(formData);
@@ -159,18 +164,14 @@ export default function TulisForm() {
           </p>
         </div>
 
-        <div className="space-y-2">
-          <label className="block text-sm font-bold text-gray-900">
-            Penulis (Author)
-          </label>
-          <input 
-            type="text" 
-            value={author}
-            onChange={(e) => setAuthor(e.target.value)}
-            placeholder="Redaksi" 
-            className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-gray-900 text-sm"
-          />
-        </div>
+        <AuthorSelector
+          author={author}
+          selectedAuthorId={authorId}
+          onAuthorChange={(name, id) => {
+            setAuthor(name);
+            setAuthorId(id);
+          }}
+        />
       </div>
 
       {/* Cover Image */}

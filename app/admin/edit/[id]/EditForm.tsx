@@ -8,6 +8,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import BacaJugaPickerModal from '../../BacaJugaPickerModal';
 import CoverImagePicker from '../../CoverImagePicker';
+import AuthorSelector from '../../AuthorSelector';
 
 export default function EditForm({ article }: { article: any }) {
   const router = useRouter();
@@ -16,6 +17,8 @@ export default function EditForm({ article }: { article: any }) {
   const [content, setContent] = useState(article.content || '');
   const [coverUrl, setCoverUrl] = useState(article.coverUrl || '');
   const [coverCaption, setCoverCaption] = useState(article.coverCaption || '');
+  const [author, setAuthor] = useState(article.author || 'Redaksi');
+  const [authorId, setAuthorId] = useState<number | undefined>(article.authorId || undefined);
   const [activeTab, setActiveTab] = useState<'edit' | 'preview'>('edit');
   const [showBacaJugaModal, setShowBacaJugaModal] = useState(false);
 
@@ -41,6 +44,10 @@ export default function EditForm({ article }: { article: any }) {
     formData.set('content', content);
     formData.set('coverUrl', coverUrl);
     formData.set('coverCaption', coverCaption);
+    formData.set('author', author);
+    if (authorId) {
+      formData.set('authorId', String(authorId));
+    }
     
     startTransition(async () => {
       const result = await updateArticle(article.id, formData);
@@ -128,30 +135,14 @@ export default function EditForm({ article }: { article: any }) {
           </p>
         </div>
 
-        <div className="space-y-2">
-          <label className="block text-sm font-bold text-gray-900">
-            Penulis (Author) <span className="text-red-500">*</span>
-          </label>
-          <input 
-            type="text" 
-            name="author" 
-            defaultValue={article.author || 'Redaksi'} 
-            list="author-suggestions"
-            placeholder="Redaksi"
-            required 
-            className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-gray-900 text-sm font-medium"
-          />
-          <datalist id="author-suggestions">
-            <option value="Redaksi" />
-            <option value="Redaksi Naratif (AI)" />
-            <option value="Redaksi Naratif" />
-            <option value="Indra Hakim Lesmana" />
-            <option value="Desk Teknologi" />
-          </datalist>
-          <p className="text-xs text-gray-500">
-            Pilih dari rekomendasi atau ketik bebas nama penulis.
-          </p>
-        </div>
+        <AuthorSelector
+          author={author}
+          selectedAuthorId={authorId}
+          onAuthorChange={(name, id) => {
+            setAuthor(name);
+            setAuthorId(id);
+          }}
+        />
       </div>
 
       {/* Cover Image & Live Preview */}

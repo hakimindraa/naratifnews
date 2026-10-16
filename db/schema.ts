@@ -1,5 +1,15 @@
 import { pgTable, serial, text, varchar, timestamp, index, uniqueIndex, integer } from 'drizzle-orm/pg-core';
 
+export const authors = pgTable('authors', {
+  id: serial('id').primaryKey(),
+  name: varchar('name', { length: 255 }).notNull(),
+  role: varchar('role', { length: 150 }).notNull().default('Redaksi'),
+  avatarUrl: varchar('avatar_url', { length: 2048 }),
+  bio: text('bio'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
 export const articles = pgTable('articles', {
   id: serial('id').primaryKey(),
   slug: varchar('slug', { length: 255 }).notNull(),
@@ -10,6 +20,7 @@ export const articles = pgTable('articles', {
   coverCaption: varchar('cover_caption', { length: 500 }),
   category: varchar('category', { length: 100 }).notNull(),
   author: varchar('author', { length: 255 }).notNull(),
+  authorId: integer('author_id').references(() => authors.id, { onDelete: 'set null' }),
   tags: text('tags').array(),
   status: varchar('status', { length: 50 }).notNull().default('draft'), // draft | scheduled | published
   publishAt: timestamp('publish_at', { withTimezone: true }),

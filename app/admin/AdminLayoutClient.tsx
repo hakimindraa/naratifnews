@@ -18,6 +18,7 @@ import {
   Timer,
   Coins,
   Image as ImageIcon,
+  Users,
 } from 'lucide-react';
 import { logoutAdmin } from './auth-actions';
 import VercelStatusBadge from './VercelStatusBadge';
@@ -60,6 +61,12 @@ export default function AdminLayoutClient({ children }: AdminLayoutClientProps) 
       href: '/admin/sadur',
       icon: Link2,
       badge: 'Baru',
+    },
+    {
+      label: 'Tim Penulis',
+      href: '/admin/penulis',
+      icon: Users,
+      badge: 'Profil',
     },
     {
       label: 'Cron Job',
