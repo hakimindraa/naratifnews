@@ -268,18 +268,23 @@ export async function updateArticle(id: number, formData: FormData) {
     if (adminChatId) {
       const statusLabel = status === 'published' ? '🚀 Terbit' : status === 'scheduled' ? '⏳ Terjadwal' : '📝 Draf';
       const notifText = `🔔 <b>ARTIKEL DIPERBARUI DI WEB ADMIN</b>
-━━━━━━━━━━━━━━━━━━━━
+────────────────────
+
 📰 <b>${title}</b>
-📂 Kategori: <b>${category}</b>
-✍️ Penulis: <b>${author || 'Redaksi'}</b>
-📊 Status: <b>${statusLabel}</b>
-━━━━━━━━━━━━━━━━━━━━
+
+📂 <b>Kategori</b> : <code>${category}</code>
+✍️ <b>Penulis</b>  : <b>${author || 'Redaksi'}</b>
+📊 <b>Status</b>   : <code>${statusLabel}</code>
+
+────────────────────
 <i>Perubahan artikel berhasil disimpan ke database Neon DB.</i>`;
 
       sendTelegramMessage(adminChatId, notifText, {
         inlineKeyboard: [
-          [{ text: '🌐 Buka di Website', url: articleUrl }],
-          [{ text: '✏️ Buka Editor Web', url: `${siteUrl}/admin/edit/${id}` }],
+          [
+            { text: '🌐 Buka di Website', url: articleUrl },
+            { text: '✏️ Buka Editor Web', url: `${siteUrl}/admin/edit/${id}` },
+          ],
         ],
       }).catch((tgErr) => console.warn('Telegram update notif error:', tgErr));
     }

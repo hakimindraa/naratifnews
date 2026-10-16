@@ -3,6 +3,7 @@ import {
   sendTelegramMessage,
   editTelegramMessage,
   deleteTelegramMessage,
+  deleteTelegramMessages,
   answerCallbackQuery,
   setTelegramCommands,
   SendMessageOptions,
@@ -70,6 +71,7 @@ interface ArticleRunParams {
   enableWebSearch: boolean;
   isPublish: boolean;
   siteUrl: string;
+  messageId?: number;
 }
 
 // Helper untuk memperbarui pesan di tempat (In-Place Edit) agar chat tidak panjang menumpuk
@@ -96,32 +98,71 @@ async function runArticleGeneration({
   enableWebSearch,
   isPublish,
   siteUrl,
+  messageId,
 }: ArticleRunParams) {
   const isRegional = category?.toLowerCase() === 'regional';
   const cleanRegion = (region && region !== '-' && region !== 'Umum') ? region : '';
 
   const lengthLabel =
     length === 'ringkas' ? 'Ringkas (~400 kata)' : length === 'mendalam' ? 'Mendalam (~1200 kata)' : 'Standar (~700 kata)';
-  const statusLabel = isPublish ? '🚀 Terbit Langsung (Published)' : '📝 Simpan Draf (Draft)';
-  const researchLabel = enableWebSearch
-    ? (isRegional ? `🌐 Berita Daerah ${cleanRegion || 'Lokal'} (100% ID)` : '🌐 Faktual Google News (Lokal & Global)')
-    : '⚡ Nonaktif (Murni Analisis AI)';
+  const statusLabel = isPublish ? '🚀 Terbit Langsung' : '📝 Simpan Draf';
   const providerLabel =
     provider === 'groq'
-      ? '🚀 Groq Cloud (GPT-OSS 120B)'
+      ? '🚀 Groq Cloud (GPT-OSS)'
       : provider === '9router'
-      ? '🌐 9Router Gateway (Custom)'
-      : '⚡ Google Gemini 3.8 Flash';
+      ? '🌐 9Router Gateway'
+      : '⚡ Google Gemini 2.5 Flash';
 
-  // Kirim feedback awal ke Telegram
-  await sendTelegramMessage(
-    chatId,
-    `⏳ <b>Memulai Liputan AI...</b>\n\nSedang ${
-      enableWebSearch ? (isRegional ? `melacak berita daerah ${cleanRegion || 'lokal'} serta ` : 'melacak fakta Google News serta ') : ''
-    }meracik naskah jurnalistik untuk topik:\n<i>"${topic}"</i>\n\n🎯 Target: <b>${statusLabel}</b>\n📂 Kategori: <b>${category || 'AI'}${cleanRegion ? ` (${cleanRegion})` : ''}</b>\n🤖 AI Engine: <b>${providerLabel}</b>\n📏 Panjang: <b>${lengthLabel}</b>\n🔍 Riset: <b>${researchLabel}</b>\n\n<i>Mohon tunggu sekitar ${
-      provider === 'groq' ? '5–10' : enableWebSearch ? '15–30' : '10–20'
-    } detik...</i>`
-  );
+  // FASE 1: Memulai & Riset Fakta (30% Progres)
+  const fase1Text = `⏳ <b>PROSES LIPUTAN AI BERJALAN</b>
+────────────────────
+💡 <b>Topik:</b> <i>"${topic}"</i>
+📂 <b>Kategori</b> : <code>${category || 'AI'}${cleanRegion ? ` (${cleanRegion})` : ''}</code>
+🎯 <b>Target</b>   : <b>${statusLabel}</b>
+🤖 <b>AI Model</b> : <code>${providerLabel}</code>
+
+<b>Tahapan Eksekusi:</b>
+🔄 <b>[1/3] ${enableWebSearch ? (isRegional ? `Melacak berita daerah ${cleanRegion || 'lokal'}...` : 'Melacak fakta Google News terkini...') : 'Menyiapkan basis pengetahuan AI...'}</b>
+⏳ [2/3] Menyusun narasi & gaya jurnalistik
+⏳ [3/3] Validasi arsip & simpan database
+
+<code>[▰▰▰▱▱▱▱▱▱▱] 30% • Riset Fakta</code>
+────────────────────
+⏱️ <i>Sedang mengumpulkan referensi berita dan fakta lokal...</i>`;
+
+  let activeMessageId = messageId;
+  if (activeMessageId) {
+    const editRes = await editTelegramMessage(chatId, activeMessageId, fase1Text);
+    if (!editRes.success) {
+      const sendRes = await sendTelegramMessage(chatId, fase1Text);
+      activeMessageId = sendRes.data?.result?.message_id;
+    }
+  } else {
+    const sendRes = await sendTelegramMessage(chatId, fase1Text);
+    activeMessageId = sendRes.data?.result?.message_id;
+  }
+
+  // Timer simulasi transisi ke Fase 2 (70% Progres - Penulisan Naskah)
+  const timerFase2 = setTimeout(() => {
+    if (activeMessageId) {
+      const fase2Text = `⏳ <b>PROSES LIPUTAN AI BERJALAN</b>
+────────────────────
+💡 <b>Topik:</b> <i>"${topic}"</i>
+📂 <b>Kategori</b> : <code>${category || 'AI'}${cleanRegion ? ` (${cleanRegion})` : ''}</code>
+🎯 <b>Target</b>   : <b>${statusLabel}</b>
+🤖 <b>AI Model</b> : <code>${providerLabel}</code>
+
+<b>Tahapan Eksekusi:</b>
+✅ <b>Riset fakta berita selesai</b>
+🔄 <b>[2/3] AI sedang meracik naskah jurnalistik...</b>
+⏳ [3/3] Validasi arsip & simpan database
+
+<code>[▰▰▰▰▰▰▰▱▱▱] 70% • Penulisan Naskah</code>
+────────────────────
+⏱️ <i>Menyusun struktur naskah, sudut pandang berita, dan kutipan...</i>`;
+      editTelegramMessage(chatId, activeMessageId, fase2Text).catch(() => {});
+    }
+  }, 3500);
 
   const startTime = performance.now();
 
@@ -134,6 +175,28 @@ async function runArticleGeneration({
       provider: provider || 'gemini',
       enableWebSearch,
     });
+
+    clearTimeout(timerFase2);
+
+    // FASE 3: Finalisasi Database (90% Progres)
+    if (activeMessageId) {
+      const fase3Text = `⏳ <b>PROSES LIPUTAN AI BERJALAN</b>
+────────────────────
+💡 <b>Topik:</b> <i>"${topic}"</i>
+📂 <b>Kategori</b> : <code>${category || 'AI'}${cleanRegion ? ` (${cleanRegion})` : ''}</code>
+🎯 <b>Target</b>   : <b>${statusLabel}</b>
+🤖 <b>AI Model</b> : <code>${providerLabel}</code>
+
+<b>Tahapan Eksekusi:</b>
+✅ <b>Riset fakta berita selesai</b>
+✅ <b>Naskah jurnalistik selesai disusun</b>
+🔄 <b>[3/3] Memeriksa kemiripan arsip & menyimpan...</b>
+
+<code>[▰▰▰▰▰▰▰▰▰▱] 90% • Finalisasi Database</code>
+────────────────────
+⏱️ <i>Menyimpan naskah ke database Neon DB...</i>`;
+      await editTelegramMessage(chatId, activeMessageId, fase3Text).catch(() => {});
+    }
 
     const status = isPublish ? 'published' : 'draft';
     const publishedAt = isPublish ? new Date() : null;
@@ -173,9 +236,9 @@ async function runArticleGeneration({
     const similarityInfo = await findSimilarArticles(newArticle.title, newArticle.excerpt || undefined, 0.55);
     const similarityNote =
       similarityInfo.hasSimilar && similarityInfo.matchedArticle
-        ? `\n⚠️ <i>Catatan Kemiripan: Mirip ~${Math.round(
+        ? `\n⚠️ <b>Catatan Kemiripan Arsip:</b>\n<code>Mirip ~${Math.round(
             similarityInfo.highestScore * 100
-          )}% dengan arsip: "${similarityInfo.matchedArticle.title}"</i>\n`
+          )}% dengan: "${similarityInfo.matchedArticle.title}"</code>\n`
         : '';
 
     // Revalidasi cache web
@@ -183,46 +246,66 @@ async function runArticleGeneration({
 
     const articleUrl = `${siteUrl}/berita-teknologi/${newArticle.category.toLowerCase()}/${newArticle.id}/${newArticle.slug}`;
     const editUrl = `${siteUrl}/admin/edit/${newArticle.id}`;
+    const tagsFormatted = (newArticle.tags || []).map((t: string) => `<code>#${t}</code>`).join(' ');
 
     if (isPublish) {
-      const successText = `🎉 <b>BERITA BERHASIL TERBIT!</b>
-━━━━━━━━━━━━━━━━━━━━
-📰 <b>${newArticle.title}</b>
-📂 Kategori: <b>${newArticle.category}${cleanRegion ? ` (${cleanRegion})` : ''}</b>
-🏷️ Tags: <i>${(newArticle.tags || []).map((t: string) => '#' + t).join(' ')}</i>
-🌐 Riset Berita: <b>${enableWebSearch ? (isRegional ? 'Google News Lokal' : 'Google News Aktif') : 'Murni AI'}</b>
-⏱️ Waktu Proses: <b>${(durationMs / 1000).toFixed(1)}s</b>${similarityNote}
-━━━━━━━━━━━━━━━━━━━━
-Artikel sudah langsung tayang di portal Naratif! Anda bisa menambahkan foto sampul lewat editor web di bawah.`;
+      const successText = `🎉 <b>BERITA BERHASIL DITERBITKAN!</b>
+────────────────────
 
-      await sendTelegramMessage(chatId, successText, {
+📰 <b>${newArticle.title}</b>
+
+📂 <b>Kategori</b> : <code>${newArticle.category}${cleanRegion ? ` (${cleanRegion})` : ''}</code>
+🌐 <b>Riset</b>    : <code>${enableWebSearch ? (isRegional ? 'Google News Daerah (100% ID)' : 'Google News Global Aktif') : 'Murni Analisis AI'}</code>
+⏱️ <b>Waktu</b>    : <code>${(durationMs / 1000).toFixed(1)}s</code> • ⚡ <b>${draftArticle.modelUsed || providerLabel}</b>
+🏷️ <b>Topik</b>    : ${tagsFormatted || '<code>#berita</code>'}${similarityNote}
+────────────────────
+✅ <i>Artikel telah terbit langsung di halaman depan Naratif! Anda bisa menambahkan foto sampul utama melalui editor web di bawah.</i>`;
+
+      await updateOrSendMessage(chatId, activeMessageId, successText, {
         inlineKeyboard: [
-          [{ text: '✏️ Tambah Sampul & Edit di Web', url: editUrl }],
-          [{ text: '📖 Baca di Website', url: articleUrl }],
+          [
+            { text: '📖 Baca di Website', url: articleUrl },
+            { text: '✏️ Tambah Sampul di Web', url: editUrl },
+          ],
+          [
+            { text: '✍️ Tulis Berita Baru', callback_data: 'btn:menu' },
+            { text: '🏠 Menu Utama', callback_data: 'btn:start' },
+          ],
         ],
       });
     } else {
       const draftSuccessText = `📝 <b>BERITA BERHASIL DISIMPAN KE DRAF!</b>
-━━━━━━━━━━━━━━━━━━━━
-📰 <b>${newArticle.title}</b>
-📂 Kategori: <b>${newArticle.category}${cleanRegion ? ` (${cleanRegion})` : ''}</b>
-🌐 Riset Berita: <b>${enableWebSearch ? (isRegional ? 'Google News Lokal' : 'Google News Aktif') : 'Murni AI'}</b>
-⏱️ Waktu Proses: <b>${(durationMs / 1000).toFixed(1)}s</b>${similarityNote}
-━━━━━━━━━━━━━━━━━━━━
-Artikel siap ditinjau di Dasbor Redaksi sebelum diterbitkan. Silakan tambahkan foto sampul lewat tombol di bawah.`;
+────────────────────
 
-      await sendTelegramMessage(chatId, draftSuccessText, {
+📰 <b>${newArticle.title}</b>
+
+📂 <b>Kategori</b> : <code>${newArticle.category}${cleanRegion ? ` (${cleanRegion})` : ''}</code>
+🌐 <b>Riset</b>    : <code>${enableWebSearch ? (isRegional ? 'Google News Daerah (100% ID)' : 'Google News Global Aktif') : 'Murni Analisis AI'}</code>
+⏱️ <b>Waktu</b>    : <code>${(durationMs / 1000).toFixed(1)}s</code> • ⚡ <b>${draftArticle.modelUsed || providerLabel}</b>
+🏷️ <b>Topik</b>    : ${tagsFormatted || '<code>#draf</code>'}${similarityNote}
+────────────────────
+📌 <i>Artikel siap ditinjau di Dasbor Redaksi sebelum diterbitkan. Anda bisa menambahkan foto sampul utama melalui tombol di bawah:</i>`;
+
+      await updateOrSendMessage(chatId, activeMessageId, draftSuccessText, {
         inlineKeyboard: [
-          [{ text: '✏️ Tambah Sampul & Edit di Web', url: editUrl }],
-          [{ text: '⚙️ Dasbor Redaksi', url: `${siteUrl}/admin` }],
+          [
+            { text: '✏️ Buka Editor & Tambah Sampul', url: editUrl },
+            { text: '⚙️ Dasbor Redaksi Web', url: `${siteUrl}/admin` },
+          ],
+          [
+            { text: '✍️ Buat Berita Baru', callback_data: 'btn:menu' },
+            { text: '🏠 Menu Utama', callback_data: 'btn:start' },
+          ],
         ],
       });
     }
   } catch (err: any) {
+    clearTimeout(timerFase2);
     console.error('Telegram generation error:', err);
-    await sendTelegramMessage(
+    await updateOrSendMessage(
       chatId,
-      `❌ <b>Gagal Menyusun Berita</b>\n\nTerjadi kesalahan saat memproses AI:\n<code>${
+      activeMessageId,
+      `❌ <b>Gagal Menyusun Berita</b>\n────────────────────\nTerjadi kesalahan saat memproses AI:\n<code>${
         err?.message || 'Error tidak dikenal'
       }</code>`
     );
@@ -241,20 +324,29 @@ async function runArticleRevision({
   instruction: string;
   siteUrl: string;
 }) {
+  let activeMsgId: number | undefined;
   try {
     const [existing] = await db.select().from(articles).where(eq(articles.id, articleId)).limit(1);
     if (!existing) {
       await sendTelegramMessage(
         chatId,
-        `❌ <b>Artikel Tidak Ditemukan</b>\n\nArtikel dengan ID <code>#${articleId}</code> tidak ditemukan di database Neon DB.`
+        `❌ <b>Artikel Tidak Ditemukan</b>\n────────────────────\nArtikel dengan ID <code>#${articleId}</code> tidak ditemukan di database Neon DB.`
       );
       return;
     }
 
-    await sendTelegramMessage(
-      chatId,
-      `⏳ <b>Sedang Merevisi Artikel #${existing.id}...</b>\n\n📰 Judul: <b>${existing.title}</b>\n📂 Kategori: <b>${existing.category}</b>\n✍️ Instruksi: <i>"${instruction}"</i>\n\n<i>AI sedang membaca naskah lama dan menyusun perbaikan...</i>`
-    );
+    const initText = `⏳ <b>PROSES REVISI ARTIKEL BERJALAN</b>
+────────────────────
+📰 <b>Judul</b>     : <b>${existing.title}</b>
+📂 <b>Kategori</b>  : <code>${existing.category}</code>
+✍️ <b>Instruksi</b> : <i>"${instruction}"</i>
+
+<code>[▰▰▰▰▰▰▱▱▱▱] 60% • Analisis & Revisi</code>
+────────────────────
+⏱️ <i>AI sedang membaca naskah lama di database dan meracik perbaikan...</i>`;
+
+    const initRes = await sendTelegramMessage(chatId, initText);
+    activeMsgId = initRes.data?.result?.message_id;
 
     const startTime = performance.now();
 
@@ -353,26 +445,36 @@ Silakan hasilkan objek JSON revisi sesuai aturan di atas.`;
     const editUrl = `${siteUrl}/admin/edit/${updated.id}`;
 
     const successText = `✅ <b>ARTIKEL #${updated.id} BERHASIL DIREVISI!</b>
-━━━━━━━━━━━━━━━━━━━━
-📰 <b>${updated.title}</b>
-📂 Kategori: <b>${updated.category}</b>
-📝 <b>Rangkuman Perubahan:</b>
-<i>${revisedData.changelog || 'Naskah berita telah diperbarui sesuai instruksi Anda.'}</i>
-⏱️ Waktu Proses: <b>${(durationMs / 1000).toFixed(1)}s</b>
-━━━━━━━━━━━━━━━━━━━━
-<i>Perubahan sudah langsung tayang di portal Naratif.</i>`;
+────────────────────
 
-    await sendTelegramMessage(chatId, successText, {
+📰 <b>${updated.title}</b>
+
+📂 <b>Kategori</b> : <code>${updated.category}</code>
+📝 <b>Perubahan:</b>
+<i>${revisedData.changelog || 'Naskah berita telah disempurnakan sesuai instruksi redaksi.'}</i>
+
+⏱️ <b>Waktu Proses</b> : <code>${(durationMs / 1000).toFixed(1)}s</code>
+────────────────────
+<i>Perubahan naskah sudah langsung aktif di portal Naratif.</i>`;
+
+    await updateOrSendMessage(chatId, activeMsgId, successText, {
       inlineKeyboard: [
-        [{ text: '📖 Baca Hasil di Website', url: articleUrl }],
-        [{ text: '✏️ Buka di Editor Web', url: editUrl }],
+        [
+          { text: '📖 Baca Hasil di Website', url: articleUrl },
+          { text: '✏️ Buka di Editor Web', url: editUrl },
+        ],
+        [
+          { text: '✍️ Buat Berita Baru', callback_data: 'btn:menu' },
+          { text: '🏠 Menu Utama', callback_data: 'btn:start' },
+        ],
       ],
     });
   } catch (err: any) {
     console.error('Error during article revision via Telegram:', err);
-    await sendTelegramMessage(
+    await updateOrSendMessage(
       chatId,
-      `❌ <b>Gagal Merevisi Artikel</b>\n\nKendala: <code>${err?.message || 'Error tidak dikenal'}</code>`
+      activeMsgId,
+      `❌ <b>Gagal Merevisi Artikel</b>\n────────────────────\nKendala: <code>${err?.message || 'Error tidak dikenal'}</code>`
     );
   }
 }
@@ -386,11 +488,19 @@ async function runSadurArticleGeneration({
   targetUrl: string;
   siteUrl: string;
 }) {
+  let activeMsgId: number | undefined;
   try {
-    await sendTelegramMessage(
-      chatId,
-      `🔍 <b>Membaca Berita Sumber...</b>\n\nSedang mengekstrak teks berita dari:\n<code>${targetUrl}</code>\n\n<i>Mohon tunggu sebentar...</i>`
-    );
+    const initText = `⏳ <b>PROSES SADUR BERITA BERJALAN</b>
+────────────────────
+🔗 <b>Link Sumber:</b>
+<code>${targetUrl}</code>
+
+<code>[▰▰▰▱▱▱▱▱▱▱] 30% • Ekstraksi Berita</code>
+────────────────────
+⏱️ <i>Sedang membaca isi artikel dan mengekstrak fakta penting...</i>`;
+
+    const initRes = await sendTelegramMessage(chatId, initText);
+    activeMsgId = initRes.data?.result?.message_id;
 
     const [sourceData, urlHistory] = await Promise.all([
       scrapeArticleFromUrl(targetUrl),
@@ -398,13 +508,20 @@ async function runSadurArticleGeneration({
     ]);
 
     const historyNotice = urlHistory.isAlreadyScraped
-      ? `\n\n⚠️ <i>Perhatian: Link ini tercatat pernah disadur sebelumnya ("${urlHistory.matchedTitle}"). Sistem tetap memproses saduran baru dengan sudut pandang segar...</i>`
+      ? `\n\n⚠️ <b>Peringatan Duplikasi URL:</b>\n<code>Link ini tercatat pernah disadur sebelumnya ("${urlHistory.matchedTitle}"). Sistem memproses sudut pandang orisinal baru.</code>`
       : '';
 
-    await sendTelegramMessage(
-      chatId,
-      `✨ <b>Sumber Ditemukan!</b>\n\n📰 <b>${sourceData.title}</b>\n🌐 Media: <b>${sourceData.domain}</b> (~${sourceData.wordCount} kata)${historyNotice}\n\n<i>Sedang meracik ulang menjadi naskah orisinal Naratif dalam Bahasa Indonesia via Groq Cloud...</i>`
-    );
+    if (activeMsgId) {
+      const fase2Text = `⏳ <b>PROSES SADUR BERITA BERJALAN</b>
+────────────────────
+📰 <b>Judul Asli</b> : <b>${sourceData.title}</b>
+🌐 <b>Media Asal</b> : <code>${sourceData.domain}</code> (~${sourceData.wordCount} kata)${historyNotice}
+
+<code>[▰▰▰▰▰▰▰▱▱▱] 70% • Menyusun Naskah Orisinal</code>
+────────────────────
+⏱️ <i>Sedang meracik ulang naskah Bahasa Indonesia via Groq Cloud...</i>`;
+      editTelegramMessage(chatId, activeMsgId, fase2Text).catch(() => {});
+    }
 
     const startTime = performance.now();
     const result = await requestSadurArticleFromSource({
@@ -454,9 +571,9 @@ async function runSadurArticleGeneration({
     const similarityInfo = await findSimilarArticles(newArticle.title, newArticle.excerpt || undefined, 0.55);
     const similarityNote =
       similarityInfo.hasSimilar && similarityInfo.matchedArticle
-        ? `\n⚠️ <i>Catatan Kemiripan: Mirip ~${Math.round(
+        ? `\n⚠️ <b>Catatan Kemiripan Arsip:</b>\n<code>Mirip ~${Math.round(
             similarityInfo.highestScore * 100
-          )}% dengan arsip: "${similarityInfo.matchedArticle.title}"</i>\n`
+          )}% dengan: "${similarityInfo.matchedArticle.title}"</code>\n`
         : '';
 
     revalidatePath('/', 'layout');
@@ -465,35 +582,43 @@ async function runSadurArticleGeneration({
 
     const articleUrl = `${siteUrl}/berita-teknologi/${newArticle.category.toLowerCase()}/${newArticle.id}/${newArticle.slug}`;
     const editUrl = `${siteUrl}/admin/edit/${newArticle.id}`;
+    const tagsFormatted = (newArticle.tags || []).map((t: string) => `<code>#${t}</code>`).join(' ');
 
-    const successMessage = `✅ <b>BERITA BERHASIL DISADUR!</b>
-━━━━━━━━━━━━━━━━━━━━
+    const successMessage = `🎉 <b>BERITA SADURAN BERHASIL DITERBITKAN!</b>
+────────────────────
+
 📰 <b>${newArticle.title}</b>
-📂 Kategori: <b>${newArticle.category}</b>
-🌐 Sumber: <b>${sourceData.domain}</b>
-⏱️ Waktu: <b>${(durationMs / 1000).toFixed(1)}s</b>
-🚀 Status: <b>Langsung Terbit (Published)</b>${similarityNote}
-━━━━━━━━━━━━━━━━━━━━
-<i>Artikel orisinal telah tayang di portal Naratif dengan atribusi etis.</i>`;
 
-    await sendTelegramMessage(chatId, successMessage, {
+📂 <b>Kategori</b> : <code>${newArticle.category}</code>
+🌐 <b>Sumber</b>   : <code>${sourceData.domain}</code>
+⏱️ <b>Waktu</b>    : <code>${(durationMs / 1000).toFixed(1)}s</code> • ⚡ <b>Groq AI</b>
+🏷️ <b>Topik</b>    : ${tagsFormatted || '<code>#saduran</code>'}${similarityNote}
+────────────────────
+✅ <i>Naskah telah terbit di portal Naratif lengkap dengan atribusi sumber berita.</i>`;
+
+    await updateOrSendMessage(chatId, activeMsgId, successMessage, {
       inlineKeyboard: [
         [
-          { text: '🌐 Baca di Web', url: articleUrl },
-          { text: '✏️ Edit di Admin', url: editUrl },
+          { text: '📖 Baca di Website', url: articleUrl },
+          { text: '✏️ Tambah Sampul di Web', url: editUrl },
+        ],
+        [
+          { text: '🔗 Sadur Link Lain', callback_data: 'btn:sadur_help' },
+          { text: '🏠 Menu Utama', callback_data: 'btn:start' },
         ],
       ],
     });
   } catch (err: any) {
-    console.error('Error saat menyadur berita via Telegram:', err);
-    await sendTelegramMessage(
+    console.error('Error during article saduran via Telegram:', err);
+    await updateOrSendMessage(
       chatId,
-      `❌ <b>Gagal Menyadur Berita</b>\n\nKendala: <code>${err.message || 'Gagal membaca URL'}</code>\n\nPastikan link dapat diakses publik.`
+      activeMsgId,
+      `❌ <b>Gagal Menyadur Berita</b>\n────────────────────\nKendala: <code>${err?.message || 'Error tidak dikenal'}</code>`
     );
   }
 }
 
-// Tampilan Boxed Layout Sambutan (/start) seperti format screenshot yang diinginkan user
+// Tampilan Menu Sambutan Modern Minimalis (/start)
 async function sendWelcomeMessage(
   chatId: number | string,
   messageId: number | undefined,
@@ -514,40 +639,39 @@ async function sendWelcomeMessage(
     // fallback jika gagal select db
   }
 
-  const welcomeText = `✨━━━━━━━━━━━━━━━━━━━━✨
-Halo <b>${firstName}</b> 👋
-Selamat datang di <b>Naratif Redaksi Bot</b>
-✨━━━━━━━━━━━━━━━━━━━━✨
+  const welcomeText = `✨ <b>NARATIF REDAKSI BOT</b>
+<i>Pusat Otomasi Liputan Berita & Jurnalistik AI</i>
+────────────────────
 
-┌── 👤 <b>Profil Editor</b>
-│ 📛 ${firstName}
-│ 🆔 <code>${userId}</code>
-│ 🏷️ Role: Redaksi Naratif
-└──
+👤 <b>Profil Editor</b>
+• Nama: <b>${firstName}</b>
+• ID Telegram: <code>${userId}</code>
+• Hak Akses: 🛡️ <b>Redaksi Inti</b>
 
-┌── 🤖 <b>Status Portal Naratif</b>
-│ 📁 Total Artikel : <b>${total} artikel</b>
-│ ✅ Sudah Terbit  : <b>${published}</b>
-│ 📝 Draf Review   : <b>${draft}</b>
-└──
+📊 <b>Ringkasan Portal Hari Ini</b>
+• 📁 Total Seluruh Arsip : <code>${total} artikel</code>
+• 🚀 Sudah Terbit : <code>${published}</code>
+• 📝 Draf Review  : <code>${draft}</code>
 
-Gunakan tombol <b>[Menu]</b> di kiri bawah atau pilih aksi cepat:`;
+👇 <i>Pilih aksi cepat di bawah untuk mulai bekerja:</i>`;
 
   const inlineKeyboard = [
-    [{ text: '✍️ Mulai Buat Berita', callback_data: 'btn:menu' }],
     [
-      { text: '🏛️ Liputan Regional', callback_data: 'cat:Regional' },
-      { text: '🔗 Sadur Berita', callback_data: 'btn:sadur_help' },
+      { text: '✍️ Mulai Buat Berita', callback_data: 'btn:menu' },
+      { text: '🔗 Sadur Link Berita', callback_data: 'btn:sadur_help' },
     ],
     [
+      { text: '🏛️ Liputan Daerah', callback_data: 'cat:Regional' },
       { text: '✏️ Panduan Revisi', callback_data: 'btn:revisi_help' },
-      { text: '📊 Cek Statistik', callback_data: 'btn:stats' },
     ],
     [
+      { text: '📊 Cek Statistik', callback_data: 'btn:stats' },
       { text: '🌐 Kunjungi Website', url: siteUrl },
-      { text: '⚙️ Dasbor Admin', url: `${siteUrl}/admin` },
     ],
-    [{ text: '❌ Tutup / Hapus Menu', callback_data: 'btn:close' }],
+    [
+      { text: '⚙️ Dasbor Admin Web', url: `${siteUrl}/admin` },
+      { text: '❌ Tutup Layar', callback_data: 'btn:close' },
+    ],
   ];
 
   // Pastikan menu command bot di Telegram selalu sinkron
@@ -563,13 +687,21 @@ async function sendStatsMessage(chatId: number | string, messageId: number | und
   const scheduled = allArticles.filter((a) => a.status === 'scheduled').length;
   const draft = allArticles.filter((a) => a.status === 'draft').length;
 
-  const statsText = `📊 <b>STATISTIK REDAKSI NARATIF</b>
-━━━━━━━━━━━━━━━━━━━━
-📁 Total Arsip: <b>${total} artikel</b>
-✅ Sudah Terbit: <b>${published}</b>
-⏳ Menunggu Tayang: <b>${scheduled}</b>
-📝 Draf Siap Review: <b>${draft}</b>
-━━━━━━━━━━━━━━━━━━━━
+  const statsText = `📊 <b>STATISTIK PORTAL NARATIF</b>
+<i>Laporan performa publikasi dan status server</i>
+────────────────────
+
+📰 <b>Status Publikasi</b>
+• 📁 Total Seluruh Arsip : <b>${total} artikel</b>
+• 🚀 Tayang / Terbit     : <code>${published}</code>
+• ⏳ Terjadwal Otomatis  : <code>${scheduled}</code>
+• 📝 Draf Siap Review    : <code>${draft}</code>
+
+⚡ <b>Status Infrastruktur</b>
+• Database  : 🟢 <code>Neon PostgreSQL (Normal)</code>
+• AI Engine : 🟢 <code>Gemini 2.5 Flash & Groq (Siap)</code>
+
+────────────────────
 🌐 <a href="${siteUrl}/admin">Buka Dasbor Redaksi Lengkap</a>`;
 
   await updateOrSendMessage(chatId, messageId, statsText, {
@@ -577,7 +709,7 @@ async function sendStatsMessage(chatId: number | string, messageId: number | und
       [{ text: '✍️ Buat Berita Baru', callback_data: 'btn:menu' }],
       [
         { text: '🏠 Menu Utama', callback_data: 'btn:start' },
-        { text: '❌ Tutup', callback_data: 'btn:close' },
+        { text: '❌ Tutup Layar', callback_data: 'btn:close' },
       ],
     ],
   });
@@ -630,21 +762,23 @@ export async function POST(req: NextRequest) {
       // Panduan Sadur Berita
       if (data === 'btn:sadur_help') {
         const text = `🔗 <b>PANDUAN SADUR BERITA DARI LINK</b>
-━━━━━━━━━━━━━━━━━━━━
-Untuk menyadur berita dari media luar (The Verge, Reuters, Kompas, dsb.):
+────────────────────
+Fitur ini membaca berita dari URL media luar (The Verge, Reuters, Kompas, dll), mengekstrak fakta penting, dan menulis ulang naskah orisinal dalam Bahasa Indonesia.
 
-Cukup kirimkan link beritanya langsung ke chat bot ini, atau ketik:
+📌 <b>Cara Penggunaan:</b>
+Ketik perintah berikut atau langsung tempelkan link URL ke chat:
 <code>/sadur [link_url]</code>
 
-💡 <i>Contoh:</i>
-<code>/sadur https://www.theverge.com/2026/openai-model-release</code>
-
-AI akan membaca isi artikel, mengekstrak fakta penting, dan menulis ulang naskah orisinal dalam Bahasa Indonesia.`;
+💡 <b>Contoh:</b>
+<code>/sadur https://www.theverge.com/2026/openai-model-release</code>`;
 
         await updateOrSendMessage(chatId, messageId, text, {
           inlineKeyboard: [
-            [{ text: '🏠 Menu Utama', callback_data: 'btn:start' }],
-            [{ text: '❌ Tutup', callback_data: 'btn:close' }],
+            [
+              { text: '✍️ Mulai Buat Berita', callback_data: 'btn:menu' },
+              { text: '🏠 Menu Utama', callback_data: 'btn:start' },
+            ],
+            [{ text: '❌ Tutup Layar', callback_data: 'btn:close' }],
           ],
         });
         return NextResponse.json({ ok: true });
@@ -653,20 +787,23 @@ AI akan membaca isi artikel, mengekstrak fakta penting, dan menulis ulang naskah
       // Panduan Revisi Artikel
       if (data === 'btn:revisi_help') {
         const text = `✏️ <b>PANDUAN REVISI / EDIT ARTIKEL</b>
-━━━━━━━━━━━━━━━━━━━━
+────────────────────
 Anda bisa merevisi artikel yang sudah ada di database melalui perintah:
 
 <code>/revisi [ID_ARTIKEL] [instruksi perbaikan]</code>
 
-💡 <i>Contoh:</i>
+💡 <b>Contoh:</b>
 <code>/revisi 42 perbaiki kalimat pembuka dan tambahkan kutipan narasumber dinas terkait</code>
 
-AI akan membaca naskah lama di database, menyempurnakan bagian yang diminta, dan langsung mengupdate artikel di website!`;
+<i>Tip: ID Artikel dapat dilihat di Dasbor Admin atau pada URL berita di website.</i>`;
 
         await updateOrSendMessage(chatId, messageId, text, {
           inlineKeyboard: [
-            [{ text: '🏠 Menu Utama', callback_data: 'btn:start' }],
-            [{ text: '❌ Tutup', callback_data: 'btn:close' }],
+            [
+              { text: '⚙️ Dasbor Admin Web', url: `${siteUrl}/admin` },
+              { text: '🏠 Menu Utama', callback_data: 'btn:start' },
+            ],
+            [{ text: '❌ Tutup Layar', callback_data: 'btn:close' }],
           ],
         });
         return NextResponse.json({ ok: true });
@@ -674,22 +811,28 @@ AI akan membaca naskah lama di database, menyempurnakan bagian yang diminta, dan
 
       // Tombol Menu / Buat Berita (Langkah 1: Kategori)
       if (data === 'btn:menu') {
-        const step1Text = `📝 <b>LANGKAH 1 DARI 5: PILIH KATEGORI BERITA</b>
-━━━━━━━━━━━━━━━━━━━━
-Pilih salah satu kategori liputan cepat di bawah ini (atau ketik topik sendiri):`;
+        const step1Text = `📝 <b>LANGKAH 1 DARI 5: PILIH KATEGORI</b>
+────────────────────
+Pilih bidang liputan berita yang ingin disusun:`;
 
         await updateOrSendMessage(chatId, messageId, step1Text, {
           inlineKeyboard: [
-            [{ text: '🤖 Tren & Inovasi AI Terkini', callback_data: 'cat:AI' }],
-            [{ text: '💻 Ekosistem & Tren Software', callback_data: 'cat:Software' }],
-            [{ text: '⚙️ Dinamika Semikonduktor & Hardware', callback_data: 'cat:Hardware' }],
-            [{ text: '☁️ Infrastruktur Cloud & Keamanan', callback_data: 'cat:Infrastruktur' }],
-            [{ text: '📱 Inovasi Gadget & Konsumen', callback_data: 'cat:Gadget' }],
-            [{ text: '🏛️ Berita Regional & Daerah', callback_data: 'cat:Regional' }],
+            [
+              { text: '🤖 Tren AI', callback_data: 'cat:AI' },
+              { text: '💻 Software', callback_data: 'cat:Software' },
+            ],
+            [
+              { text: '⚙️ Hardware', callback_data: 'cat:Hardware' },
+              { text: '☁️ Infrastruktur', callback_data: 'cat:Infrastruktur' },
+            ],
+            [
+              { text: '📱 Gadget', callback_data: 'cat:Gadget' },
+              { text: '🏛️ Berita Daerah', callback_data: 'cat:Regional' },
+            ],
             [{ text: '✍️ Ketik Topik Sendiri...', callback_data: 'cat:CUSTOM' }],
             [
               { text: '🏠 Menu Utama', callback_data: 'btn:start' },
-              { text: '❌ Tutup', callback_data: 'btn:close' },
+              { text: '❌ Tutup Layar', callback_data: 'btn:close' },
             ],
           ],
         });
@@ -708,7 +851,7 @@ Pilih salah satu kategori liputan cepat di bawah ini (atau ketik topik sendiri):
 
         if (category === 'CUSTOM') {
           const customPrompt = `✍️ <b>Ketik Topik Berita Anda Sendiri:</b>
-━━━━━━━━━━━━━━━━━━━━
+────────────────────
 Silakan kirim chat dengan salah satu perintah:
 
 👉 <code>/tulis [topik berita]</code> <i>(Terbit Langsung, Riset Aktif)</i>
@@ -723,8 +866,10 @@ Silakan kirim chat dengan salah satu perintah:
 
           await updateOrSendMessage(chatId, messageId, customPrompt, {
             inlineKeyboard: [
-              [{ text: '⬅️ Kembali ke Kategori', callback_data: 'btn:menu' }],
-              [{ text: '❌ Tutup', callback_data: 'btn:close' }],
+              [
+                { text: '⬅️ Kembali ke Kategori', callback_data: 'btn:menu' },
+                { text: '❌ Tutup Layar', callback_data: 'btn:close' },
+              ],
             ],
           });
           return NextResponse.json({ ok: true });
@@ -733,8 +878,8 @@ Silakan kirim chat dengan salah satu perintah:
         // FITUR A: JIKA KATEGORI REGIONAL -> MASUK KE LANGKAH 1B (PILIH WILAYAH)
         if (category === 'Regional') {
           const stepRegionText = `🏛️ <b>PILIH WILAYAH / DAERAH LIPUTAN:</b>
-━━━━━━━━━━━━━━━━━━━━
-Pilih provinsi / wilayah liputan agar pencarian Google News 100% fokus pada media daerah setempat:`;
+────────────────────
+Pilih provinsi target agar riset Google News 100% fokus pada media daerah setempat:`;
 
           const provinceButtons = [];
           for (let i = 0; i < REGIONAL_PROVINCES.length; i += 2) {
@@ -761,15 +906,15 @@ Pilih provinsi / wilayah liputan agar pencarian Google News 100% fokus pada medi
         // Untuk kategori teknologi selain regional: Lanjut ke Langkah 2 (Riset)
         const preset = PRESET_TOPICS[category] || { label: category, prompt: category };
         const step2Text = `🌐 <b>LANGKAH 2 DARI 5: RISET GOOGLE NEWS</b>
-━━━━━━━━━━━━━━━━━━━━
+────────────────────
 Kategori: <b>${preset.label}</b>
 
-Apakah Anda ingin AI melacak fakta berita terkini hari ini dari Google News?`;
+Aktifkan pelacakan fakta berita terkini hari ini dari Google News?`;
 
         await updateOrSendMessage(chatId, messageId, step2Text, {
           inlineKeyboard: [
             [{ text: '🌐 Riset Google News: AKTIF (Faktual)', callback_data: `rs:1:${category}:-` }],
-            [{ text: '⚡ Riset Google News: NONAKTIF (Murni AI)', callback_data: `rs:0:${category}:-` }],
+            [{ text: '🧠 Riset Google News: NONAKTIF (Murni AI)', callback_data: `rs:0:${category}:-` }],
             [
               { text: '⬅️ Kembali ke Kategori', callback_data: 'btn:menu' },
               { text: '🏠 Menu Utama', callback_data: 'btn:start' },
@@ -783,7 +928,7 @@ Apakah Anda ingin AI melacak fakta berita terkini hari ini dari Google News?`;
       if (data.startsWith('reg:')) {
         const region = data.slice('reg:'.length);
         const step2Text = `🌐 <b>LANGKAH 2 DARI 5: RISET BERITA DAERAH</b>
-━━━━━━━━━━━━━━━━━━━━
+────────────────────
 Kategori: <b>Regional</b>
 Wilayah: <b>📍 ${region}</b>
 
@@ -792,7 +937,7 @@ Aktifkan riset Google News lokal untuk melacak isu Pemda & peristiwa warga di wi
         await updateOrSendMessage(chatId, messageId, step2Text, {
           inlineKeyboard: [
             [{ text: `🌐 Riset Google News ${region}: AKTIF`, callback_data: `rs:1:Regional:${region}` }],
-            [{ text: '⚡ Riset Google News: NONAKTIF (Murni AI)', callback_data: `rs:0:Regional:${region}` }],
+            [{ text: '🧠 Riset Google News: NONAKTIF (Murni AI)', callback_data: `rs:0:Regional:${region}` }],
             [
               { text: '⬅️ Ganti Wilayah', callback_data: 'cat:Regional' },
               { text: '🏠 Menu Utama', callback_data: 'btn:start' },
@@ -811,17 +956,17 @@ Aktifkan riset Google News lokal untuk melacak isu Pemda & peristiwa warga di wi
         const researchLabel = isResearch === '1' ? 'Aktif (Faktual Real-time)' : 'Nonaktif (Murni AI)';
 
         const step3Text = `📏 <b>LANGKAH 3 DARI 5: PANJANG ARTIKEL</b>
-━━━━━━━━━━━━━━━━━━━━
+────────────────────
 Kategori: <b>${preset.label}${cleanRegion ? ` (${cleanRegion})` : ''}</b>
 Riset Google News: <b>${researchLabel}</b>
 
-Pilih target panjang naskah artikel berita:`;
+Pilih target kedalaman naskah artikel berita:`;
 
         await updateOrSendMessage(chatId, messageId, step3Text, {
           inlineKeyboard: [
-            [{ text: '📄 Ringkas (~400 kata)', callback_data: `len:ringkas:${isResearch}:${category}:${region || '-'}` }],
-            [{ text: '📰 Standar (~700 kata)', callback_data: `len:standar:${isResearch}:${category}:${region || '-'}` }],
-            [{ text: '📚 Mendalam (~1200 kata)', callback_data: `len:mendalam:${isResearch}:${category}:${region || '-'}` }],
+            [{ text: '⚡ Ringkas (~400 kata - Cepat)', callback_data: `len:ringkas:${isResearch}:${category}:${region || '-'}` }],
+            [{ text: '📰 Standar (~700 kata - Liputan Berita)', callback_data: `len:standar:${isResearch}:${category}:${region || '-'}` }],
+            [{ text: '📚 Mendalam (~1200 kata - Analisis Tajam)', callback_data: `len:mendalam:${isResearch}:${category}:${region || '-'}` }],
             [
               { text: '⬅️ Kembali ke Riset', callback_data: isReg ? `reg:${region}` : `cat:${category}` },
               { text: '🏠 Menu Utama', callback_data: 'btn:start' },
@@ -841,7 +986,7 @@ Pilih target panjang naskah artikel berita:`;
           length === 'ringkas' ? 'Ringkas (~400 kata)' : length === 'mendalam' ? 'Mendalam (~1200 kata)' : 'Standar (~700 kata)';
 
         const step4Text = `🤖 <b>LANGKAH 4 DARI 5: PILIH AI ENGINE</b>
-━━━━━━━━━━━━━━━━━━━━
+────────────────────
 Kategori: <b>${preset.label}${cleanRegion ? ` (${cleanRegion})` : ''}</b>
 Riset: <b>${researchLabel}</b>
 Panjang: <b>${lengthLabel}</b>
@@ -850,8 +995,8 @@ Pilih model kecerdasan buatan untuk meracik berita:`;
 
         await updateOrSendMessage(chatId, messageId, step4Text, {
           inlineKeyboard: [
-            [{ text: '⚡ Google Gemini 3.8 Flash (Rekomendasi)', callback_data: `eng:gemini:${length}:${isResearch}:${category}:${region || '-'}` }],
-            [{ text: '🚀 Groq Cloud (Super Cepat ~5s)', callback_data: `eng:groq:${length}:${isResearch}:${category}:${region || '-'}` }],
+            [{ text: '⚡ Google Gemini 2.5 Flash (Rekomendasi)', callback_data: `eng:gemini:${length}:${isResearch}:${category}:${region || '-'}` }],
+            [{ text: '🚀 Groq Cloud (Kecepatan Ekstrem)', callback_data: `eng:groq:${length}:${isResearch}:${category}:${region || '-'}` }],
             [{ text: '🌐 9Router Gateway (DeepSeek/Custom)', callback_data: `eng:9router:${length}:${isResearch}:${category}:${region || '-'}` }],
             [
               { text: '⬅️ Kembali ke Panjang', callback_data: `rs:${isResearch}:${category}:${region || '-'}` },
@@ -878,7 +1023,7 @@ Pilih model kecerdasan buatan untuk meracik berita:`;
             : '⚡ Google Gemini';
 
         const step5Text = `🎯 <b>LANGKAH 5 DARI 5: STATUS PUBLIKASI</b>
-━━━━━━━━━━━━━━━━━━━━
+────────────────────
 Kategori: <b>${preset.label}${cleanRegion ? ` (${cleanRegion})` : ''}</b>
 AI Engine: <b>${providerLabel}</b>
 Riset: <b>${researchLabel}</b>
@@ -888,8 +1033,8 @@ Pilih tindakan akhir publikasi artikel ke website:`;
 
         await updateOrSendMessage(chatId, messageId, step5Text, {
           inlineKeyboard: [
-            [{ text: '🚀 Langsung Terbitkan ke Web', callback_data: `gen:pub:${provider}:${length}:${isResearch}:${category}:${region || '-'}` }],
-            [{ text: '📝 Simpan Sebagai Draf (Review)', callback_data: `gen:drf:${provider}:${length}:${isResearch}:${category}:${region || '-'}` }],
+            [{ text: '🚀 Langsung Terbitkan ke Web (Published)', callback_data: `gen:pub:${provider}:${length}:${isResearch}:${category}:${region || '-'}` }],
+            [{ text: '📝 Simpan Sebagai Draf (Review Dahulu)', callback_data: `gen:drf:${provider}:${length}:${isResearch}:${category}:${region || '-'}` }],
             [
               { text: '⬅️ Kembali ke AI Engine', callback_data: `len:${length}:${isResearch}:${category}:${region || '-'}` },
               { text: '🏠 Menu Utama', callback_data: 'btn:start' },
@@ -920,11 +1065,6 @@ Pilih tindakan akhir publikasi artikel ke website:`;
         const enableWebSearch = isResearchStr === '1';
         const length = (lengthStr as 'ringkas' | 'standar' | 'mendalam') || 'standar';
 
-        // Bersihkan balon wizard agar chat rapi
-        if (messageId) {
-          await deleteTelegramMessage(chatId, messageId).catch(() => {});
-        }
-
         await runArticleGeneration({
           chatId,
           topic: preset.prompt,
@@ -935,6 +1075,7 @@ Pilih tindakan akhir publikasi artikel ke website:`;
           enableWebSearch,
           isPublish,
           siteUrl,
+          messageId,
         });
 
         return NextResponse.json({ ok: true });
@@ -979,12 +1120,28 @@ Pilih tindakan akhir publikasi artikel ke website:`;
 
     // 2. COMMAND BERSIHKAN LAYAR: /clear, /bersihkan
     if (rawText === '/clear' || rawText === '/bersihkan') {
-      await deleteTelegramMessage(chatId, messageId).catch(() => {});
-      const clearText = `🧹 <b>Layar Chat Dibersihkan</b>\n\nRuang pesan Anda telah dirapikan. Ketik <code>/start</code> atau tekan tombol <b>[Menu]</b> di kiri bawah untuk memulai kembali.`;
+      const currentId = Number(messageId);
+      if (currentId && !isNaN(currentId)) {
+        // Kumpulkan ID pesan mundur hingga 60 pesan ke belakang
+        const idsToDelete: number[] = [];
+        for (let i = currentId; i >= Math.max(1, currentId - 60); i--) {
+          idsToDelete.push(i);
+        }
+        await deleteTelegramMessages(chatId, idsToDelete);
+      } else if (messageId) {
+        await deleteTelegramMessage(chatId, messageId).catch(() => {});
+      }
+
+      const clearText = `<b>NARATIF REDAKSI</b>
+Layar obrolan berhasil dirapikan.
+
+Ketik <code>/start</code> atau pilih aksi cepat:`;
+
       await sendTelegramMessage(chatId, clearText, {
         inlineKeyboard: [
           [{ text: '✍️ Mulai Buat Berita', callback_data: 'btn:menu' }],
-          [{ text: '❌ Hapus Pesan Ini', callback_data: 'btn:close' }],
+          [{ text: '🏠 Menu Utama', callback_data: 'btn:start' }],
+          [{ text: '❌ Tutup Layar', callback_data: 'btn:close' }],
         ],
       });
       return NextResponse.json({ ok: true });
@@ -992,22 +1149,28 @@ Pilih tindakan akhir publikasi artikel ke website:`;
 
     // 3. COMMAND: /menu, /buat
     if (rawText === '/menu' || rawText === '/buat') {
-      const step1Text = `📝 <b>LANGKAH 1 DARI 5: PILIH KATEGORI BERITA</b>
-━━━━━━━━━━━━━━━━━━━━
-Pilih salah satu kategori liputan cepat di bawah ini (atau ketik topik sendiri):`;
+      const step1Text = `📝 <b>LANGKAH 1 DARI 5: PILIH KATEGORI</b>
+────────────────────
+Pilih bidang liputan berita yang ingin disusun:`;
 
       await sendTelegramMessage(chatId, step1Text, {
         inlineKeyboard: [
-          [{ text: '🤖 Tren & Inovasi AI Terkini', callback_data: 'cat:AI' }],
-          [{ text: '💻 Ekosistem & Tren Software', callback_data: 'cat:Software' }],
-          [{ text: '⚙️ Dinamika Semikonduktor & Hardware', callback_data: 'cat:Hardware' }],
-          [{ text: '☁️ Infrastruktur Cloud & Keamanan', callback_data: 'cat:Infrastruktur' }],
-          [{ text: '📱 Inovasi Gadget & Konsumen', callback_data: 'cat:Gadget' }],
-          [{ text: '🏛️ Berita Regional & Daerah', callback_data: 'cat:Regional' }],
+          [
+            { text: '🤖 Tren AI', callback_data: 'cat:AI' },
+            { text: '💻 Software', callback_data: 'cat:Software' },
+          ],
+          [
+            { text: '⚙️ Hardware', callback_data: 'cat:Hardware' },
+            { text: '☁️ Infrastruktur', callback_data: 'cat:Infrastruktur' },
+          ],
+          [
+            { text: '📱 Gadget', callback_data: 'cat:Gadget' },
+            { text: '🏛️ Berita Daerah', callback_data: 'cat:Regional' },
+          ],
           [{ text: '✍️ Ketik Topik Sendiri...', callback_data: 'cat:CUSTOM' }],
           [
             { text: '🏠 Menu Utama', callback_data: 'btn:start' },
-            { text: '❌ Tutup', callback_data: 'btn:close' },
+            { text: '❌ Tutup Layar', callback_data: 'btn:close' },
           ],
         ],
       });
@@ -1023,16 +1186,27 @@ Pilih salah satu kategori liputan cepat di bawah ini (atau ketik topik sendiri):
     // 5. FITUR B: COMMAND REVISI ARTIKEL (/revisi [id] [instruksi])
     const matchRevisi = rawText.match(/^\/revisi(?:@\w+)?(?:\s+(\d+)\s+([\s\S]+))?$/i);
     if (rawText === '/revisi' || (matchRevisi && !matchRevisi[1])) {
-      await sendTelegramMessage(
-        chatId,
-        `✏️ <b>Format Perintah Revisi Artikel:</b>\n\nKetik: <code>/revisi [ID_ARTIKEL] [instruksi perbaikan]</code>\n\n💡 <i>Contoh:</i>\n<code>/revisi 42 perbaiki paragraf 2 dengan menambahkan data kutipan dinas terkait dan rapikan gaya bahasanya</code>\n\n<i>Tip: ID Artikel bisa dilihat di Dasbor Admin atau di bagian URL berita.</i>`,
-        {
-          inlineKeyboard: [
-            [{ text: '⚙️ Buka Dasbor Admin', url: `${siteUrl}/admin` }],
-            [{ text: '❌ Tutup', callback_data: 'btn:close' }],
+      const revisiHelp = `✏️ <b>PANDUAN REVISI / EDIT ARTIKEL</b>
+────────────────────
+Perbaiki naskah artikel yang sudah tersimpan dengan instruksi AI:
+
+📌 <b>Format Perintah:</b>
+<code>/revisi [ID_ARTIKEL] [instruksi perbaikan]</code>
+
+💡 <b>Contoh:</b>
+<code>/revisi 42 perbaiki kalimat pembuka dan tambahkan kutipan narasumber dinas terkait</code>
+
+<i>Tip: ID Artikel dapat dilihat di Dasbor Admin atau URL berita.</i>`;
+
+      await sendTelegramMessage(chatId, revisiHelp, {
+        inlineKeyboard: [
+          [
+            { text: '⚙️ Dasbor Admin Web', url: `${siteUrl}/admin` },
+            { text: '🏠 Menu Utama', callback_data: 'btn:start' },
           ],
-        }
-      );
+          [{ text: '❌ Tutup Layar', callback_data: 'btn:close' }],
+        ],
+      });
       return NextResponse.json({ ok: true });
     }
 
@@ -1051,16 +1225,28 @@ Pilih salah satu kategori liputan cepat di bawah ini (atau ketik topik sendiri):
     // 6. FITUR A: COMMAND KHUSUS REGIONAL (/regional [wilayah] [topik] atau /daerah)
     const matchRegional = rawText.match(/^\/(?:regional|daerah)(?:@\w+)?(?:\s+([A-Za-z\s]+?)\s*:\s*([\s\S]+)|\s+([\s\S]+))?$/i);
     if (rawText === '/regional' || rawText === '/daerah' || (matchRegional && !matchRegional[2] && !matchRegional[3])) {
-      await sendTelegramMessage(
-        chatId,
-        `🏛️ <b>Format Perintah Berita Regional:</b>\n\nKetik: <code>/regional [Wilayah] : [Topik Berita]</code>\nAtau: <code>/regional [Topik Berita]</code>\n\n💡 <i>Contoh:</i>\n<code>/regional Jawa Barat : Kebijakan subsidi transportasi massal dan penataan fasilitas publik pemprov</code>\n\nAtau gunakan menu interaktif di bawah:`,
-        {
-          inlineKeyboard: [
-            [{ text: '🏛️ Pilih dari Menu Wilayah', callback_data: 'cat:Regional' }],
-            [{ text: '❌ Tutup', callback_data: 'btn:close' }],
+      const regionalHelp = `🏛️ <b>PANDUAN BERITA REGIONAL & DAERAH</b>
+────────────────────
+Susun liputan berbasis isu kebijakan publik provinsi atau daerah di Indonesia:
+
+📌 <b>Format Perintah:</b>
+<code>/regional [Provinsi] : [Topik Berita]</code>
+<i>atau langsung:</i> <code>/regional [Topik Berita]</code>
+
+💡 <b>Contoh:</b>
+<code>/regional Kalimantan Timur : Kebijakan subsidi transportasi publik dan fasilitas IKN</code>
+
+👇 <i>Atau pilih langsung provinsi lewat menu interaktif:</i>`;
+
+      await sendTelegramMessage(chatId, regionalHelp, {
+        inlineKeyboard: [
+          [
+            { text: '🏛️ Buka Pilihan Daerah', callback_data: 'cat:Regional' },
+            { text: '🏠 Menu Utama', callback_data: 'btn:start' },
           ],
-        }
-      );
+          [{ text: '❌ Tutup Layar', callback_data: 'btn:close' }],
+        ],
+      });
       return NextResponse.json({ ok: true });
     }
 
@@ -1114,13 +1300,25 @@ Pilih salah satu kategori liputan cepat di bawah ini (atau ketik topik sendiri):
     }
 
     if (rawText === '/sadur' || rawText === '/rewrite') {
-      await sendTelegramMessage(
-        chatId,
-        `🔗 <b>Format Perintah Sadur Berita:</b>\n\nKetik <code>/sadur [link_url]</code> atau cukup kirimkan link beritanya langsung ke bot ini.\n\n💡 <i>Contoh:</i>\n<code>/sadur https://www.theverge.com/...</code>`,
-        {
-          inlineKeyboard: [[{ text: '❌ Tutup', callback_data: 'btn:close' }]],
-        }
-      );
+      const sadurHelp = `🔗 <b>PANDUAN SADUR BERITA DARI LINK</b>
+────────────────────
+Fitur ini membaca berita dari URL media luar, mengekstrak fakta penting, dan menyusun ulang naskah orisinal berbobot.
+
+📌 <b>Cara Penggunaan:</b>
+Ketik <code>/sadur [link_url]</code> atau cukup tempelkan link URL langsung ke chat.
+
+💡 <b>Contoh:</b>
+<code>/sadur https://www.theverge.com/2026/openai-model-release</code>`;
+
+      await sendTelegramMessage(chatId, sadurHelp, {
+        inlineKeyboard: [
+          [
+            { text: '✍️ Mulai Buat Berita', callback_data: 'btn:menu' },
+            { text: '🏠 Menu Utama', callback_data: 'btn:start' },
+          ],
+          [{ text: '❌ Tutup Layar', callback_data: 'btn:close' }],
+        ],
+      });
       return NextResponse.json({ ok: true });
     }
 
@@ -1227,9 +1425,15 @@ Pilih salah satu kategori liputan cepat di bawah ini (atau ketik topik sendiri):
       if (!topic) {
         await sendTelegramMessage(
           chatId,
-          `⚠️ <b>Topik berita belum ditulis!</b>\n\nSilakan sertakan topik setelah perintah.\n\n💡 Contoh:\n<code>${rawText} Peluncuran Chipset AI Generasi Terbaru</code>`,
+          `⚠️ <b>Topik Berita Belum Ditulis!</b>\n────────────────────\nSilakan sertakan topik liputan setelah perintah.\n\n💡 <b>Contoh:</b>\n<code>${rawText} Peluncuran Chipset AI Generasi Terbaru</code>`,
           {
-            inlineKeyboard: [[{ text: '❌ Tutup', callback_data: 'btn:close' }]],
+            inlineKeyboard: [
+              [
+                { text: '✍️ Buka Menu Bertahap', callback_data: 'btn:menu' },
+                { text: '🏠 Menu Utama', callback_data: 'btn:start' },
+              ],
+              [{ text: '❌ Tutup Layar', callback_data: 'btn:close' }],
+            ],
           }
         );
         return NextResponse.json({ ok: true });
@@ -1248,27 +1452,70 @@ Pilih salah satu kategori liputan cepat di bawah ini (atau ketik topik sendiri):
       return NextResponse.json({ ok: true });
     }
 
-    // 9. PESAN TEKS BIASA (Bukan perintah '/')
-    const helpPromptText = `Halo <b>${firstName}</b>! Apakah Anda ingin membuat artikel berita?
+    // 9. COMMAND: /help, /bantuan
+    if (rawText === '/help' || rawText === '/bantuan') {
+      const helpText = `❓ <b>PANDUAN LENGKAP NARATIF BOT</b>
+<i>Pintasan Perintah & Alur Kerja Redaksi</i>
+────────────────────
 
-Silakan pilih metode berikut:
-1️⃣ Tekan tombol <b>"✍️ Mulai Buat Berita"</b> di bawah untuk panduan bertahap.
-2️⃣ Atau gunakan perintah cepat:
-👉 <code>/tulis ${rawText}</code> <i>(Terbit Langsung, Riset Aktif)</i>
-👉 <code>/regional Jawa Barat : ${rawText}</code> <i>(Berita Daerah)</i>
-👉 <code>/draft ${rawText}</code> <i>(Simpan Draf)</i>
-👉 <code>/opini ${rawText}</code> <i>(Murni AI)</i>
+✍️ <b>Pembuatan Berita Interaktif</b>
+• <code>/menu</code> — Wizard interaktif 5 langkah
+• <code>/start</code> — Dasbor utama & ringkasan portal
 
-Atau tekan tombol <b>[Menu]</b> di kiri bawah chat.`;
+⚡ <b>Perintah Langsung (Satu Baris)</b>
+• <code>/tulis [topik]</code> — Langsung terbit (Riset Google News)
+• <code>/regional [provinsi] : [topik]</code> — Liputan isu daerah
+• <code>/draft [topik]</code> — Simpan sebagai draf review
+• <code>/panjang [topik]</code> — Artikel mendalam (~1200 kata)
+• <code>/ringkas [topik]</code> — Format ringkas (~400 kata)
+• <code>/opini [topik]</code> — Analisis opini murni AI (tanpa web)
+
+🔗 <b>Sadur Berita & Perbaikan</b>
+• <code>/sadur [url]</code> — Sadur berita dari URL eksternal
+• <code>/revisi [id] [instruksi]</code> — Edit artikel yang sudah terbit
+
+🧹 <b>Alat & Sistem</b>
+• <code>/stats</code> — Cek statistik artikel & status server
+• <code>/clear</code> — Bersihkan riwayat chat bot`;
+
+      await sendTelegramMessage(chatId, helpText, {
+        inlineKeyboard: [
+          [
+            { text: '✍️ Mulai Buat Berita', callback_data: 'btn:menu' },
+            { text: '🏠 Menu Utama', callback_data: 'btn:start' },
+          ],
+          [
+            { text: '📊 Cek Statistik', callback_data: 'btn:stats' },
+            { text: '❌ Tutup Layar', callback_data: 'btn:close' },
+          ],
+        ],
+      });
+      return NextResponse.json({ ok: true });
+    }
+
+    // 10. PESAN TEKS BIASA (Bukan perintah '/')
+    const helpPromptText = `Halo <b>${firstName}</b>! Apakah Anda ingin menyusun berita?
+────────────────────
+
+Silakan pilih metode kerja yang Anda inginkan:
+1️⃣ Tekan tombol <b>"✍️ Mulai Buat Berita"</b> untuk panduan langkah demi langkah.
+2️⃣ Atau ketik perintah cepat langsung:
+• <code>/tulis ${rawText}</code> <i>(Terbit Langsung + Riset)</i>
+• <code>/regional Kalimantan Timur : ${rawText}</code> <i>(Berita Daerah)</i>
+• <code>/draft ${rawText}</code> <i>(Simpan Draf)</i>
+• <code>/opini ${rawText}</code> <i>(Murni AI)</i>`;
 
     await sendTelegramMessage(chatId, helpPromptText, {
       inlineKeyboard: [
-        [{ text: '✍️ Mulai Buat Berita', callback_data: 'btn:menu' }],
         [
+          { text: '✍️ Mulai Buat Berita', callback_data: 'btn:menu' },
           { text: '🏛️ Berita Regional', callback_data: 'cat:Regional' },
-          { text: '📊 Cek Statistik', callback_data: 'btn:stats' },
         ],
-        [{ text: '❌ Tutup', callback_data: 'btn:close' }],
+        [
+          { text: '📊 Cek Statistik', callback_data: 'btn:stats' },
+          { text: '🏠 Menu Utama', callback_data: 'btn:start' },
+        ],
+        [{ text: '❌ Tutup Layar', callback_data: 'btn:close' }],
       ],
     });
 

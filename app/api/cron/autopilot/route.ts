@@ -155,26 +155,29 @@ export async function GET(request: Request) {
     if (telegramNotify && adminChatId) {
       const articleUrl = `${siteUrl}/berita-teknologi/${newArticle.category.toLowerCase()}/${newArticle.id}/${newArticle.slug}`;
       const editUrl = `${siteUrl}/admin/edit/${newArticle.id}`;
-      const statusText = isPublish ? '🚀 <b>Langsung Terbit (Published)</b>' : '📝 <b>Disimpan ke Draf (Draft)</b>';
+      const statusText = isPublish ? '🚀 <code>Langsung Terbit (Published)</code>' : '📝 <code>Disimpan ke Draf (Draft)</code>';
 
       const reportMessage = `🤖 <b>LAPORAN AUTOPILOT REDAKSI</b>
-━━━━━━━━━━━━━━━━━━━━
+<i>Penerbitan Berita Otomatis Terjadwal</i>
+────────────────────
+
 📰 <b>${newArticle.title}</b>
-📂 Kategori: <b>${newArticle.category}</b>
-⏱️ Waktu Pembuatan: <b>${(durationMs / 1000).toFixed(1)}s</b> (via <i>${draftArticle.modelUsed || provider}</i>)
-🌐 Status: ${statusText}
-━━━━━━━━━━━━━━━━━━━━
+
+📂 <b>Kategori</b> : <code>${newArticle.category}</code>
+⏱️ <b>Durasi</b>   : <code>${(durationMs / 1000).toFixed(1)}s</code> • ⚡ <code>${draftArticle.modelUsed || provider}</code>
+🌐 <b>Status</b>   : ${statusText}
+────────────────────
 ${
   isPublish
-    ? '✅ Artikel telah otomatis tayang di portal naratif.web.id.'
-    : '📝 Artikel siap ditinjau di Dasbor Redaksi sebelum diterbitkan.'
+    ? '✅ <i>Artikel telah otomatis tayang di portal Naratif.</i>'
+    : '📝 <i>Artikel tersimpan sebagai Draf untuk ditinjau redaktur.</i>'
 }`;
 
       await sendTelegramMessage(adminChatId, reportMessage, {
         inlineKeyboard: [
           [
             { text: '🌐 Baca di Web', url: articleUrl },
-            { text: '✏️ Buka di Admin', url: editUrl },
+            { text: '✏️ Buka Editor Web', url: editUrl },
           ],
         ],
       }).catch((err) => console.warn('Telegram notify error:', err));
@@ -224,7 +227,7 @@ ${
     if (adminChatId) {
       await sendTelegramMessage(
         adminChatId,
-        `⚠️ <b>Peringatan Autopilot Redaksi</b>\n\nTerjadi kendala saat meriset/membuat berita otomatis hari ini:\n<code>${
+        `⚠️ <b>KENDALA AUTOPILOT REDAKSI</b>\n────────────────────\nTerjadi kendala saat meriset/membuat berita otomatis:\n<code>${
           error?.message || 'Error tidak dikenal'
         }</code>`
       ).catch(() => {});

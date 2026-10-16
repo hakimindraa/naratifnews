@@ -192,6 +192,46 @@ export async function deleteTelegramMessage(
   }
 }
 
+export async function deleteTelegramMessages(
+  chatId: number | string,
+  messageIds: number[]
+): Promise<{ success: boolean; data?: any; error?: string }> {
+  const token = getTelegramToken();
+  if (!token) return { success: false, error: 'TELEGRAM_BOT_TOKEN belum disetel.' };
+  if (!messageIds || messageIds.length === 0) return { success: true };
+
+  const uniqueIds = Array.from(new Set(messageIds)).filter((id) => id > 0);
+
+  try {
+    // 1. Coba batch delete resmi Telegram API 7.0+ (deleteMessages)
+    const res = await fetch(`https://api.telegram.org/bot${token}/deleteMessages`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: chatId,
+        message_ids: uniqueIds.slice(0, 100),
+      }),
+    });
+    const data = await res.json();
+    if (data.ok) return { success: true, data };
+
+    // 2. Fallback: Jika batch ditolak karena sebagian ID tidak ada atau >48 jam, hapus secara paralel via deleteMessage
+    const deletePromises = uniqueIds.slice(0, 60).map((id) =>
+      fetch(`https://api.telegram.org/bot${token}/deleteMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: chatId, message_id: id }),
+      })
+        .then((r) => r.json())
+        .catch(() => null)
+    );
+    await Promise.allSettled(deletePromises);
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
 export async function setTelegramCommands(
   commands: { command: string; description: string }[]
 ): Promise<any> {
