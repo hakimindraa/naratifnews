@@ -63,18 +63,18 @@ Panduan teknis langkah demi langkah untuk mengonfigurasi dan mengaktifkan seluru
    * Klik tombol **Lanjutkan**.
 4. Pada pilihan metode verifikasi:
    * Pilih opsi **"Tag HTML"**.
-   * Google akan menampilkan 1 baris kode, contoh:
+   * Kode verifikasi Anda:
      ```html
-     <meta name="google-site-verification" content="KODE_DARI_GOOGLE" />
+     <meta name="google-site-verification" content="3LJKvrRNp9AokPfB1aXVprINx5QN1n5xC9_VQ7yYRmQ" />
      ```
-5. Salin kodenya dan masukkan ke file `app/layout.tsx` pada bagian `verification.google`:
+5. Kode ini **sudah otomatis dipasang** di [app/layout.tsx](file:///e:/porto/naratif/app/layout.tsx):
    ```ts
    verification: {
-     google: "KODE_DARI_GOOGLE",
+     google: "3LJKvrRNp9AokPfB1aXVprINx5QN1n5xC9_VQ7yYRmQ",
    },
    ```
-6. Simpan, lakukan deploy/push.
-7. Kembali ke Google Search Console dan klik tombol **VERIFIKASI**. Status akan langsung centang hijau sukses!
+6. Lakukan commit & push ke Git (deploy ke Vercel).
+7. Setelah deploy selesai, kembali ke Google Search Console dan klik tombol **VERIFIKASI**. Status akan langsung centang hijau sukses!
 8. **Kirim Peta Situs (Sitemap):**
    * Di bilah menu sebelah kiri, klik **Peta Situs** (*Sitemaps*).
    * Pada kolom *Tambahkan peta situs baru*, ketik: **`sitemap.xml`**
