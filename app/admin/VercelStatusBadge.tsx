@@ -166,8 +166,15 @@ export default function VercelStatusBadge() {
 
       {/* FLOATING POPOVER DROPDOWN */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-[calc(100vw-2rem)] sm:w-96 max-w-sm rounded-2xl bg-gray-900 border border-gray-800 shadow-2xl p-4 sm:p-5 z-50 text-white animate-in fade-in zoom-in-95 duration-200">
-          {/* Header */}
+        <>
+          {/* Backdrop gelap di tampilan mobile */}
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-2xs z-40 sm:hidden"
+            onClick={() => setIsOpen(false)}
+          />
+
+          <div className="fixed inset-x-3.5 top-18 sm:top-full sm:mt-2 sm:absolute sm:inset-x-auto sm:right-0 w-auto sm:w-96 max-w-sm sm:max-w-none mx-auto sm:mx-0 rounded-2xl bg-gray-900 border border-gray-800 shadow-2xl p-4 sm:p-5 z-50 text-white animate-in fade-in zoom-in-95 duration-200 max-h-[85vh] overflow-y-auto">
+            {/* Header */}
           <div className="flex items-center justify-between pb-3 border-b border-gray-800">
             <div className="flex items-center gap-2">
               <svg className="w-4 h-4 fill-white" viewBox="0 0 76 65" height="16">
@@ -245,7 +252,7 @@ export default function VercelStatusBadge() {
                   <p className="text-xs font-semibold text-gray-100 line-clamp-2">
                     {latest.commit?.message || 'Manual Deployment'}
                   </p>
-                  <div className="flex items-center gap-3 text-[11px] text-gray-400 pt-1">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-gray-400 pt-1">
                     <span className="flex items-center gap-1 font-mono text-gray-300">
                       <GitCommit className="w-3 h-3 text-indigo-400" />
                       {latest.commit?.sha}
@@ -307,11 +314,11 @@ export default function VercelStatusBadge() {
                         key={d.id}
                         className="flex items-center justify-between text-[11px] p-2 rounded-lg bg-gray-800/40 hover:bg-gray-800 transition-colors"
                       >
-                        <div className="truncate max-w-[200px] text-gray-300">
+                        <div className="flex-1 min-w-0 truncate text-gray-300 mr-2">
                           <span className="font-mono text-gray-400 mr-1.5">[{d.commit?.sha}]</span>
                           <span>{d.commit?.message}</span>
                         </div>
-                        <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                        <div className="flex items-center gap-1.5 shrink-0">
                           <span
                             className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${
                               d.state === 'READY'
@@ -337,7 +344,8 @@ export default function VercelStatusBadge() {
             </div>
           )}
         </div>
-      )}
-    </div>
-  );
+      </>
+    )}
+  </div>
+);
 }
