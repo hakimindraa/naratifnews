@@ -21,6 +21,7 @@ import { articles, aiGenerationLogs } from '@/db/schema';
 import { revalidatePath } from 'next/cache';
 import { eq, desc } from 'drizzle-orm';
 import { BOT_COMMANDS } from '../setup/route';
+import { getAutopilotScheduleInfo } from '@/lib/autopilot-schedule';
 
 export const maxDuration = 60; // Timeout 60 detik untuk operasi AI
 
@@ -755,6 +756,12 @@ async function sendWelcomeMessage(
     // fallback jika gagal select db
   }
 
+  let autopilotBox = '';
+  try {
+    const auto = await getAutopilotScheduleInfo();
+    autopilotBox = `\n\n┌── 🤖 <b>Autopilot Redaksi AI</b>\n│ Status : ${auto.isEnabled ? '🟢 <b>Aktif</b>' : '🔴 <b>Nonaktif</b>'}\n│ Jadwal : <b>${auto.nextRunLabel}</b>\n│ Hitung Mundur : ⏳ <b>${auto.countdown}</b>\n└──`;
+  } catch {}
+
   const welcomeText = `✨━━━━━━━━━━━━━━━━━━━━━━━━━━━━✨
 Halo <b>${firstName}</b> 👋
 Selamat datang di <b>Naratif Redaksi Bot</b>
@@ -770,19 +777,19 @@ Selamat datang di <b>Naratif Redaksi Bot</b>
 │ 📁 Total Arsip : <b>${total} artikel</b>
 │ 🚀 Tayang Web  : <b>${published} artikel</b>
 │ 📝 Draf Review : <b>${draft} artikel</b>
-└──
+└──${autopilotBox}
 
 👇 <i>Pilih aksi cepat di bawah untuk mulai bekerja:</i>`;
 
   const inlineKeyboard = [
     [{ text: '✍️ Mulai Buat Berita', callback_data: 'btn:menu' }],
     [
-      { text: '🏛️ Liputan Regional', callback_data: 'cat:Regional' },
-      { text: '🔗 Sadur Berita', callback_data: 'btn:sadur_help' },
+      { text: '🤖 Jadwal Autopilot', callback_data: 'btn:autopilot' },
+      { text: '📊 Cek Statistik', callback_data: 'btn:stats' },
     ],
     [
-      { text: '✏️ Panduan Revisi', callback_data: 'btn:revisi_help' },
-      { text: '📊 Cek Statistik', callback_data: 'btn:stats' },
+      { text: '🏛️ Liputan Regional', callback_data: 'cat:Regional' },
+      { text: '🔗 Sadur Berita', callback_data: 'btn:sadur_help' },
     ],
     [
       { text: '🌐 Buka Website', url: siteUrl },
@@ -804,6 +811,12 @@ async function sendStatsMessage(chatId: number | string, messageId: number | und
   const scheduled = allArticles.filter((a) => a.status === 'scheduled').length;
   const draft = allArticles.filter((a) => a.status === 'draft').length;
 
+  let autopilotBox = '';
+  try {
+    const auto = await getAutopilotScheduleInfo();
+    autopilotBox = `\n\n┌── 🤖 <b>Jadwal Autopublish AI</b>\n│ Status : ${auto.isEnabled ? '🟢 <b>Aktif</b>' : '🔴 <b>Nonaktif</b>'}\n│ Berikutnya : <b>${auto.nextRunLabel}</b>\n│ Hitung Mundur : ⏳ <b>${auto.countdown}</b> (Kategori: <b>${auto.nextCategory}</b>)\n└──`;
+  } catch {}
+
   const statsText = `📊 <b>STATISTIK PORTAL NARATIF</b>
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Laporan performa publikasi & infrastruktur server
@@ -813,7 +826,7 @@ Laporan performa publikasi & infrastruktur server
 │ 🚀 Tayang Web  : <b>${published}</b>
 │ ⏳ Terjadwal   : <b>${scheduled}</b>
 │ 📝 Draf Review : <b>${draft}</b>
-└──
+└──${autopilotBox}
 
 ┌── ⚡ <b>Infrastruktur Redaksi</b>
 │ 💾 Database  : 🟢 <code>Neon PostgreSQL (Normal)</code>
@@ -824,13 +837,76 @@ Laporan performa publikasi & infrastruktur server
 
   await updateOrSendMessage(chatId, messageId, statsText, {
     inlineKeyboard: [
-      [{ text: '✍️ Buat Berita Baru', callback_data: 'btn:menu' }],
+      [
+        { text: '🤖 Status Autopilot', callback_data: 'btn:autopilot' },
+        { text: '✍️ Buat Berita', callback_data: 'btn:menu' },
+      ],
       [
         { text: '🏠 Menu Utama', callback_data: 'btn:start' },
         { text: '❌ Tutup Layar', callback_data: 'btn:close' },
       ],
     ],
   });
+}
+
+async function sendAutopilotMessage(
+  chatId: number | string,
+  messageId: number | undefined,
+  siteUrl: string
+) {
+  let scheduleInfo;
+  try {
+    scheduleInfo = await getAutopilotScheduleInfo();
+  } catch (err: any) {
+    await updateOrSendMessage(
+      chatId,
+      messageId,
+      `❌ <b>Gagal Memuat Status Autopilot</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nKendala: <code>${err?.message || 'Error koneksi database/konfigurasi'}</code>`
+    );
+    return;
+  }
+
+  const statusBadge = scheduleInfo.isEnabled
+    ? '🟢 <b>AKTIF (Berjalan Otomatis)</b>'
+    : '🔴 <b>NONAKTIF (Dijeda Redaktur)</b>';
+
+  const modeBadge =
+    scheduleInfo.statusMode === 'published'
+      ? '🚀 Langsung Terbit (Published)'
+      : '📝 Simpan Draf (Review)';
+
+  const autopilotText = `🤖 <b>STATUS & JADWAL AUTOPILOT REDAKSI</b>
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Pusat kendali autopublish berita otomatis AI Naratif
+
+┌── ⚙️ <b>Konfigurasi Sistem</b>
+│ • Status Sistem : ${statusBadge}
+│ • Target Mode   : <b>${modeBadge}</b>
+│ • AI Engine     : ⚡ <b>${scheduleInfo.provider.toUpperCase()}</b>
+│ • Kategori Giliran : 📂 <b>${scheduleInfo.nextCategory}</b>
+└──
+
+┌── ⏰ <b>Jadwal Publikasi Berikutnya</b>
+│ • Waktu Eksekusi : <b>${scheduleInfo.nextRunLabel}</b>
+│ • Hitung Mundur  : ⏳ <b>${scheduleInfo.countdown}</b>
+│ • Siklus Rutin   : <code>07:00 • 13:00 • 19:00 WIB</code>
+└──
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+💡 <i>Artikel diriset otomatis dari Google News Indonesia terkini dan dianalisis sesuai kaidah jurnalistik Naratif.</i>`;
+
+  const inlineKeyboard = [
+    [
+      { text: '⚙️ Dasbor Cron Web', url: `${siteUrl}/admin/cron` },
+      { text: '📊 Cek Statistik', callback_data: 'btn:stats' },
+    ],
+    [
+      { text: '✍️ Mulai Buat Berita', callback_data: 'btn:menu' },
+      { text: '🏠 Menu Utama', callback_data: 'btn:start' },
+    ],
+    [{ text: '❌ Tutup Layar', callback_data: 'btn:close' }],
+  ];
+
+  await updateOrSendMessage(chatId, messageId, autopilotText, { inlineKeyboard });
 }
 
 export async function POST(req: NextRequest) {
@@ -971,6 +1047,12 @@ Pilih salah satu bidang liputan redaksi:
       // Tombol Statistik
       if (data === 'btn:stats') {
         await sendStatsMessage(chatId, messageId, siteUrl);
+        return NextResponse.json({ ok: true });
+      }
+
+      // Tombol Status & Jadwal Autopilot
+      if (data === 'btn:autopilot') {
+        await sendAutopilotMessage(chatId, messageId, siteUrl);
         return NextResponse.json({ ok: true });
       }
 
@@ -1335,6 +1417,12 @@ Pilih salah satu bidang liputan redaksi:
       return NextResponse.json({ ok: true });
     }
 
+    // 4b. COMMAND: /autopilot, /jadwal
+    if (rawText === '/autopilot' || rawText === '/jadwal') {
+      await sendAutopilotMessage(chatId, undefined, siteUrl);
+      return NextResponse.json({ ok: true });
+    }
+
     // 5. FITUR B: COMMAND REVISI ARTIKEL (/revisi [id] [instruksi])
     const matchRevisi = rawText.match(/^\/revisi(?:@\w+)?(?:\s+(\d+)\s+([\s\S]+))?$/i);
     if (rawText === '/revisi' || (matchRevisi && !matchRevisi[1])) {
@@ -1633,6 +1721,8 @@ Pusat kendali otomatisasi berita AI Naratif
 └──
 
 ┌── 🧹 <b>Alat & Sistem</b>
+│ • <code>/autopilot</code> — Jadwal & hitung mundur autopublish
+│ • <code>/jadwal</code> — Alias cek slot penerbitan AI
 │ • <code>/stats</code> — Cek statistik artikel & status server
 │ • <code>/clear</code> — Bersihkan riwayat chat bot
 └──`;

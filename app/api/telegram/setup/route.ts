@@ -5,6 +5,8 @@ export const BOT_COMMANDS = [
   { command: 'start', description: '🚀 Buka Menu Utama Redaksi' },
   { command: 'menu', description: '✍️ Mulai Buat Berita Interaktif' },
   { command: 'regional', description: '🏛️ Berita Daerah / Wilayah' },
+  { command: 'autopilot', description: '🤖 Jadwal Autopublish & Status' },
+  { command: 'jadwal', description: '⏰ Cek Slot Publikasi Berikutnya' },
   { command: 'sadur', description: '🔗 Sadur Berita dari Link' },
   { command: 'revisi', description: '✏️ Revisi Artikel Terbit' },
   { command: 'stats', description: '📊 Statistik Portal Web' },

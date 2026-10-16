@@ -6,6 +6,7 @@ import { fetchGoogleNewsResearch, requestArticleFromModelRouter, AIProvider } fr
 import { sendTelegramMessage } from '@/lib/telegram';
 import { revalidatePath } from 'next/cache';
 import { notifySearchEngines } from '@/lib/indexing';
+import { getAutopilotScheduleInfo } from '@/lib/autopilot-schedule';
 
 export const maxDuration = 60; // Timeout 60 detik untuk operasi AI & riset berita
 
@@ -153,20 +154,30 @@ export async function GET(request: Request) {
     // 10. Kirim Notifikasi Laporan ke Bot Telegram Pemilik Web
     const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID?.trim();
     if (telegramNotify && adminChatId) {
+      let nextScheduleLine = '';
+      try {
+        const nextSchedule = await getAutopilotScheduleInfo();
+        if (nextSchedule.isEnabled) {
+          nextScheduleLine = `\n│ ⏰ Jadwal Lanjut: <b>${nextSchedule.nextRunLabel}</b> (${nextSchedule.countdown})`;
+        }
+      } catch {}
+
       const articleUrl = `${siteUrl}/berita-teknologi/${newArticle.category.toLowerCase()}/${newArticle.id}/${newArticle.slug}`;
       const editUrl = `${siteUrl}/admin/edit/${newArticle.id}`;
       const statusText = isPublish ? '🚀 <code>Langsung Terbit (Published)</code>' : '📝 <code>Disimpan ke Draf (Draft)</code>';
 
       const reportMessage = `🤖 <b>LAPORAN AUTOPILOT REDAKSI</b>
 <i>Penerbitan Berita Otomatis Terjadwal</i>
-────────────────────
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 📰 <b>${newArticle.title}</b>
 
-📂 <b>Kategori</b> : <code>${newArticle.category}</code>
-⏱️ <b>Durasi</b>   : <code>${(durationMs / 1000).toFixed(1)}s</code> • ⚡ <code>${draftArticle.modelUsed || provider}</code>
-🌐 <b>Status</b>   : ${statusText}
-────────────────────
+┌── 📋 <b>Detail Publikasi</b>
+│ 📂 Kategori : <b>${newArticle.category}</b>
+│ ⏱️ Durasi   : <b>${(durationMs / 1000).toFixed(1)}s</b> • ⚡ <code>${draftArticle.modelUsed || provider}</code>
+│ 🌐 Status   : ${statusText}${nextScheduleLine}
+└──
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ${
   isPublish
     ? '✅ <i>Artikel telah otomatis tayang di portal Naratif.</i>'
@@ -178,6 +189,10 @@ ${
           [
             { text: '🌐 Baca di Web', url: articleUrl },
             { text: '✏️ Buka Editor Web', url: editUrl },
+          ],
+          [
+            { text: '🤖 Cek Jadwal Autopilot', callback_data: 'btn:autopilot' },
+            { text: '📊 Statistik', callback_data: 'btn:stats' },
           ],
         ],
       }).catch((err) => console.warn('Telegram notify error:', err));
