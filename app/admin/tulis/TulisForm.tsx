@@ -7,6 +7,7 @@ import { Eye, Edit3, Image as ImageIcon, Sparkles, AlertCircle, Link2 } from 'lu
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import BacaJugaPickerModal from '../BacaJugaPickerModal';
+import CoverImagePicker from '../CoverImagePicker';
 
 export default function TulisForm() {
   const router = useRouter();
@@ -173,31 +174,14 @@ export default function TulisForm() {
       </div>
 
       {/* Cover Image */}
-      <div className="space-y-2">
-        <label className="block text-sm font-bold text-gray-900">
-          Link Gambar Cover (URL) <span className="text-red-500">*</span>
-        </label>
-        <div className="flex gap-2">
-          <input 
-            type="url" 
-            value={coverUrl}
-            onChange={(e) => setCoverUrl(e.target.value)}
-            placeholder="https://images.unsplash.com/... atau link gambar web" 
-            required 
-            className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-gray-900 text-sm"
-          />
-        </div>
-        {coverUrl && (
-          <div className="mt-2 relative w-full max-w-sm aspect-video rounded-xl overflow-hidden border border-gray-200 bg-gray-50">
-            <img 
-              src={coverUrl} 
-              alt="Preview" 
-              className="w-full h-full object-cover" 
-              onError={(e) => (e.currentTarget.style.display = 'none')}
-            />
-          </div>
-        )}
-      </div>
+      <CoverImagePicker
+        coverUrl={coverUrl}
+        onCoverChange={setCoverUrl}
+        coverCaption={coverCaption}
+        onCaptionChange={setCoverCaption}
+        articleTitle={title}
+        required
+      />
 
       {/* Cover Caption */}
       <div className="space-y-2">

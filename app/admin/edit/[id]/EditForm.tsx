@@ -7,6 +7,7 @@ import { Link2, Eye, Edit3, AlertCircle } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import BacaJugaPickerModal from '../../BacaJugaPickerModal';
+import CoverImagePicker from '../../CoverImagePicker';
 
 export default function EditForm({ article }: { article: any }) {
   const router = useRouter();
@@ -14,6 +15,7 @@ export default function EditForm({ article }: { article: any }) {
   const [error, setError] = useState('');
   const [content, setContent] = useState(article.content || '');
   const [coverUrl, setCoverUrl] = useState(article.coverUrl || '');
+  const [coverCaption, setCoverCaption] = useState(article.coverCaption || '');
   const [activeTab, setActiveTab] = useState<'edit' | 'preview'>('edit');
   const [showBacaJugaModal, setShowBacaJugaModal] = useState(false);
 
@@ -38,6 +40,7 @@ export default function EditForm({ article }: { article: any }) {
     const formData = new FormData(e.currentTarget);
     formData.set('content', content);
     formData.set('coverUrl', coverUrl);
+    formData.set('coverCaption', coverCaption);
     
     startTransition(async () => {
       const result = await updateArticle(article.id, formData);
@@ -152,30 +155,15 @@ export default function EditForm({ article }: { article: any }) {
       </div>
 
       {/* Cover Image & Live Preview */}
-      <div className="space-y-2">
-        <label className="block text-sm font-bold text-gray-900">
-          Link Gambar Cover (URL) <span className="text-red-500">*</span>
-        </label>
-        <input 
-          type="url" 
-          name="coverUrl" 
-          value={coverUrl} 
-          onChange={(e) => setCoverUrl(e.target.value)}
-          placeholder="https://images.unsplash.com/..." 
-          required 
-          className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-gray-900 text-sm"
-        />
-        {coverUrl && (
-          <div className="mt-2 relative w-full max-w-sm aspect-video rounded-xl overflow-hidden border border-gray-200 bg-gray-50">
-            <img 
-              src={coverUrl} 
-              alt="Preview Cover" 
-              className="w-full h-full object-cover" 
-              onError={(e) => (e.currentTarget.style.display = 'none')}
-            />
-          </div>
-        )}
-      </div>
+      <CoverImagePicker
+        coverUrl={coverUrl}
+        onCoverChange={setCoverUrl}
+        coverCaption={coverCaption}
+        onCaptionChange={setCoverCaption}
+        articleTitle={article.title}
+        name="coverUrl"
+        required
+      />
 
       {/* Cover Caption */}
       <div className="space-y-2">
@@ -185,7 +173,8 @@ export default function EditForm({ article }: { article: any }) {
         <input 
           type="text" 
           name="coverCaption" 
-          defaultValue={article.coverCaption || ''} 
+          value={coverCaption} 
+          onChange={(e) => setCoverCaption(e.target.value)}
           placeholder="Contoh: Ilustrasi server AI dan komputasi awan. (Dok. Unsplash)" 
           className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-gray-900 text-sm"
         />

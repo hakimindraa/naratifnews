@@ -17,9 +17,11 @@ import {
   Link2,
   Timer,
   Coins,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { logoutAdmin } from './auth-actions';
 import VercelStatusBadge from './VercelStatusBadge';
+import ImgbbMediaModal from './ImgbbMediaModal';
 
 interface AdminLayoutClientProps {
   children: React.ReactNode;
@@ -28,6 +30,7 @@ interface AdminLayoutClientProps {
 export default function AdminLayoutClient({ children }: AdminLayoutClientProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [mediaModalOpen, setMediaModalOpen] = useState(false);
 
   // Jika di halaman login, tampilkan layar penuh tanpa sidebar
   if (pathname === '/admin/login') {
@@ -69,6 +72,13 @@ export default function AdminLayoutClient({ children }: AdminLayoutClientProps) 
       href: '/admin/iklan',
       icon: Coins,
       badge: 'Cuan',
+    },
+    {
+      label: 'Media ImgBB',
+      href: '#media-imgbb',
+      icon: ImageIcon,
+      badge: 'CDN',
+      isModalTrigger: true,
     },
     {
       label: 'Pengaturan AI',
@@ -116,6 +126,26 @@ export default function AdminLayoutClient({ children }: AdminLayoutClientProps) 
               {navItems.map((item) => {
                 const active = isLinkActive(item);
                 const Icon = item.icon;
+                if ((item as any).isModalTrigger) {
+                  return (
+                    <button
+                      key={item.href}
+                      type="button"
+                      onClick={() => setMediaModalOpen(true)}
+                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-all group text-gray-300 hover:bg-gray-800/80 hover:text-white cursor-pointer text-left"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <Icon className="w-4 h-4 text-indigo-400 group-hover:text-indigo-300 transition-transform group-hover:scale-110" />
+                        <span>{item.label}</span>
+                      </div>
+                      {item.badge && (
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-indigo-900/60 text-indigo-300 border border-indigo-700/50">
+                          {item.badge}
+                        </span>
+                      )}
+                    </button>
+                  );
+                }
                 return (
                   <Link
                     key={item.href}
@@ -189,6 +219,15 @@ export default function AdminLayoutClient({ children }: AdminLayoutClientProps) 
         </Link>
 
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setMediaModalOpen(true)}
+            className="p-1.5 rounded-lg bg-gray-800 text-indigo-300 hover:text-white border border-gray-700 cursor-pointer"
+            aria-label="Buka Media ImgBB"
+            title="Media ImgBB"
+          >
+            <ImageIcon className="w-4 h-4" />
+          </button>
           <VercelStatusBadge />
           <button
             onClick={() => setMobileOpen(true)}
@@ -225,6 +264,29 @@ export default function AdminLayoutClient({ children }: AdminLayoutClientProps) 
               {navItems.map((item) => {
                 const active = isLinkActive(item);
                 const Icon = item.icon;
+                if ((item as any).isModalTrigger) {
+                  return (
+                    <button
+                      key={item.href}
+                      type="button"
+                      onClick={() => {
+                        setMobileOpen(false);
+                        setMediaModalOpen(true);
+                      }}
+                      className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all text-gray-300 hover:bg-gray-800 hover:text-white cursor-pointer text-left"
+                    >
+                      <div className="flex items-center gap-3">
+                        <Icon className="w-4 h-4 text-indigo-400" />
+                        <span>{item.label}</span>
+                      </div>
+                      {item.badge && (
+                        <span className="text-[10px] bg-indigo-900 text-indigo-200 px-1.5 py-0.5 rounded">
+                          {item.badge}
+                        </span>
+                      )}
+                    </button>
+                  );
+                }
                 return (
                   <Link
                     key={item.href}
@@ -284,6 +346,16 @@ export default function AdminLayoutClient({ children }: AdminLayoutClientProps) 
           </div>
 
           <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setMediaModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-indigo-200 bg-indigo-50/80 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 hover:border-indigo-300 transition-colors shadow-2xs cursor-pointer"
+              title="Buka Pusat Media & Uploader ImgBB"
+            >
+              <ImageIcon className="w-3.5 h-3.5 text-indigo-600" />
+              <span>Media ImgBB</span>
+            </button>
+
             <VercelStatusBadge />
 
             <a
@@ -305,6 +377,9 @@ export default function AdminLayoutClient({ children }: AdminLayoutClientProps) 
           &copy; 2026 Naratif Media. Panel Redaksi Terintegrasi AI.
         </footer>
       </div>
+
+      {/* Global ImgBB Media Center Modal */}
+      <ImgbbMediaModal isOpen={mediaModalOpen} onClose={() => setMediaModalOpen(false)} />
     </div>
   );
 }
