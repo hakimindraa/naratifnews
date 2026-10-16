@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ArrowLeft, ChevronRight, Link2, MessageCircle, Globe, ExternalLink } from "lucide-react";
 import { db } from "@/db";
 import { articles, authors } from "@/db/schema";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, or, ilike } from "drizzle-orm";
 import { format } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 import ReactMarkdown from 'react-markdown';
@@ -110,10 +110,14 @@ export default async function ArticlePage({
     authorProfile = found || null;
   }
   if (!authorProfile && article.author) {
+    const trimmed = article.author.trim();
     const [found] = await db
       .select()
       .from(authors)
-      .where(eq(authors.name, article.author))
+      .where(or(
+        eq(authors.name, trimmed),
+        ilike(authors.name, trimmed)
+      ))
       .limit(1);
     authorProfile = found || null;
   }

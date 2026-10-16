@@ -47,6 +47,8 @@ export default function EditForm({ article }: { article: any }) {
     formData.set('author', author);
     if (authorId) {
       formData.set('authorId', String(authorId));
+    } else {
+      formData.delete('authorId');
     }
     
     startTransition(async () => {

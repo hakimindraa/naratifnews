@@ -374,6 +374,7 @@ export async function updateArticle(id: number, formData: FormData) {
 
     revalidatePath('/', 'layout');
     revalidatePath('/admin');
+    revalidatePath(`/berita-teknologi/${(category || 'software').toLowerCase()}/${id}/${slug}`);
     return { success: true };
   } catch (error) {
     return { error: 'Gagal mengupdate artikel' };

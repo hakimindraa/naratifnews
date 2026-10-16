@@ -34,25 +34,24 @@ export default function AuthorSelector({
         } else if (author) {
           // Cari apakah nama yang ada cocok dengan daftar authors
           const found = res.authors.find(
-            (a) => a.name.toLowerCase().trim() === author.toLowerCase().trim()
+            (a) =>
+              (selectedAuthorId && a.id === selectedAuthorId) ||
+              a.name.toLowerCase().trim() === author.toLowerCase().trim()
           );
-          if (found && !selectedAuthorId) {
+          if (found) {
             onAuthorChange(found.name, found.id);
-          } else if (!found && author !== 'Redaksi') {
-            // Jika nama tidak ada di list, aktifkan mode custom
-            setIsCustom(true);
           }
         }
       }
       setLoading(false);
     });
-  }, []);
+  }, [selectedAuthorId]);
 
   // Temukan author yang sedang terpilih
   const currentSelected = authors.find(
     (a) =>
       (selectedAuthorId && a.id === selectedAuthorId) ||
-      a.name.toLowerCase().trim() === author.toLowerCase().trim()
+      (author && a.name.toLowerCase().trim() === author.toLowerCase().trim())
   );
 
   const handleSelectAuthor = (selected: AuthorItem) => {
@@ -106,28 +105,38 @@ export default function AuthorSelector({
         /* Dropdown Tim Penulis Beravatar */
         <div className="relative">
           <select
-            value={currentSelected?.id || ''}
+            value={currentSelected?.id ? String(currentSelected.id) : ''}
             onChange={(e) => {
-              const val = Number(e.target.value);
-              const found = authors.find((a) => a.id === val);
+              const val = e.target.value;
+              if (val === 'custom') {
+                setIsCustom(true);
+                return;
+              }
+              const found = authors.find((a) => a.id === Number(val));
               if (found) {
                 handleSelectAuthor(found);
               }
             }}
             className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-gray-900 text-sm font-medium bg-white appearance-none cursor-pointer pr-10"
           >
+            {!currentSelected && (
+              <option value="">
+                -- Pilih Penulis (Saat ini: {author || 'Belum dipilih'}) --
+              </option>
+            )}
             {authors.map((a) => (
               <option key={a.id} value={a.id}>
                 {a.name} — {a.role || 'Redaksi'}
               </option>
             ))}
+            <option value="custom">+ Ketik Nama Penulis Lain...</option>
           </select>
 
           <ChevronDown className="w-4 h-4 text-gray-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
 
           {/* Hidden inputs untuk native FormData form submit */}
           <input type="hidden" name={name} value={currentSelected?.name || author || 'Redaksi'} />
-          <input type="hidden" name={idName} value={currentSelected?.id || ''} />
+          <input type="hidden" name={idName} value={currentSelected?.id ? String(currentSelected.id) : ''} />
 
           {/* Kartu Profil Penulis yang Terpilih */}
           {currentSelected && (

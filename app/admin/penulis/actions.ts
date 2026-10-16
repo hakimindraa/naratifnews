@@ -2,7 +2,7 @@
 
 import { db } from '@/db';
 import { authors, articles } from '@/db/schema';
-import { eq, desc, sql, count } from 'drizzle-orm';
+import { eq, desc, sql, count, or, ilike } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
 export interface AuthorItem {
@@ -137,6 +137,9 @@ export async function updateAuthorAction(id: number, formData: FormData) {
   }
 
   try {
+    const [oldAuthor] = await db.select().from(authors).where(eq(authors.id, id)).limit(1);
+    const oldName = oldAuthor?.name;
+
     await db
       .update(authors)
       .set({
@@ -148,12 +151,25 @@ export async function updateAuthorAction(id: number, formData: FormData) {
       })
       .where(eq(authors.id, id));
 
-    // Sinkronkan nama di artikel yang sudah terkait
-    await db
-      .update(articles)
-      .set({ author: name })
-      .where(eq(articles.authorId, id));
+    // Sinkronkan nama dan ID di seluruh artikel yang sudah terkait (baik lewat authorId maupun nama lama)
+    if (oldName) {
+      await db
+        .update(articles)
+        .set({ author: name, authorId: id })
+        .where(or(
+          eq(articles.authorId, id),
+          eq(articles.author, oldName),
+          ilike(articles.author, oldName)
+        ));
+    } else {
+      await db
+        .update(articles)
+        .set({ author: name, authorId: id })
+        .where(eq(articles.authorId, id));
+    }
 
+    revalidatePath('/', 'layout');
+    revalidatePath('/admin');
     revalidatePath('/admin/penulis');
     revalidatePath('/admin/tulis');
     return { success: true };
