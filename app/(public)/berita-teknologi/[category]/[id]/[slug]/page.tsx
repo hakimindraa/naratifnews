@@ -389,9 +389,9 @@ export default async function ArticlePage({
 
                 if (isBacaJuga) {
                   return (
-                    <p className="my-5 text-base sm:text-lg leading-relaxed not-italic text-gray-700 font-normal break-words [overflow-wrap:anywhere] [&>strong]:text-gray-800 [&>strong]:font-semibold [&_a]:text-sky-600 [&_a]:hover:text-sky-700 [&_a]:font-medium [&_a]:hover:underline [&_a]:underline-offset-2">
+                    <div className="my-5 text-base sm:text-lg leading-relaxed not-italic text-gray-700 font-normal break-words [overflow-wrap:anywhere] [&>p]:m-0 [&>strong]:text-gray-800 [&>strong]:font-semibold [&_a]:text-sky-600 [&_a]:hover:text-sky-700 [&_a]:font-medium [&_a]:hover:underline [&_a]:underline-offset-2">
                       {children}
-                    </p>
+                    </div>
                   );
                 }
 
