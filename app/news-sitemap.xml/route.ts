@@ -4,7 +4,6 @@ import { db } from '@/db';
 import { articles } from '@/db/schema';
 import { eq, desc, gte } from 'drizzle-orm';
 
-export const dynamic = 'force-dynamic';
 
 function escapeXml(unsafe: string): string {
   return unsafe.replace(/[<>&'"]/g, (c) => {
