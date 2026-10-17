@@ -96,7 +96,7 @@ export default async function Home() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {publishedArticles.length === 0 && (
-        <div className="text-center py-20 bg-white rounded-xl border border-gray-200">
+        <div className="text-center py-20 bg-white rounded-sm border border-gray-200">
           <h2 className="text-2xl font-bold text-gray-700 mb-2">Belum Ada Berita yang Terbit</h2>
           <p className="text-gray-500">
             Silakan unggah artikel Markdown melalui panel admin dengan waktu terbit (publish_at) di masa lalu agar muncul di sini.
@@ -109,7 +109,7 @@ export default async function Home() {
           {/* KOLOM KIRI (LEBAR 6 DARI 12): Headline Utama + Baca Juga + Berita Sorotan */}
           <div className="lg:col-span-6 flex flex-col">
             {/* Card Headline Utama */}
-            <div className="flex flex-col w-full bg-white border border-gray-100 overflow-hidden rounded-2xl mb-6 shadow-xs hover:shadow-md transition-all group">
+            <div className="flex flex-col w-full bg-white border border-gray-100 overflow-hidden rounded-sm mb-6 shadow-xs hover:shadow-md transition-all group">
               <Link
                 href={`/berita/${featuredArticle.category.toLowerCase()}/${featuredArticle.id}/${featuredArticle.slug}`}
                 className="w-full relative overflow-hidden bg-gray-50 aspect-video block"
@@ -180,7 +180,7 @@ export default async function Home() {
                     <Link
                       key={art.id}
                       href={`/berita/${art.category.toLowerCase()}/${art.id}/${art.slug}`}
-                      className="group flex flex-col bg-white rounded-xl border border-gray-100 overflow-hidden shadow-2xs hover:shadow-sm transition-all w-[240px] sm:w-auto shrink-0 snap-start"
+                      className="group flex flex-col bg-white rounded-sm border border-gray-100 overflow-hidden shadow-2xs hover:shadow-sm transition-all w-[240px] sm:w-auto shrink-0 snap-start"
                     >
                       <div className="aspect-video w-full overflow-hidden bg-gray-50 relative">
                         <img
@@ -268,7 +268,7 @@ export default async function Home() {
                       {kilasBalikArticles[0] && (
                         <Link
                           href={`/berita/${kilasBalikArticles[0].category.toLowerCase()}/${kilasBalikArticles[0].id}/${kilasBalikArticles[0].slug}`}
-                          className="group block bg-gray-50/80 rounded-xl border border-gray-100 overflow-hidden shadow-2xs hover:shadow-xs transition-all"
+                          className="group block bg-gray-50/80 rounded-sm border border-gray-100 overflow-hidden shadow-2xs hover:shadow-xs transition-all"
                         >
                           <div className="aspect-video w-full overflow-hidden bg-gray-100 relative">
                             <img
@@ -301,7 +301,7 @@ export default async function Home() {
                             href={`/berita/${kb.category.toLowerCase()}/${kb.id}/${kb.slug}`}
                             className="py-3 first:pt-0 group flex items-center gap-3"
                           >
-                            <div className="w-16 h-12 rounded-lg overflow-hidden bg-gray-100 shrink-0 border border-gray-100">
+                            <div className="w-16 h-12 rounded-sm overflow-hidden bg-gray-100 shrink-0 border border-gray-100">
                               <img
                                 src={kb.coverUrl || ''}
                                 alt={kb.title}

@@ -71,7 +71,7 @@ export default function LatestNewsSection({
               className="flex flex-col gap-2 sm:gap-0 sm:h-full items-start"
             >
               {/* Thumbnail Image */}
-              <div className="relative w-full aspect-[4/3] sm:h-48 sm:aspect-auto bg-gray-100 overflow-hidden rounded-lg sm:rounded-xl mb-2 sm:mb-4 shadow-sm shrink-0">
+              <div className="relative w-full aspect-[4/3] sm:h-48 sm:aspect-auto bg-gray-100 overflow-hidden rounded-sm mb-2 sm:mb-4 shadow-sm shrink-0">
                 <img
                   src={article.coverUrl || ''}
                   alt={article.title}

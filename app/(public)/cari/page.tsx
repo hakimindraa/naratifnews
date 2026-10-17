@@ -93,7 +93,7 @@ export default async function SearchPage({
             {searchResults.map((article) => (
               <div key={article.id} className="group cursor-pointer flex flex-col sm:flex-row gap-5 pb-6 border-b border-gray-100 last:border-0">
                 <Link href={`/berita/${article.category.toLowerCase()}/${article.id}/${article.slug}`} className="sm:w-1/3 shrink-0">
-                  <div className="relative w-full h-40 sm:h-28 overflow-hidden rounded-lg shadow-sm">
+                  <div className="relative w-full h-40 sm:h-28 overflow-hidden rounded-sm shadow-sm">
                     <img
                       src={article.coverUrl || ''}
                       alt={article.title}

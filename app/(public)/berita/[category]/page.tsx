@@ -104,14 +104,14 @@ export default async function CategoryPage({
 
           <div className="flex flex-col gap-8">
             {categoryArticles.length === 0 ? (
-              <div className="text-center py-12 bg-gray-50 rounded-xl border border-gray-100">
+              <div className="text-center py-12 bg-gray-50 rounded-sm border border-gray-100">
                 <p className="text-gray-500 text-lg">Belum ada berita di kategori {categoryName}.</p>
               </div>
             ) : (
               categoryArticles.map((article) => (
                 <div key={article.id} className="group cursor-pointer flex flex-col sm:flex-row gap-6 pb-8 border-b border-gray-100 last:border-0">
                   <Link href={`/berita/${category.toLowerCase()}/${article.id}/${article.slug}`} className="sm:w-1/3 shrink-0">
-                    <div className="relative w-full h-48 sm:h-32 overflow-hidden rounded-xl shadow-sm">
+                    <div className="relative w-full h-48 sm:h-32 overflow-hidden rounded-sm shadow-sm">
                       <img
                         src={article.coverUrl || ''}
                         alt={article.title}

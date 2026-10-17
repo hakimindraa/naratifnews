@@ -117,7 +117,7 @@ export default function KabarNusantaraSection({ articles }: KabarNusantaraSectio
             <Link
               key={art.id}
               href={`/berita/regional/${art.id}/${art.slug}`}
-              className="group flex flex-col bg-white rounded-xl border border-gray-100 overflow-hidden shadow-2xs hover:shadow-sm transition-all w-[240px] sm:w-auto shrink-0 snap-start"
+              className="group flex flex-col bg-white rounded-sm border border-gray-100 overflow-hidden shadow-2xs hover:shadow-sm transition-all w-[240px] sm:w-auto shrink-0 snap-start"
             >
               <div className="aspect-video w-full overflow-hidden bg-gray-50 relative">
                 <img
