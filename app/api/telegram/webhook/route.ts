@@ -1513,6 +1513,610 @@ async function saveManualWizardArticle({
 }
 
 
+function formatWibDateTime(date: Date | string | null | undefined): string {
+  if (!date) return '-';
+  const d = new Date(date);
+  return d.toLocaleString('id-ID', {
+    timeZone: 'Asia/Jakarta',
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }) + ' WIB';
+}
+
+function parseIndonesianScheduleTime(input: string): Date | null {
+  const text = input.trim().toLowerCase();
+  const now = new Date();
+
+  // 1. Format jam:menit langsung misal "17:30" atau "17.30"
+  const timeOnlyMatch = text.match(/^(\d{1,2})[:.](\d{2})$/);
+  if (timeOnlyMatch) {
+    const hours = parseInt(timeOnlyMatch[1], 10);
+    const minutes = parseInt(timeOnlyMatch[2], 10);
+    if (hours >= 0 && hours < 24 && minutes >= 0 && minutes < 60) {
+      const d = new Date();
+      d.setHours(hours, minutes, 0, 0);
+      if (d.getTime() <= now.getTime()) {
+        d.setDate(d.getDate() + 1);
+      }
+      return d;
+    }
+  }
+
+  // 2. Format "besok 09:00" atau "besok 9:00"
+  const besokMatch = text.match(/^besok\s+(\d{1,2})[:.](\d{2})$/);
+  if (besokMatch) {
+    const hours = parseInt(besokMatch[1], 10);
+    const minutes = parseInt(besokMatch[2], 10);
+    if (hours >= 0 && hours < 24 && minutes >= 0 && minutes < 60) {
+      const d = new Date();
+      d.setDate(d.getDate() + 1);
+      d.setHours(hours, minutes, 0, 0);
+      return d;
+    }
+  }
+
+  // 3. Format "lusa 14:00"
+  const lusaMatch = text.match(/^lusa\s+(\d{1,2})[:.](\d{2})$/);
+  if (lusaMatch) {
+    const hours = parseInt(lusaMatch[1], 10);
+    const minutes = parseInt(lusaMatch[2], 10);
+    if (hours >= 0 && hours < 24 && minutes >= 0 && minutes < 60) {
+      const d = new Date();
+      d.setDate(d.getDate() + 2);
+      d.setHours(hours, minutes, 0, 0);
+      return d;
+    }
+  }
+
+  // 4. Format standar "YYYY-MM-DD HH:mm" atau "YYYY-MM-DDTHH:mm"
+  const parsed = new Date(text.replace(' ', 'T'));
+  if (!isNaN(parsed.getTime())) {
+    return parsed;
+  }
+
+  return null;
+}
+
+// ==========================================
+// KELOLA ARTIKEL: HUB, LIST, DETAIL, SCHEDULE
+// ==========================================
+
+async function sendArticleHubMessage(
+  chatId: number | string,
+  messageId: number | undefined,
+  siteUrl: string
+) {
+  let draftCount = 0;
+  let scheduledCount = 0;
+  let publishedCount = 0;
+
+  try {
+    const all = await db.select({ status: articles.status }).from(articles);
+    draftCount = all.filter((a) => a.status === 'draft').length;
+    scheduledCount = all.filter((a) => a.status === 'scheduled').length;
+    publishedCount = all.filter((a) => a.status === 'published').length;
+  } catch (err) {
+    console.error('Error fetching hub counts:', err);
+  }
+
+  const hubText = `📁 <b>PUSAT KELOLA ARTIKEL & ARSIP</b>
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Kelola draf naskah, jadwalkan waktu rilis, atau ganti foto sampul:
+
+┌── 📊 <b>Status Arsip Berita</b>
+│ 📝 <b>Draf Review</b>  : <b>${draftCount} artikel</b>
+│ ⏳ <b>Terjadwal</b>    : <b>${scheduledCount} artikel</b>
+│ 🟢 <b>Sudah Terbit</b> : <b>${publishedCount} artikel</b>
+└──
+
+👇 <i>Pilih salah satu arsip di bawah untuk mulai mengelola:</i>`;
+
+  const inlineKeyboard = [
+    [{ text: `📝 Buka Draf Review (${draftCount})`, callback_data: 'art:list:draft:1' }],
+    [{ text: `⏳ Berita Terjadwal (${scheduledCount})`, callback_data: 'art:list:scheduled:1' }],
+    [{ text: `🟢 Berita Sudah Terbit (${publishedCount})`, callback_data: 'art:list:published:1' }],
+    [
+      { text: '✍️ Tulis Berita Baru', callback_data: 'btn:manual' },
+      { text: '⚙️ Dasbor Admin Web', url: `${siteUrl}/admin` },
+    ],
+    [
+      { text: '🏠 Menu Utama', callback_data: 'btn:start' },
+      { text: '❌ Tutup Layar', callback_data: 'btn:close' },
+    ],
+  ];
+
+  await updateOrSendMessage(chatId, messageId, hubText, { inlineKeyboard });
+}
+
+async function sendArticleListMessage(
+  chatId: number | string,
+  messageId: number | undefined,
+  status: 'draft' | 'scheduled' | 'published',
+  page: number = 1,
+  siteUrl: string
+) {
+  const currentSiteUrl = siteUrl || process.env.NEXT_PUBLIC_SITE_URL || 'https://www.adafakta.web.id';
+  const safePage = Math.max(1, page);
+  const pageSize = 5;
+
+  let allItems: any[] = [];
+  try {
+    allItems = await db
+      .select({
+        id: articles.id,
+        title: articles.title,
+        category: articles.category,
+        author: articles.author,
+        coverUrl: articles.coverUrl,
+        status: articles.status,
+        publishAt: articles.publishAt,
+        publishedAt: articles.publishedAt,
+        createdAt: articles.createdAt,
+      })
+      .from(articles)
+      .where(eq(articles.status, status))
+      .orderBy(desc(articles.publishedAt), desc(articles.publishAt), desc(articles.createdAt));
+  } catch (err) {
+    console.error('Error fetching articles list for telegram:', err);
+  }
+
+  const totalItems = allItems.length;
+  const totalPages = Math.ceil(totalItems / pageSize) || 1;
+  const clampedPage = Math.min(safePage, totalPages);
+  const offset = (clampedPage - 1) * pageSize;
+  const currentItems = allItems.slice(offset, offset + pageSize);
+
+  const statusTitle =
+    status === 'draft'
+      ? '📝 <b>DAFTAR DRAF REVIEW</b>'
+      : status === 'scheduled'
+      ? '⏳ <b>DAFTAR ARTIKEL TERJADWAL</b>'
+      : '🟢 <b>DAFTAR ARTIKEL SUDAH TERBIT</b>';
+
+  let listText = '';
+  if (currentItems.length === 0) {
+    listText = `<i>Belum ada artikel dalam status ini.</i>\n`;
+  } else {
+    listText = currentItems
+      .map((item, idx) => {
+        const num = offset + idx + 1;
+        const coverIcon = item.coverUrl ? '🖼️ Ada Sampul' : '❌ Tanpa Sampul';
+        let dateInfo = '';
+        if (status === 'scheduled') {
+          dateInfo = `\n│ ⏰ Jadwal: <b>${formatWibDateTime(item.publishAt)}</b>`;
+        } else if (status === 'published') {
+          dateInfo = `\n│ 🚀 Tayang: <b>${formatWibDateTime(item.publishedAt || item.publishAt)}</b>`;
+        }
+        return `┌── <b>${num}. ${item.title}</b>\n│ 📂 ${item.category} • ✍️ ${item.author} • ${coverIcon}${dateInfo}\n└──`;
+      })
+      .join('\n\n');
+  }
+
+  const text = `${statusTitle} (${clampedPage}/${totalPages})
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Total arsip : <b>${totalItems} artikel</b>.
+
+${listText}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+👇 <i>Klik judul berita di bawah untuk mengelola atau jadwalkan:</i>`;
+
+  const inlineKeyboard: any[] = [];
+
+  for (let i = 0; i < currentItems.length; i++) {
+    const item = currentItems[i];
+    const num = offset + i + 1;
+    const shortTitle = item.title.length > 30 ? item.title.slice(0, 28) + '…' : item.title;
+    inlineKeyboard.push([
+      { text: `${num}. ${shortTitle}`, callback_data: `art:view:${item.id}:${status}:${clampedPage}` },
+    ]);
+  }
+
+  const navRow: any[] = [];
+  if (clampedPage > 1) {
+    navRow.push({ text: '◀️ Sebelumnya', callback_data: `art:list:${status}:${clampedPage - 1}` });
+  }
+  navRow.push({ text: `• ${clampedPage}/${totalPages} •`, callback_data: `art:list:${status}:${clampedPage}` });
+  if (clampedPage < totalPages) {
+    navRow.push({ text: 'Berikutnya ▶️', callback_data: `art:list:${status}:${clampedPage + 1}` });
+  }
+  if (navRow.length > 0) {
+    inlineKeyboard.push(navRow);
+  }
+
+  inlineKeyboard.push([
+    { text: '⬅️ Ganti Status Arsip', callback_data: 'art:hub' },
+    { text: '🏠 Menu Utama', callback_data: 'btn:start' },
+  ]);
+
+  await updateOrSendMessage(chatId, messageId, text, { inlineKeyboard });
+}
+
+async function sendArticleDetailMessage(
+  chatId: number | string,
+  messageId: number | undefined,
+  articleId: number,
+  status: string,
+  page: number,
+  siteUrl: string
+) {
+  const currentSiteUrl = siteUrl || process.env.NEXT_PUBLIC_SITE_URL || 'https://www.adafakta.web.id';
+  let article: any = null;
+  try {
+    const [found] = await db.select().from(articles).where(eq(articles.id, articleId)).limit(1);
+    article = found || null;
+  } catch (err) {
+    console.error('Error fetching article detail for telegram:', err);
+  }
+
+  if (!article) {
+    await updateOrSendMessage(
+      chatId,
+      messageId,
+      `❌ <b>Artikel Tidak Ditemukan</b>\n\nArtikel ID #${articleId} mungkin telah dihapus.`,
+      {
+        inlineKeyboard: [
+          [{ text: '⬅️ Kembali ke Daftar', callback_data: `art:list:${status}:${page}` }],
+          [{ text: '🏠 Menu Utama', callback_data: 'btn:start' }],
+        ],
+      }
+    );
+    return;
+  }
+
+  const wordCount = (article.content || '').trim().split(/\s+/).filter(Boolean).length;
+  const statusLabel =
+    article.status === 'published'
+      ? '🟢 <b>Tayang Publik (Published)</b>'
+      : article.status === 'scheduled'
+      ? '⏳ <b>Terjadwal (Scheduled)</b>'
+      : '🟡 <b>Draf Review (Draft)</b>';
+
+  const catSlug = article.category.toLowerCase().replace(/\s+/g, '-');
+  const articleUrl = `${currentSiteUrl}/berita/${catSlug}/${article.id}/${article.slug}`;
+  const editUrl = `${currentSiteUrl}/admin/edit/${article.id}`;
+
+  let scheduleLine = '';
+  if (article.status === 'scheduled') {
+    scheduleLine = `│ ⏰ Jadwal Tayang: <b>${formatWibDateTime(article.publishAt)}</b>\n`;
+  } else if (article.status === 'published') {
+    scheduleLine = `│ 🚀 Tanggal Rilis: <b>${formatWibDateTime(article.publishedAt || article.publishAt)}</b>\n`;
+  }
+
+  const detailText = `📰 <b>DETAIL ARTIKEL #${article.id}</b>
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📌 <b>${article.title}</b>
+
+┌── 📋 <b>Informasi Berita</b>
+│ 📂 Kategori : <b>${article.category}</b>
+│ ✍️ Penulis  : <b>${article.author}</b>
+│ 🚦 Status   : ${statusLabel}
+${scheduleLine}│ 📷 Sampul   : ${article.coverUrl ? '🟢 <b>Terpasang (ImgBB)</b>' : '❌ <i>Belum Ada Foto</i>'}
+│ 📊 Panjang  : <b>${wordCount} kata</b>
+│ 🏷️ Tagar    : ${article.tags && article.tags.length > 0 ? article.tags.map((t: string) => `#${t}`).join(', ') : '-'}
+└──
+
+👇 <i>Pilih aksi yang ingin Anda lakukan pada artikel ini:</i>`;
+
+  const inlineKeyboard: any[] = [
+    [
+      {
+        text: article.coverUrl ? '🖼️ Ganti Foto Sampul' : '📷 Pasang Foto Sampul',
+        callback_data: `art:photo:${article.id}:${status}:${page}`,
+      },
+      { text: '⏰ Atur Jadwal (Schedule)', callback_data: `art:sched_menu:${article.id}:${status}:${page}` },
+    ],
+  ];
+
+  if (article.status !== 'published') {
+    inlineKeyboard.push([
+      { text: '🚀 Terbitkan Sekarang (Publish)', callback_data: `art:pub_now:${article.id}:${status}:${page}` },
+    ]);
+  } else {
+    inlineKeyboard.push([
+      { text: '🟡 Ubah Kembali ke Draf', callback_data: `art:to_draft:${article.id}:${status}:${page}` },
+      { text: '📖 Baca di Website', url: articleUrl },
+    ]);
+  }
+
+  inlineKeyboard.push([
+    { text: '✏️ Revisi Naskah via AI', callback_data: `art:revisi_prompt:${article.id}:${status}:${page}` },
+    { text: '🌐 Buka di Web Admin', url: editUrl },
+  ]);
+
+  inlineKeyboard.push([
+    { text: '🗑️ Hapus Artikel', callback_data: `art:del_confirm:${article.id}:${status}:${page}` },
+    { text: '⬅️ Kembali ke Daftar', callback_data: `art:list:${status}:${page}` },
+  ]);
+
+  await updateOrSendMessage(chatId, messageId, detailText, { inlineKeyboard });
+}
+
+async function sendScheduleMenuMessage(
+  chatId: number | string,
+  messageId: number | undefined,
+  articleId: number,
+  status: string,
+  page: number
+) {
+  let article: any = null;
+  try {
+    const [found] = await db.select().from(articles).where(eq(articles.id, articleId)).limit(1);
+    article = found || null;
+  } catch {}
+
+  if (!article) return;
+
+  const now = new Date();
+
+  function makeWibDate(addDays: number, hour: number, minute: number): Date {
+    const d = new Date();
+    d.setDate(d.getDate() + addDays);
+    d.setHours(hour, minute, 0, 0);
+    return d;
+  }
+
+  let opt1Date = makeWibDate(0, 17, 0);
+  let opt1Label = '🕒 Hari Ini Jam 17:00 WIB';
+  if (opt1Date.getTime() <= now.getTime()) {
+    opt1Date = new Date(now.getTime() + 2 * 60 * 60 * 1000);
+    opt1Label = `🕒 2 Jam Lagi (${opt1Date.getHours()}:${String(opt1Date.getMinutes()).padStart(2, '0')} WIB)`;
+  }
+
+  let opt2Date = makeWibDate(0, 20, 0);
+  let opt2Label = '🌙 Malam Ini Jam 20:00 WIB';
+  if (opt2Date.getTime() <= now.getTime()) {
+    opt2Date = new Date(now.getTime() + 4 * 60 * 60 * 1000);
+    opt2Label = `🌙 4 Jam Lagi (${opt2Date.getHours()}:${String(opt2Date.getMinutes()).padStart(2, '0')} WIB)`;
+  }
+
+  const opt3Date = makeWibDate(1, 8, 0);
+  const opt3Label = '☀️ Besok Pagi Jam 08:00 WIB';
+
+  const opt4Date = makeWibDate(1, 12, 0);
+  const opt4Label = '⛅ Besok Siang Jam 12:00 WIB';
+
+  const opt5Date = makeWibDate(1, 16, 0);
+  const opt5Label = '🌅 Besok Sore Jam 16:00 WIB';
+
+  const menuText = `⏰ <b>ATUR JADWAL TAYANG ARTIKEL</b>
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📰 <b>"${article.title}"</b>
+🚦 Status Saat Ini : <b>${article.status.toUpperCase()}</b>
+
+Silakan pilih waktu tayang otomatis untuk artikel ini:
+
+┌── 💡 <b>Info Penjadwalan</b>
+│ Sistem cron otomatis Ada Fakta berjalan tiap 5 menit.
+│ Begitu waktu tiba, artikel otomatis berubah menjadi
+│ 🟢 <b>Published</b> dan langsung tampil di beranda portal.
+└──
+
+👇 <i>Pilih salah satu jadwal cepat atau ketik sendiri:</i>`;
+
+  const inlineKeyboard = [
+    [{ text: opt1Label, callback_data: `art:set_sched:${article.id}:${opt1Date.getTime()}:${status}:${page}` }],
+    [{ text: opt2Label, callback_data: `art:set_sched:${article.id}:${opt2Date.getTime()}:${status}:${page}` }],
+    [
+      { text: opt3Label, callback_data: `art:set_sched:${article.id}:${opt3Date.getTime()}:${status}:${page}` },
+      { text: opt4Label, callback_data: `art:set_sched:${article.id}:${opt4Date.getTime()}:${status}:${page}` },
+    ],
+    [{ text: opt5Label, callback_data: `art:set_sched:${article.id}:${opt5Date.getTime()}:${status}:${page}` }],
+    [{ text: '⌨️ Ketik Waktu Manual (Bebas Jam/Hari)', callback_data: `art:sched_custom:${article.id}:${status}:${page}` }],
+    [
+      { text: '⬅️ Kembali ke Detail Artikel', callback_data: `art:view:${article.id}:${status}:${page}` },
+      { text: '🏠 Menu Utama', callback_data: 'btn:start' },
+    ],
+  ];
+
+  await updateOrSendMessage(chatId, messageId, menuText, { inlineKeyboard });
+}
+
+async function handleSetSchedule(
+  chatId: number | string,
+  messageId: number | undefined,
+  articleId: number,
+  timestampMs: number,
+  status: string,
+  page: number,
+  siteUrl: string
+) {
+  const targetDate = new Date(timestampMs);
+  try {
+    await db
+      .update(articles)
+      .set({
+        status: 'scheduled',
+        publishAt: targetDate,
+        updatedAt: new Date(),
+      })
+      .where(eq(articles.id, articleId));
+
+    revalidatePath('/', 'layout');
+    revalidatePath('/admin');
+  } catch (err) {
+    console.error('Error setting article schedule:', err);
+  }
+
+  const [art] = await db.select().from(articles).where(eq(articles.id, articleId)).limit(1);
+
+  const successText = `🎉 <b>ARTIKEL BERHASIL DIJADWALKAN!</b>
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📰 <b>"${art?.title || 'Artikel'}"</b>
+
+┌── 📋 <b>Status Baru</b>
+│ 🚦 Status : ⏳ <b>Terjadwal (Scheduled)</b>
+│ ⏰ Jadwal : <b>${formatWibDateTime(targetDate)}</b>
+└──
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ <i>Sistem cron otomatis akan menerbitkan artikel ini tepat pada jam tersebut.</i>`;
+
+  const inlineKeyboard = [
+    [{ text: '🔍 Buka Detail Artikel', callback_data: `art:view:${articleId}:scheduled:1` }],
+    [{ text: '📁 Lihat Daftar Terjadwal', callback_data: 'art:list:scheduled:1' }],
+    [{ text: '🏠 Menu Utama', callback_data: 'btn:start' }],
+  ];
+
+  await updateOrSendMessage(chatId, messageId, successText, { inlineKeyboard });
+}
+
+async function handlePublishNow(
+  chatId: number | string,
+  messageId: number | undefined,
+  articleId: number,
+  status: string,
+  page: number,
+  siteUrl: string
+) {
+  const currentSiteUrl = siteUrl || process.env.NEXT_PUBLIC_SITE_URL || 'https://www.adafakta.web.id';
+  const now = new Date();
+
+  let updatedArticle: any = null;
+  try {
+    const [res] = await db
+      .update(articles)
+      .set({
+        status: 'published',
+        publishedAt: now,
+        publishAt: now,
+        updatedAt: now,
+      })
+      .where(eq(articles.id, articleId))
+      .returning();
+    updatedArticle = res;
+
+    const catSlug = updatedArticle.category.toLowerCase().replace(/\s+/g, '-');
+    revalidatePath('/', 'layout');
+    revalidatePath('/admin');
+    revalidatePath(`/berita/${catSlug}`);
+
+    const articleUrl = `${currentSiteUrl}/berita/${catSlug}/${updatedArticle.id}/${updatedArticle.slug}`;
+    notifySearchEngines(articleUrl).catch((err) => console.warn('Indexing error on publish:', err));
+  } catch (err) {
+    console.error('Error publishing article now:', err);
+  }
+
+  const catSlug = updatedArticle?.category?.toLowerCase().replace(/\s+/g, '-') || 'berita';
+  const articleUrl = `${currentSiteUrl}/berita/${catSlug}/${updatedArticle?.id}/${updatedArticle?.slug}`;
+
+  const successText = `🚀 <b>ARTIKEL BERHASIL DITERBITKAN!</b>
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📰 <b>"${updatedArticle?.title || 'Artikel'}"</b>
+
+┌── 📋 <b>Status Baru</b>
+│ 🚦 Status : 🟢 <b>Tayang Publik (Published)</b>
+│ 🚀 Waktu  : <b>${formatWibDateTime(now)}</b>
+└──
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ <i>Artikel sudah tayang di web dan sinyal Google Indexing API telah dikirim!</i>`;
+
+  const inlineKeyboard = [
+    [{ text: '📖 Baca di Website', url: articleUrl }],
+    [{ text: '🔍 Buka Detail di Bot', callback_data: `art:view:${articleId}:published:1` }],
+    [{ text: '📁 Kembali ke Daftar', callback_data: `art:list:${status}:${page}` }],
+    [{ text: '🏠 Menu Utama', callback_data: 'btn:start' }],
+  ];
+
+  await updateOrSendMessage(chatId, messageId, successText, { inlineKeyboard });
+}
+
+async function handleToDraft(
+  chatId: number | string,
+  messageId: number | undefined,
+  articleId: number,
+  status: string,
+  page: number
+) {
+  try {
+    await db
+      .update(articles)
+      .set({
+        status: 'draft',
+        updatedAt: new Date(),
+      })
+      .where(eq(articles.id, articleId));
+
+    revalidatePath('/', 'layout');
+    revalidatePath('/admin');
+  } catch (err) {
+    console.error('Error changing to draft:', err);
+  }
+
+  const successText = `🟡 <b>STATUS DIUBAH MENJADI DRAF</b>
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Artikel ID #${articleId} telah ditarik dari status publik dan disimpan sebagai <b>Draf Review</b>.`;
+
+  const inlineKeyboard = [
+    [{ text: '🔍 Buka Detail Artikel', callback_data: `art:view:${articleId}:draft:1` }],
+    [{ text: '📝 Buka Daftar Draf', callback_data: 'art:list:draft:1' }],
+    [{ text: '🏠 Menu Utama', callback_data: 'btn:start' }],
+  ];
+
+  await updateOrSendMessage(chatId, messageId, successText, { inlineKeyboard });
+}
+
+async function handleDeleteConfirm(
+  chatId: number | string,
+  messageId: number | undefined,
+  articleId: number,
+  status: string,
+  page: number
+) {
+  let article: any = null;
+  try {
+    const [found] = await db.select().from(articles).where(eq(articles.id, articleId)).limit(1);
+    article = found || null;
+  } catch {}
+
+  const warnText = `⚠️ <b>KONFIRMASI HAPUS ARTIKEL</b>
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Apakah Anda yakin ingin menghapus permanen artikel berikut:
+
+📰 <b>"${article?.title || `Artikel #${articleId}`}"</b>
+
+┌── ⚠️ <b>Peringatan</b>
+│ • Data artikel dan naskah akan dihapus permanen dari database.
+│ • Tindakan ini tidak dapat dibatalkan.
+└──`;
+
+  const inlineKeyboard = [
+    [{ text: '🗑️ Ya, Hapus Sekarang', callback_data: `art:del_exec:${articleId}:${status}:${page}` }],
+    [{ text: '❌ Batal (Kembali)', callback_data: `art:view:${articleId}:${status}:${page}` }],
+  ];
+
+  await updateOrSendMessage(chatId, messageId, warnText, { inlineKeyboard });
+}
+
+async function handleDeleteExecute(
+  chatId: number | string,
+  messageId: number | undefined,
+  articleId: number,
+  status: string,
+  page: number
+) {
+  try {
+    await db.delete(articles).where(eq(articles.id, articleId));
+    revalidatePath('/', 'layout');
+    revalidatePath('/admin');
+  } catch (err) {
+    console.error('Error deleting article from telegram:', err);
+  }
+
+  const text = `🗑️ <b>ARTIKEL TELAH DIHAPUS</b>
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Artikel ID #${articleId} berhasil dihapus dari database Ada Fakta.`;
+
+  const inlineKeyboard = [
+    [{ text: '📁 Kembali ke Daftar', callback_data: `art:list:${status}:1` }],
+    [{ text: '🏠 Menu Utama', callback_data: 'btn:start' }],
+  ];
+
+  await updateOrSendMessage(chatId, messageId, text, { inlineKeyboard });
+}
+
 // Tampilan Menu Sambutan Klasik Berbingkai (/start)
 async function sendWelcomeMessage(
   chatId: number | string,
@@ -1560,6 +2164,9 @@ Selamat datang di <b>Ada Fakta Redaksi Bot</b>
 👇 <i>Pilih aksi cepat di bawah untuk mulai bekerja:</i>`;
 
   const inlineKeyboard = [
+    [
+      { text: '📁 Kelola Draf, Jadwal & Arsip', callback_data: 'art:hub' },
+    ],
     [
       { text: '✍️ Tulis Berita Manual', callback_data: 'btn:manual' },
       { text: '🤖 Buat Berita AI', callback_data: 'btn:menu' },
@@ -1885,6 +2492,159 @@ Pilih salah satu bidang liputan redaksi:
       if (data.startsWith('mwiz:stat:')) {
         const [, , statusStr, authorIdStr, category] = data.split(':');
         await sendManualTitleStep(chatId, messageId, category, authorIdStr, statusStr);
+        return NextResponse.json({ ok: true });
+      }
+
+      // ==========================================
+      // KELOLA ARTIKEL & ARSIP CALLBACKS (art:*)
+      // ==========================================
+      if (data === 'art:hub') {
+        await sendArticleHubMessage(chatId, messageId, siteUrl);
+        return NextResponse.json({ ok: true });
+      }
+
+      if (data.startsWith('art:list:')) {
+        const [, , status, pageStr] = data.split(':');
+        const page = parseInt(pageStr, 10) || 1;
+        await sendArticleListMessage(chatId, messageId, status as any, page, siteUrl);
+        return NextResponse.json({ ok: true });
+      }
+
+      if (data.startsWith('art:view:')) {
+        const [, , artIdStr, status, pageStr] = data.split(':');
+        const artId = parseInt(artIdStr, 10);
+        const page = parseInt(pageStr, 10) || 1;
+        await sendArticleDetailMessage(chatId, messageId, artId, status, page, siteUrl);
+        return NextResponse.json({ ok: true });
+      }
+
+      if (data.startsWith('art:photo:')) {
+        const [, , artIdStr, status, pageStr] = data.split(':');
+        const artId = parseInt(artIdStr, 10);
+        const page = parseInt(pageStr, 10) || 1;
+        await setTgUserState(chatId, {
+          step: 'waiting_article_cover',
+          articleId: artId,
+          status,
+          page,
+          createdAt: Date.now(),
+        });
+        const [targetArt] = await db.select({ title: articles.title }).from(articles).where(eq(articles.id, artId)).limit(1);
+        const promptText = `📷 <b>UNGGAH FOTO SAMPUL ARTIKEL</b>
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📰 <b>"${targetArt?.title || `Artikel #${artId}`}"</b>
+
+Silakan kirim foto langsung dari Galeri HP Anda sekarang. Bot akan otomatis mengunggahnya ke CDN ImgBB dan memasangnya ke artikel ini.`;
+        await updateOrSendMessage(chatId, messageId, promptText, {
+          inlineKeyboard: [
+            [{ text: '❌ Batalkan (Kembali)', callback_data: `art:view:${artId}:${status}:${page}` }],
+          ],
+        });
+        return NextResponse.json({ ok: true });
+      }
+
+      if (data.startsWith('art:sched_menu:')) {
+        const [, , artIdStr, status, pageStr] = data.split(':');
+        const artId = parseInt(artIdStr, 10);
+        const page = parseInt(pageStr, 10) || 1;
+        await sendScheduleMenuMessage(chatId, messageId, artId, status, page);
+        return NextResponse.json({ ok: true });
+      }
+
+      if (data.startsWith('art:set_sched:')) {
+        const [, , artIdStr, tsStr, status, pageStr] = data.split(':');
+        const artId = parseInt(artIdStr, 10);
+        const page = parseInt(pageStr, 10) || 1;
+        await handleSetSchedule(chatId, messageId, artId, parseInt(tsStr, 10), status, page, siteUrl);
+        return NextResponse.json({ ok: true });
+      }
+
+      if (data.startsWith('art:sched_custom:')) {
+        const [, , artIdStr, status, pageStr] = data.split(':');
+        const artId = parseInt(artIdStr, 10);
+        const page = parseInt(pageStr, 10) || 1;
+        await setTgUserState(chatId, {
+          step: 'waiting_custom_sched_time',
+          articleId: artId,
+          status,
+          page,
+          createdAt: Date.now(),
+        });
+        const [targetArt] = await db.select({ title: articles.title }).from(articles).where(eq(articles.id, artId)).limit(1);
+        const promptText = `⏰ <b>KETIK WAKTU JADWAL TAYANG</b>
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📰 <b>"${targetArt?.title || `Artikel #${artId}`}"</b>
+
+Ketik waktu tayang artikel (zona WIB). Contoh format:
+• <code>17:30</code> <i>(Hari ini jam 17:30 WIB)</i>
+• <code>besok 09:00</code> <i>(Besok pagi jam 09:00 WIB)</i>
+• <code>lusa 14:00</code> <i>(Lusa siang jam 14:00 WIB)</i>
+• <code>2026-10-18 15:30</code> <i>(Tanggal & jam spesifik)</i>`;
+        await updateOrSendMessage(chatId, messageId, promptText, {
+          inlineKeyboard: [
+            [{ text: '❌ Batalkan (Kembali)', callback_data: `art:view:${artId}:${status}:${page}` }],
+          ],
+        });
+        return NextResponse.json({ ok: true });
+      }
+
+      if (data.startsWith('art:pub_now:')) {
+        const [, , artIdStr, status, pageStr] = data.split(':');
+        const artId = parseInt(artIdStr, 10);
+        const page = parseInt(pageStr, 10) || 1;
+        await handlePublishNow(chatId, messageId, artId, status, page, siteUrl);
+        return NextResponse.json({ ok: true });
+      }
+
+      if (data.startsWith('art:to_draft:')) {
+        const [, , artIdStr, status, pageStr] = data.split(':');
+        const artId = parseInt(artIdStr, 10);
+        const page = parseInt(pageStr, 10) || 1;
+        await handleToDraft(chatId, messageId, artId, status, page);
+        return NextResponse.json({ ok: true });
+      }
+
+      if (data.startsWith('art:del_confirm:')) {
+        const [, , artIdStr, status, pageStr] = data.split(':');
+        const artId = parseInt(artIdStr, 10);
+        const page = parseInt(pageStr, 10) || 1;
+        await handleDeleteConfirm(chatId, messageId, artId, status, page);
+        return NextResponse.json({ ok: true });
+      }
+
+      if (data.startsWith('art:del_exec:')) {
+        const [, , artIdStr, status, pageStr] = data.split(':');
+        const artId = parseInt(artIdStr, 10);
+        const page = parseInt(pageStr, 10) || 1;
+        await handleDeleteExecute(chatId, messageId, artId, status, page);
+        return NextResponse.json({ ok: true });
+      }
+
+      if (data.startsWith('art:revisi_prompt:')) {
+        const [, , artIdStr, status, pageStr] = data.split(':');
+        const artId = parseInt(artIdStr, 10);
+        const page = parseInt(pageStr, 10) || 1;
+        await setTgUserState(chatId, {
+          step: 'waiting_revisi_instruction',
+          articleId: artId,
+          status,
+          page,
+          createdAt: Date.now(),
+        });
+        const [targetArt] = await db.select({ title: articles.title }).from(articles).where(eq(articles.id, artId)).limit(1);
+        const promptText = `✏️ <b>REVISI NASKAH VIA AI</b>
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📰 <b>"${targetArt?.title || `Artikel #${artId}`}"</b>
+
+Ketik instruksi perbaikan untuk naskah artikel ini.
+Contoh:
+• <code>Perbaiki kalimat pembuka dan tambahkan kutipan analisis</code>
+• <code>Ubah gaya bahasa menjadi lebih santai dan padat</code>`;
+        await updateOrSendMessage(chatId, messageId, promptText, {
+          inlineKeyboard: [
+            [{ text: '❌ Batalkan (Kembali)', callback_data: `art:view:${artId}:${status}:${page}` }],
+          ],
+        });
         return NextResponse.json({ ok: true });
       }
 
@@ -2285,8 +3045,104 @@ Format    : <b>${lengthLabel}</b>
 
           await clearTgUserState(chatId);
           return NextResponse.json({ ok: true });
+        } else if (userWizardState.step === 'waiting_article_cover') {
+          if (!hasPhoto || !photoFileId) {
+            await sendTelegramMessage(
+              chatId,
+              `⚠️ <b>Silakan Kirim Foto</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nKirimkan file foto dari Galeri HP Anda (bukan teks):`,
+              {
+                inlineKeyboard: [
+                  [{ text: '❌ Batalkan', callback_data: `art:view:${userWizardState.articleId}:${userWizardState.status || 'draft'}:${userWizardState.page || 1}` }],
+                ],
+              }
+            );
+            return NextResponse.json({ ok: true });
+          }
+
+          const waitMsg = await sendTelegramMessage(chatId, `⏳ <b>MENGUNGGAH FOTO SAMPUL...</b>\nMohon tunggu sebentar, foto sedang dikompres dan dikirim ke CDN ImgBB...`);
+          try {
+            const tgFileUrl = await getTelegramFileUrl(photoFileId);
+            if (tgFileUrl) {
+              const fd = new FormData();
+              fd.append('imageUrl', tgFileUrl);
+              fd.append('name', `tg-cover-${Date.now()}`);
+              const upRes = await uploadImageToImgbb(fd);
+              const finalUrl = (upRes.success && upRes.url) ? upRes.url : tgFileUrl;
+
+              await db
+                .update(articles)
+                .set({ coverUrl: finalUrl, updatedAt: new Date() })
+                .where(eq(articles.id, userWizardState.articleId));
+
+              revalidatePath('/', 'layout');
+              revalidatePath('/admin');
+            }
+          } catch (err) {
+            console.error('Error uploading cover from telegram:', err);
+          }
+
+          await clearTgUserState(chatId);
+          await updateOrSendMessage(
+            chatId,
+            waitMsg.data?.result?.message_id,
+            `✅ <b>FOTO SAMPUL BERHASIL DIPASANG!</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nFoto telah terhubung ke artikel ID #${userWizardState.articleId}.`,
+            {
+              inlineKeyboard: [
+                [{ text: '🔍 Buka Detail Artikel', callback_data: `art:view:${userWizardState.articleId}:${userWizardState.status || 'draft'}:${userWizardState.page || 1}` }],
+                [{ text: '📁 Kembali ke Daftar', callback_data: `art:list:${userWizardState.status || 'draft'}:${userWizardState.page || 1}` }],
+              ],
+            }
+          );
+          return NextResponse.json({ ok: true });
+        } else if (userWizardState.step === 'waiting_custom_sched_time') {
+          const parsedDate = parseIndonesianScheduleTime(rawText);
+          if (!parsedDate || isNaN(parsedDate.getTime())) {
+            await sendTelegramMessage(
+              chatId,
+              `⚠️ <b>Format Waktu Belum Dikenali</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nKetik waktu tayang dengan format contoh:\n• <code>17:30</code> <i>(Hari ini jam 17:30 WIB)</i>\n• <code>besok 09:00</code> <i>(Besok pagi jam 09:00 WIB)</i>\n• <code>lusa 14:00</code> <i>(Lusa jam 14:00 WIB)</i>\n• <code>2026-10-18 15:30</code>`,
+              {
+                inlineKeyboard: [
+                  [{ text: '❌ Batalkan', callback_data: `art:view:${userWizardState.articleId}:${userWizardState.status || 'draft'}:${userWizardState.page || 1}` }],
+                ],
+              }
+            );
+            return NextResponse.json({ ok: true });
+          }
+
+          await handleSetSchedule(
+            chatId,
+            undefined,
+            userWizardState.articleId,
+            parsedDate.getTime(),
+            userWizardState.status || 'draft',
+            userWizardState.page || 1,
+            siteUrl
+          );
+          await clearTgUserState(chatId);
+          return NextResponse.json({ ok: true });
+        } else if (userWizardState.step === 'waiting_revisi_instruction') {
+          await clearTgUserState(chatId);
+          await runArticleRevision({
+            chatId,
+            articleId: userWizardState.articleId,
+            instruction: rawText,
+            siteUrl,
+          });
+          return NextResponse.json({ ok: true });
         }
       }
+    }
+
+    // FITUR: KELOLA ARTIKEL & ARSIP (/artikel, /list, /arsip)
+    if (rawText === '/artikel' || rawText === '/list' || rawText === '/arsip') {
+      await sendArticleHubMessage(chatId, undefined, siteUrl);
+      return NextResponse.json({ ok: true });
+    }
+
+    // FITUR: LANGSUNG KE DRAF (/draft, /drafts, /draf tanpa topik)
+    if (rawText === '/draft' || rawText === '/drafts' || rawText === '/draf') {
+      await sendArticleListMessage(chatId, undefined, 'draft', 1, siteUrl);
+      return NextResponse.json({ ok: true });
     }
 
     // FITUR: TULIS BERITA MANUAL NON-AI (/manual atau /post)
