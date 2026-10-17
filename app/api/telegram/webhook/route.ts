@@ -18,7 +18,7 @@ import {
 import { scrapeArticleFromUrl } from '@/lib/url-scraper';
 import { findSimilarArticles, checkSourceUrlHistory } from '@/lib/duplicate-detector';
 import { db } from '@/db';
-import { articles, aiGenerationLogs, authors } from '@/db/schema';
+import { articles, aiGenerationLogs, authors, systemSettings } from '@/db/schema';
 import { revalidatePath } from 'next/cache';
 import { eq, desc } from 'drizzle-orm';
 import { BOT_COMMANDS } from '../setup/route';
@@ -1042,31 +1042,66 @@ async function runManualArticlePublication({
   }
 }
 
+// Helper State Pengguna Telegram (untuk wizard interaktif multi-langkah)
+async function getTgUserState(chatId: number | string): Promise<any | null> {
+  try {
+    const key = `tg_state_${chatId}`;
+    const [row] = await db.select().from(systemSettings).where(eq(systemSettings.key, key)).limit(1);
+    if (!row || !row.value) return null;
+    return JSON.parse(row.value);
+  } catch {
+    return null;
+  }
+}
+
+async function setTgUserState(chatId: number | string, state: any): Promise<void> {
+  try {
+    const key = `tg_state_${chatId}`;
+    const value = JSON.stringify(state);
+    await db
+      .insert(systemSettings)
+      .values({ key, value, updatedAt: new Date() })
+      .onConflictDoUpdate({
+        target: systemSettings.key,
+        set: { value, updatedAt: new Date() },
+      });
+  } catch (err) {
+    console.error('Failed to set tg user state:', err);
+  }
+}
+
+async function clearTgUserState(chatId: number | string): Promise<void> {
+  try {
+    const key = `tg_state_${chatId}`;
+    await db.delete(systemSettings).where(eq(systemSettings.key, key));
+  } catch {}
+}
+
 async function sendManualHelpMessage(chatId: number | string, messageId?: number, siteUrl?: string) {
-  const helpText = `✍️ <b>PANDUAN TULIS BERITA MANUAL (NON-AI)</b>
+  const currentSiteUrl = siteUrl || process.env.NEXT_PUBLIC_SITE_URL || 'https://www.adafakta.web.id';
+  const helpText = `✍️ <b>TULIS BERITA MANUAL (NON-AI)</b>
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Tulis dan terbitkan liputan Anda sendiri langsung ke web tanpa sentuhan atau kurasi AI.
+Tulis dan terbitkan liputan orisinal Anda langsung ke web Ada Fakta tanpa sentuhan AI.
 
-┌── 📌 <b>Format Pesan (Salin & Isi):</b>
-<code>/manual
-Judul: Peluncuran Chipset AI Generasi Baru Resmi Masuk Indonesia
-Kategori: Hardware
-Penulis: Indra Hakim Lesmana
-Tags: hardware, ai, semikonduktor
+Silakan pilih metode penulisan:
 
-Isi:
-Pemerintah dan pelaku industri teknologi resmi mengumumkan fasilitas pengujian chipset generasi terbaru di Indonesia.
+1️⃣ <b>Editor Naskah Web Admin</b> <i>(Rekomendasi Visual)</i>
+Antarmuka visual penuh di HP/Laptop: upload foto galeri langsung terkompres ke ImgBB, pratinjau (*live preview*) naskah markdown, pemilih artikel "Baca Juga", dan pemilihan penulis.
 
-Langkah ini memperkuat kemandirian infrastruktur komputasi awan nasional.</code>
-└──
+2️⃣ <b>Asisten Interaktif Bot Telegram</b>
+Bot memandu Anda langkah demi langkah (Kategori ➔ Penulis ➔ Status ➔ Judul ➔ Isi & Foto Galeri).
 
-💡 <b>Tips Foto dari Galeri HP:</b>
-Kirim foto langsung ke bot Telegram ini, lalu tempelkan teks format di atas pada kolom <b>Caption</b> foto. Bot akan otomatis mengunggahnya ke CDN ImgBB!`;
+3️⃣ <b>Format Teks Cepat (Copas / Satu Pesan)</b>
+Kirim satu pesan langsung dengan format <code>/manual</code> beserta judul dan isi liputan.`;
 
   await updateOrSendMessage(chatId, messageId, helpText, {
     inlineKeyboard: [
-      [{ text: '📋 Dapatkan Templat Kosong', callback_data: 'manual:template' }],
-      [{ text: '👤 Lihat Daftar Penulis', callback_data: 'manual:authors' }],
+      [{ text: '✏️ Buka Editor Web Admin (/admin/tulis)', url: `${currentSiteUrl}/admin/tulis` }],
+      [{ text: '🚀 Mulai Tuntun Langkah demi Langkah', callback_data: 'mwiz:start' }],
+      [
+        { text: '📋 Templat Teks Cepat', callback_data: 'manual:template' },
+        { text: '👤 Daftar Penulis', callback_data: 'manual:authors' },
+      ],
       [
         { text: '🏠 Menu Utama', callback_data: 'btn:start' },
         { text: '❌ Tutup Layar', callback_data: 'btn:close' },
@@ -1075,7 +1110,8 @@ Kirim foto langsung ke bot Telegram ini, lalu tempelkan teks format di atas pada
   });
 }
 
-async function sendManualTemplateMessage(chatId: number | string, messageId?: number) {
+async function sendManualTemplateMessage(chatId: number | string, messageId?: number, siteUrl?: string) {
+  const currentSiteUrl = siteUrl || process.env.NEXT_PUBLIC_SITE_URL || 'https://www.adafakta.web.id';
   const templateText = `📋 <b>TEMPLAT SIAP SALIN (KLIK UNTUK COPY):</b>
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 <code>/manual
@@ -1091,15 +1127,18 @@ Isi:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 <i>Silakan salin teks di atas, lengkapi Judul dan Isi, lalu kirim kembali ke bot ini.</i>`;
 
-  await sendTelegramMessage(chatId, templateText, {
+  await updateOrSendMessage(chatId, messageId, templateText, {
     inlineKeyboard: [
+      [{ text: '✏️ Buka Editor Naskah Web Admin', url: `${currentSiteUrl}/admin/tulis` }],
+      [{ text: '🚀 Tuntun Langkah demi Langkah', callback_data: 'mwiz:start' }],
       [{ text: '👤 Lihat Daftar Penulis', callback_data: 'manual:authors' }],
       [{ text: '🏠 Menu Utama', callback_data: 'btn:start' }],
     ],
   });
 }
 
-async function sendManualAuthorsList(chatId: number | string, messageId?: number) {
+async function sendManualAuthorsList(chatId: number | string, messageId?: number, siteUrl?: string) {
+  const currentSiteUrl = siteUrl || process.env.NEXT_PUBLIC_SITE_URL || 'https://www.adafakta.web.id';
   let listText = '';
   try {
     const list = await db.select().from(authors);
@@ -1114,15 +1153,365 @@ async function sendManualAuthorsList(chatId: number | string, messageId?: number
 ${listText || '│ • Redaksi (Tim Redaksi)'}
 └──
 
-💡 <i>Tip: Cantumkan salah satu nama di atas pada baris <code>Penulis: [Nama]</code> pada pesan <code>/manual</code> Anda.</i>`;
+💡 <i>Tip: Anda dapat memilih nama di atas secara otomatis lewat menu Wizard Interaktif atau mencantumkannya pada pesan /manual.</i>`;
 
-  await sendTelegramMessage(chatId, text, {
+  await updateOrSendMessage(chatId, messageId, text, {
     inlineKeyboard: [
+      [{ text: '✏️ Buka Editor Naskah Web Admin', url: `${currentSiteUrl}/admin/tulis` }],
+      [{ text: '🚀 Tuntun Langkah demi Langkah', callback_data: 'mwiz:start' }],
       [{ text: '📋 Dapatkan Templat Kosong', callback_data: 'manual:template' }],
       [{ text: '🏠 Menu Utama', callback_data: 'btn:start' }],
     ],
   });
 }
+
+// ==========================================
+// WIZARD TULIS BERITA MANUAL LANGKAH DEMI LANGKAH
+// ==========================================
+
+async function startManualWizard(chatId: number | string, messageId?: number) {
+  await clearTgUserState(chatId);
+  const step1Text = `📝 <b>LANGKAH 1 DARI 5: PILIH KATEGORI BERITA</b>
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Pilih salah satu bidang liputan redaksi:
+
+┌── 📂 <b>Kategori Tersedia</b>
+│ • AI & Software : Tren kecerdasan buatan, aplikasi & open source
+│ • Hardware & Infra : Semikonduktor, chip & data center
+│ • Gadget & Regional : Konsumen pintar & dinamika daerah
+└──
+
+👇 <i>Pilih salah satu kategori di bawah:</i>`;
+
+  await updateOrSendMessage(chatId, messageId, step1Text, {
+    inlineKeyboard: [
+      [
+        { text: '🤖 AI', callback_data: 'mwiz:cat:AI' },
+        { text: '💻 Software', callback_data: 'mwiz:cat:Software' },
+      ],
+      [
+        { text: '⚙️ Hardware', callback_data: 'mwiz:cat:Hardware' },
+        { text: '☁️ Infrastruktur', callback_data: 'mwiz:cat:Infrastruktur' },
+      ],
+      [
+        { text: '📱 Gadget', callback_data: 'mwiz:cat:Gadget' },
+        { text: '🏛️ Regional', callback_data: 'mwiz:cat:Regional' },
+      ],
+      [
+        { text: '⬅️ Kembali ke Panduan', callback_data: 'btn:manual' },
+        { text: '❌ Batalkan', callback_data: 'mwiz:cancel' },
+      ],
+    ],
+  });
+}
+
+async function sendManualAuthorStep(chatId: number | string, messageId: number | undefined, category: string) {
+  let allAuthors: any[] = [];
+  try {
+    allAuthors = await db.select().from(authors);
+  } catch {}
+
+  const authorButtons: Array<Array<{ text: string; callback_data: string }>> = [];
+  if (allAuthors.length > 0) {
+    for (let i = 0; i < allAuthors.length; i += 2) {
+      const row = [{ text: `👤 ${allAuthors[i].name}`, callback_data: `mwiz:auth:${allAuthors[i].id}:${category}` }];
+      if (allAuthors[i + 1]) {
+        row.push({ text: `👤 ${allAuthors[i + 1].name}`, callback_data: `mwiz:auth:${allAuthors[i + 1].id}:${category}` });
+      }
+      authorButtons.push(row);
+    }
+  } else {
+    authorButtons.push([{ text: '👤 Tim Redaksi', callback_data: `mwiz:auth:0:${category}` }]);
+  }
+  authorButtons.push([
+    { text: '⬅️ Ganti Kategori', callback_data: 'mwiz:start' },
+    { text: '❌ Batalkan', callback_data: 'mwiz:cancel' },
+  ]);
+
+  const step2Text = `👤 <b>LANGKAH 2 DARI 5: PILIH PROFIL PENULIS</b>
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Kategori Terpilih : <b>${category}</b>
+
+Pilih nama penulis yang akan dicantumkan pada naskah ini:`;
+
+  await updateOrSendMessage(chatId, messageId, step2Text, { inlineKeyboard: authorButtons });
+}
+
+async function sendManualStatusStep(
+  chatId: number | string,
+  messageId: number | undefined,
+  category: string,
+  authorIdStr: string
+) {
+  const authorId = parseInt(authorIdStr, 10) || 0;
+  let authorName = 'Redaksi';
+  if (authorId > 0) {
+    try {
+      const [found] = await db.select().from(authors).where(eq(authors.id, authorId)).limit(1);
+      if (found) authorName = found.name;
+    } catch {}
+  }
+
+  const step3Text = `🚦 <b>LANGKAH 3 DARI 5: STATUS PUBLIKASI</b>
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Kategori : <b>${category}</b>
+Penulis  : <b>${authorName}</b>
+
+Tentukan status artikel saat selesai ditulis:
+
+┌── 📋 <b>Pilihan Status</b>
+│ • <b>Terbitkan Langsung</b> : Tayang di web saat ini juga + Google Indexing API
+│ • <b>Simpan ke Draf</b> : Disimpan di admin untuk direview atau diedit kemudian
+└──`;
+
+  await updateOrSendMessage(chatId, messageId, step3Text, {
+    inlineKeyboard: [
+      [{ text: '🟢 Terbitkan Langsung (Published)', callback_data: `mwiz:stat:pub:${authorId}:${category}` }],
+      [{ text: '🟡 Simpan ke Draf Review (Draft)', callback_data: `mwiz:stat:draft:${authorId}:${category}` }],
+      [
+        { text: '⬅️ Ganti Penulis', callback_data: `mwiz:cat:${category}` },
+        { text: '❌ Batalkan', callback_data: 'mwiz:cancel' },
+      ],
+    ],
+  });
+}
+
+async function sendManualTitleStep(
+  chatId: number | string,
+  messageId: number | undefined,
+  category: string,
+  authorIdStr: string,
+  statusStr: string
+) {
+  const authorId = parseInt(authorIdStr, 10) || 0;
+  let authorName = 'Redaksi';
+  if (authorId > 0) {
+    try {
+      const [found] = await db.select().from(authors).where(eq(authors.id, authorId)).limit(1);
+      if (found) authorName = found.name;
+    } catch {}
+  }
+
+  const isPublish = statusStr === 'pub';
+
+  await setTgUserState(chatId, {
+    step: 'waiting_title',
+    category,
+    authorId,
+    authorName,
+    isPublish,
+    createdAt: Date.now(),
+  });
+
+  const step4Text = `📌 <b>LANGKAH 4 DARI 5: KETIK JUDUL BERITA</b>
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Kategori : <b>${category}</b>
+Penulis  : <b>${authorName}</b>
+Status   : <b>${isPublish ? '🟢 Terbit Langsung' : '🟡 Draf Review'}</b>
+
+👇 <i>Ketik judul berita Anda sekarang dan kirimkan langsung di obrolan ini:</i>`;
+
+  await updateOrSendMessage(chatId, messageId, step4Text, {
+    inlineKeyboard: [
+      [
+        { text: '⬅️ Ganti Status', callback_data: `mwiz:auth:${authorId}:${category}` },
+        { text: '❌ Batalkan', callback_data: 'mwiz:cancel' },
+      ],
+    ],
+  });
+}
+
+async function cancelManualWizard(chatId: number | string, messageId?: number) {
+  await clearTgUserState(chatId);
+  const cancelText = `❌ <b>Penulisan Berita Manual Dibatalkan</b>
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Sesi penulisan telah dibatalkan dan draf sementara dibersihkan.`;
+
+  await updateOrSendMessage(chatId, messageId, cancelText, {
+    inlineKeyboard: [
+      [{ text: '✍️ Tulis Berita Baru', callback_data: 'btn:manual' }],
+      [{ text: '🏠 Menu Utama', callback_data: 'btn:start' }],
+    ],
+  });
+}
+
+async function saveManualWizardArticle({
+  chatId,
+  userState,
+  content,
+  hasPhoto,
+  photoFileId,
+  siteUrl,
+}: {
+  chatId: number | string;
+  userState: {
+    category: string;
+    authorId?: number;
+    authorName?: string;
+    isPublish: boolean;
+    title: string;
+    photoFileId?: string;
+  };
+  content: string;
+  hasPhoto: boolean;
+  photoFileId?: string;
+  siteUrl: string;
+}) {
+  const waitMsg = await sendTelegramMessage(
+    chatId,
+    `⏳ <b>MEMPROSES & MENYIMPAN ARTIKEL...</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n📰 <i>"${userState.title}"</i>\n⏱️ <i>Memvalidasi foto sampul dan indeks portal...</i>`
+  );
+  const activeMsgId = waitMsg.data?.result?.message_id;
+
+  // 1. Tangani Foto Sampul jika ada
+  let finalCoverUrl: string | null = null;
+  const targetPhotoFileId = photoFileId || userState.photoFileId;
+  if (hasPhoto && targetPhotoFileId) {
+    try {
+      const tgFileUrl = await getTelegramFileUrl(targetPhotoFileId);
+      if (tgFileUrl) {
+        const fd = new FormData();
+        fd.append('imageUrl', tgFileUrl);
+        fd.append('name', `tg-manual-${Date.now()}`);
+        const upRes = await uploadImageToImgbb(fd);
+        if (upRes.success && upRes.url) {
+          finalCoverUrl = upRes.url;
+        } else {
+          finalCoverUrl = tgFileUrl;
+        }
+      }
+    } catch (photoErr) {
+      console.warn('Gagal memproses foto Telegram ke ImgBB:', photoErr);
+    }
+  }
+
+  // 2. Cocokkan Profil Penulis
+  let resolvedAuthor = userState.authorName || 'Redaksi';
+  let resolvedAuthorId: number | null = userState.authorId || null;
+
+  try {
+    const allAuthors = await db.select().from(authors);
+    if (userState.authorId && userState.authorId > 0) {
+      const match = allAuthors.find((a) => a.id === userState.authorId);
+      if (match) {
+        resolvedAuthor = match.name;
+        resolvedAuthorId = match.id;
+      }
+    } else if (userState.authorName) {
+      const match = allAuthors.find(
+        (a) =>
+          a.name.toLowerCase().trim() === userState.authorName!.toLowerCase().trim() ||
+          a.name.toLowerCase().includes(userState.authorName!.toLowerCase().trim())
+      );
+      if (match) {
+        resolvedAuthor = match.name;
+        resolvedAuthorId = match.id;
+      }
+    } else if (allAuthors.length > 0) {
+      resolvedAuthor = allAuthors[0].name;
+      resolvedAuthorId = allAuthors[0].id;
+    }
+  } catch (authErr) {
+    console.warn('Gagal memuat profil penulis:', authErr);
+  }
+
+  // 3. Generate Slug & Excerpt
+  let slug = userState.title
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/[\s_-]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  if (!slug) slug = `berita-${Date.now()}`;
+
+  const existing = await db.select({ id: articles.id }).from(articles).where(eq(articles.slug, slug)).limit(1);
+  if (existing.length > 0) {
+    slug = `${slug}-${Date.now().toString().slice(-4)}`;
+  }
+
+  let excerpt = content
+    .replace(/#+\s+/g, '')
+    .replace(/[*_`\[\]()]/g, '')
+    .substring(0, 160)
+    .trim();
+  if (excerpt.length >= 150) excerpt += '...';
+
+  const isPublish = userState.isPublish;
+  const status = isPublish ? 'published' : 'draft';
+  const now = new Date();
+  const publishedAt = isPublish ? now : null;
+
+  // 4. Simpan ke database Neon
+  const [newArticle] = await db
+    .insert(articles)
+    .values({
+      title: userState.title,
+      slug,
+      excerpt,
+      content,
+      category: userState.category,
+      coverUrl: finalCoverUrl,
+      coverCaption: null,
+      author: resolvedAuthor,
+      authorId: resolvedAuthorId,
+      tags: [userState.category.toLowerCase()],
+      status,
+      publishAt: now,
+      publishedAt,
+      createdAt: now,
+      updatedAt: now,
+    })
+    .returning();
+
+  // 5. Revalidate cache halaman
+  const catSlug = userState.category.toLowerCase().replace(/\s+/g, '-');
+  revalidatePath('/', 'layout');
+  revalidatePath('/admin');
+  revalidatePath(`/berita/${catSlug}`);
+
+  // 6. Instant Indexing jika langsung diterbitkan
+  if (isPublish) {
+    const articleUrl = `${siteUrl}/berita/${catSlug}/${newArticle.id}/${newArticle.slug}`;
+    notifySearchEngines(articleUrl).catch((err) => console.warn('Manual Indexing Error:', err));
+  }
+
+  const wordCount = content.trim().split(/\s+/).filter(Boolean).length;
+  const articleUrl = `${siteUrl}/berita/${catSlug}/${newArticle.id}/${newArticle.slug}`;
+  const editUrl = `${siteUrl}/admin/edit/${newArticle.id}`;
+
+  const statusLabel = isPublish ? '🟢 <b>Tayang Publik (Published)</b>' : '🟡 <b>Draf Review (Draft)</b>';
+  const headerIcon = isPublish ? '🎉 <b>BERITA MANUAL BERHASIL DITERBITKAN!</b>' : '📝 <b>BERITA MANUAL TERSIMPAN SEBAGAI DRAF!</b>';
+
+  const successText = `${headerIcon}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📰 <b>${newArticle.title}</b>
+
+┌── 📋 <b>Detail Artikel</b>
+│ 📂 Kategori : <b>${newArticle.category}</b>
+│ ✍️ Penulis  : <b>${newArticle.author}</b>
+│ 📷 Sampul   : ${newArticle.coverUrl ? '<b>Terpasang (CDN ImgBB)</b>' : '<i>Tanpa Sampul</i>'}
+│ 📊 Panjang  : <b>${wordCount} kata</b>
+│ 🚦 Status   : ${statusLabel}
+└──
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ <i>Naskah berhasil diterbitkan langsung ke portal Ada Fakta tanpa modifikasi AI.</i>`;
+
+  const inlineKeyboard: any[] = [];
+  if (isPublish) {
+    inlineKeyboard.push([{ text: '📖 Baca di Website', url: articleUrl }]);
+  }
+  inlineKeyboard.push([{ text: '✏️ Buka di Editor Web Admin', url: editUrl }]);
+  inlineKeyboard.push([
+    { text: '✍️ Tulis Berita Lain', callback_data: 'btn:manual' },
+    { text: '🏠 Menu Utama', callback_data: 'btn:start' },
+  ]);
+
+  if (activeMsgId) {
+    await updateOrSendMessage(chatId, activeMsgId, successText, { inlineKeyboard });
+  } else {
+    await sendTelegramMessage(chatId, successText, { inlineKeyboard });
+  }
+}
+
 
 // Tampilan Menu Sambutan Klasik Berbingkai (/start)
 async function sendWelcomeMessage(
@@ -1456,13 +1845,46 @@ Pilih salah satu bidang liputan redaksi:
 
       // Tombol Templat Siap Pakai Manual
       if (data === 'manual:template') {
-        await sendManualTemplateMessage(chatId, messageId);
+        await sendManualTemplateMessage(chatId, messageId, siteUrl);
         return NextResponse.json({ ok: true });
       }
 
       // Tombol Daftar Profil Penulis Manual
       if (data === 'manual:authors') {
-        await sendManualAuthorsList(chatId, messageId);
+        await sendManualAuthorsList(chatId, messageId, siteUrl);
+        return NextResponse.json({ ok: true });
+      }
+
+      // Wizard Manual: Langkah 1 (Kategori)
+      if (data === 'mwiz:start') {
+        await startManualWizard(chatId, messageId);
+        return NextResponse.json({ ok: true });
+      }
+
+      // Wizard Manual: Batalkan
+      if (data === 'mwiz:cancel') {
+        await cancelManualWizard(chatId, messageId);
+        return NextResponse.json({ ok: true });
+      }
+
+      // Wizard Manual: Langkah 2 (Pilih Penulis)
+      if (data.startsWith('mwiz:cat:')) {
+        const category = data.slice('mwiz:cat:'.length);
+        await sendManualAuthorStep(chatId, messageId, category);
+        return NextResponse.json({ ok: true });
+      }
+
+      // Wizard Manual: Langkah 3 (Pilih Status)
+      if (data.startsWith('mwiz:auth:')) {
+        const [, , authorIdStr, category] = data.split(':');
+        await sendManualStatusStep(chatId, messageId, category, authorIdStr);
+        return NextResponse.json({ ok: true });
+      }
+
+      // Wizard Manual: Langkah 4 (Prompt Judul)
+      if (data.startsWith('mwiz:stat:')) {
+        const [, , statusStr, authorIdStr, category] = data.split(':');
+        await sendManualTitleStep(chatId, messageId, category, authorIdStr, statusStr);
         return NextResponse.json({ ok: true });
       }
 
@@ -1721,7 +2143,7 @@ Format    : <b>${lengthLabel}</b>
     // 2. PENANGANAN PESAN TEKS BIASA / PERINTAH
     // ==========================================
     const message = update?.message;
-    if (!message || (!message.text && !message.caption)) {
+    if (!message || (!message.text && !message.caption && !message.photo)) {
       return NextResponse.json({ ok: true });
     }
 
@@ -1740,7 +2162,24 @@ Format    : <b>${lengthLabel}</b>
       rawText === '/help' ||
       rawText === '/bantuan'
     ) {
+      await clearTgUserState(chatId);
       await sendWelcomeMessage(chatId, undefined, firstName, userId, siteUrl);
+      return NextResponse.json({ ok: true });
+    }
+
+    // Perintah pembatalan naskah manual
+    if (rawText === '/batal' || rawText === '/cancel') {
+      await clearTgUserState(chatId);
+      await sendTelegramMessage(
+        chatId,
+        `❌ <b>Sesi Pembuatan Berita Dibatalkan</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nDraf sementara telah dibersihkan.`,
+        {
+          inlineKeyboard: [
+            [{ text: '✍️ Tulis Berita Baru', callback_data: 'btn:manual' }],
+            [{ text: '🏠 Menu Utama', callback_data: 'btn:start' }],
+          ],
+        }
+      );
       return NextResponse.json({ ok: true });
     }
 
@@ -1751,6 +2190,103 @@ Format    : <b>${lengthLabel}</b>
         `⛔ <b>Akses Terbatas</b>\n\nMaaf <b>${firstName}</b>, bot ini dikunci khusus untuk Redaksi Ada Fakta.\nID Telegram Anda: <code>${userId}</code>`
       );
       return NextResponse.json({ ok: true });
+    }
+
+    // CEK SESI WIZARD MANUAL LANGKAH DEMI LANGKAH
+    const userWizardState = await getTgUserState(chatId);
+    if (userWizardState && userWizardState.step) {
+      // Cek apakah sesi sudah kedaluwarsa (lebih dari 2 jam)
+      if (userWizardState.createdAt && Date.now() - userWizardState.createdAt > 2 * 60 * 60 * 1000) {
+        await clearTgUserState(chatId);
+      } else {
+        // Jika user masih di wizard tapi mengetik perintah '/' seperti /tulis, /menu, /draft, batalkan wizard
+        if (rawText.startsWith('/') && !rawText.startsWith('/manual')) {
+          await clearTgUserState(chatId);
+        } else if (userWizardState.step === 'waiting_title') {
+          // Tangani input Judul
+          if (rawText.length < 5) {
+            await sendTelegramMessage(
+              chatId,
+              `⚠️ <b>Judul Terlalu Pendek</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nKetikkan judul berita yang lengkap (minimal 5 karakter):`,
+              {
+                inlineKeyboard: [
+                  [{ text: '❌ Batalkan Naskah', callback_data: 'mwiz:cancel' }],
+                ],
+              }
+            );
+            return NextResponse.json({ ok: true });
+          }
+
+          // Simpan judul dan lanjut ke langkah 5 (Isi Berita & Foto)
+          await setTgUserState(chatId, {
+            ...userWizardState,
+            step: 'waiting_content',
+            title: rawText,
+          });
+
+          const step5Text = `📄 <b>LANGKAH 5 DARI 5: ISI BERITA & FOTO SAMPUL</b>
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📰 <b>${rawText}</b>
+📂 Kategori : <b>${userWizardState.category}</b>
+✍️ Penulis  : <b>${userWizardState.authorName}</b>
+🚦 Status   : <b>${userWizardState.isPublish ? '🟢 Terbit Langsung' : '🟡 Draf Review'}</b>
+
+👇 <b>Cara Mengirimkan Naskah Berita:</b>
+• <b>Teks Biasa:</b> Ketik atau tempelkan seluruh isi naskah artikel Anda di chat ini.
+• <b>Beserta Foto Galeri:</b> Kirimkan foto langsung dari Galeri HP Anda, lalu tempelkan naskah pada kolom <b>Caption</b> foto. Bot akan otomatis mengunggah foto ke CDN ImgBB!`;
+
+          await sendTelegramMessage(chatId, step5Text, {
+            inlineKeyboard: [
+              [{ text: '❌ Batalkan Naskah', callback_data: 'mwiz:cancel' }],
+            ],
+          });
+          return NextResponse.json({ ok: true });
+        } else if (userWizardState.step === 'waiting_content') {
+          // Jika user mengirim HANYA foto tanpa caption, simpan foto dan minta teks naskah
+          if (hasPhoto && !rawText) {
+            await setTgUserState(chatId, {
+              ...userWizardState,
+              photoFileId,
+            });
+            await sendTelegramMessage(
+              chatId,
+              `📷 <b>Foto Sampul Berhasil Diterima!</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nSekarang ketik atau tempelkan teks isi artikel berita Anda di chat ini:`,
+              {
+                inlineKeyboard: [
+                  [{ text: '❌ Batalkan Naskah', callback_data: 'mwiz:cancel' }],
+                ],
+              }
+            );
+            return NextResponse.json({ ok: true });
+          }
+
+          if (rawText.length < 20) {
+            await sendTelegramMessage(
+              chatId,
+              `⚠️ <b>Isi Naskah Terlalu Pendek</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nSertakan minimal 1-2 paragraf isi liputan berita Anda:`,
+              {
+                inlineKeyboard: [
+                  [{ text: '❌ Batalkan Naskah', callback_data: 'mwiz:cancel' }],
+                ],
+              }
+            );
+            return NextResponse.json({ ok: true });
+          }
+
+          // Simpan artikel manual dari wizard
+          await saveManualWizardArticle({
+            chatId,
+            userState: userWizardState,
+            content: rawText,
+            hasPhoto: hasPhoto || Boolean(userWizardState.photoFileId),
+            photoFileId: photoFileId || userWizardState.photoFileId,
+            siteUrl,
+          });
+
+          await clearTgUserState(chatId);
+          return NextResponse.json({ ok: true });
+        }
+      }
     }
 
     // FITUR: TULIS BERITA MANUAL NON-AI (/manual atau /post)
