@@ -77,8 +77,10 @@ Panduan teknis langkah demi langkah untuk mengonfigurasi dan mengaktifkan seluru
 7. Setelah deploy selesai, kembali ke Google Search Console dan klik tombol **VERIFIKASI**. Status akan langsung centang hijau sukses!
 8. **Kirim Peta Situs (Sitemap):**
    * Di bilah menu sebelah kiri, klik **Peta Situs** (*Sitemaps*).
-   * Pada kolom *Tambahkan peta situs baru*, ketik: **`sitemap.xml`**
-   * Klik **Kirim** (*Submit*).
+   * Pada kolom *Tambahkan peta situs baru*, ketik: **`sitemap.xml`** -> Klik **Kirim** (*Submit*).
+   * Ketik juga: **`news-sitemap.xml`** (Peta situs khusus Google News 48 jam terakhir) -> Klik **Kirim** (*Submit*).
+   * *(Kedua sitemap akan berstatus sukses centang hijau dan otomatis dirayapi oleh robot Googlebot & Googlebot-News).*
+
 
 ---
 
