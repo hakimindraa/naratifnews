@@ -739,12 +739,12 @@ Tugas Anda adalah menulis berita liputan ${regionalScope} yang faktual, mendalam
 
 ATURAN PENULISAN:
 1. Bahasa: Bahasa Indonesia baku, bergaya jurnalisme meja kota/daerah yang lugas, hangat, dan berimbang (5W + 1H).
-2. Sudut Pandang Faktual: Fokuskan narasi pada fakta peristiwa daerah, kebijakan/pernyataan kepala daerah (Pemprov/Pemkab/Pemkot, Gubernur, Bupati, Walikota, atau Kepala Dinas terkait), pelayanan fasilitas publik, dan dampaknya bagi warga.
-3. Format Konten: Gunakan Markdown murni yang rapi (Heading ##, ###, bullet points, penekanan bold, kutipan analitis >). JANGAN gunakan tag HTML mentah seperti <p>, <div>, <span>.
+2. Kalimat Pembuka: Kalimat pertama pada paragraf pembuka WAJIB diawali langsung dengan teks "adafaktanews - " (huruf kecil semua diikuti tanda hubung dan spasi).
+3. Format Narasi Bersih: Tulis berita dalam 3-5 paragraf mengalir yang padat (Lead peristiwa terhangat, penjelasan konteks/narasumber, dampak bagi warga, dan status terkini). DILARANG menggunakan subjudul Markdown (## atau ###), DILARANG menggunakan bullet points (- atau *), dan DILARANG memakai tag HTML mentah.
 4. Panjang konten: Target ${wordCountTarget}.
 5. Kategori: WAJIB bernilai "Regional".
-6. Atribusi Sumber Riset: Di akhir naskah berita (baris terakhir), WAJIB sertakan garis pembatas (---) diikuti satu baris sumber ringkas: "*Sumber: [Nama-nama media/dinas rujukan, dipisahkan koma].*". Contoh: "*Sumber: Antara, Detik, Pemprov Jatim.*". DILARANG mencantumkan link URL panjang atau teks bertele-tele.
-7. Larangan Judul Ganda: DILARANG mengulang judul berita sebagai Heading (# atau ##) di baris pertama 'content'. Bagian 'content' WAJIB langsung dimulai dengan paragraf teks narasi pembuka.
+6. Atribusi Sumber Riset: Di akhir naskah berita (baris terakhir), WAJIB sertakan satu baris sumber ringkas bertuliskan miring: "*Sumber: [Nama-nama media/dinas rujukan, dipisahkan koma].*". Contoh: "*Sumber: Antara, Detik, Pemprov Jatim.*". DILARANG mencantumkan link URL panjang.
+7. Larangan Judul Ganda: DILARANG mengulang judul berita sebagai Heading (# atau ##) di baris pertama 'content'. Bagian 'content' WAJIB langsung dimulai dengan "adafaktanews - ".
 8. Output: WAJIB HANYA berupa objek JSON murni (VALID JSON) tanpa pembuka atau penutup obrolan apa pun di luar JSON.
 
 FORMAT STRUKTUR JSON YANG WAJIB ANDA HASILKAN:
@@ -755,19 +755,20 @@ FORMAT STRUKTUR JSON YANG WAJIB ANDA HASILKAN:
   "category": "Regional",
   "tags": ["Regional", "${cleanRegion || 'Daerah'}", "Kebijakan Daerah", "Pemda"],
   "coverCaption": "Deskripsi singkat foto/ilustrasi berita (maksimal 100 karakter)",
-  "content": "Isi lengkap berita dalam format Markdown..."
+  "content": "adafaktanews - [Isi lengkap berita mengalir dalam paragraf bersih...]"
 }`
     : `Anda adalah jurnalis teknologi senior dan editor utama di portal media teknologi terkemuka "Ada Fakta" (Indonesia).
 Tugas Anda adalah menulis artikel berita teknologi yang mendalam, berwawasan tajam, faktual, dan menarik untuk para antusias teknologi, developer, dan praktisi industri.
 
 ATURAN PENULISAN:
 1. Bahasa: Bahasa Indonesia baku, modern, dan bergaya jurnalisme teknologi berbobot (5W + 1H, dengan analisis dampak industri).
-2. Format Konten: Gunakan Markdown murni yang rapi (Heading ##, ###, bullet points, penekanan bold, kutipan analitis >). JANGAN gunakan tag HTML mentah seperti <p>, <div>, <span>.
-3. Panjang konten: Target ${wordCountTarget}.
-4. Kategori artikel HARUS salah satu dari: ["AI", "Software", "Hardware", "Gadget", "Infrastruktur"].
-5. Atribusi Sumber Riset: Di akhir naskah berita (baris terakhir), WAJIB sertakan garis pembatas (---) diikuti satu baris sumber ringkas: "*Sumber: [Nama-nama media berita rujukan, dipisahkan koma].*". Contoh: "*Sumber: Cult of Mac, Finder Australia, TelecomTalk.*". DILARANG mencantumkan link URL panjang atau teks bertele-tele.
-6. Larangan Judul Ganda: DILARANG mengulang judul berita sebagai Heading (# atau ##) di baris pertama 'content'. Bagian 'content' WAJIB langsung dimulai dengan paragraf teks pembuka artikel berita.
-7. Output: WAJIB HANYA berupa objek JSON murni (VALID JSON) tanpa pembuka atau penutup obrolan apa pun di luar JSON.
+2. Kalimat Pembuka: Kalimat pertama pada paragraf pembuka WAJIB diawali langsung dengan teks "adafaktanews - " (huruf kecil semua diikuti tanda hubung dan spasi).
+3. Format Narasi Bersih: Tulis berita dalam 3-5 paragraf mengalir yang padat (Lead peristiwa terhangat, penjelasan konteks/narasumber, dampak industri/pengguna, dan penutup status terkini). DILARANG menggunakan subjudul Markdown (## atau ###), DILARANG menggunakan bullet points (- atau *), dan DILARANG memakai tag HTML mentah.
+4. Panjang konten: Target ${wordCountTarget}.
+5. Kategori artikel HARUS salah satu dari: ["AI", "Software", "Hardware", "Gadget", "Infrastruktur"].
+6. Atribusi Sumber Riset: Di akhir naskah berita (baris terakhir), WAJIB sertakan satu baris sumber ringkas bertuliskan miring: "*Sumber: [Nama-nama media berita rujukan, dipisahkan koma].*". Contoh: "*Sumber: Cult of Mac, Finder Australia, TelecomTalk.*". DILARANG mencantumkan link URL panjang.
+7. Larangan Judul Ganda: DILARANG mengulang judul berita sebagai Heading (# atau ##) di baris pertama 'content'. Bagian 'content' WAJIB langsung dimulai dengan "adafaktanews - ".
+8. Output: WAJIB HANYA berupa objek JSON murni (VALID JSON) tanpa pembuka atau penutup obrolan apa pun di luar JSON.
 
 FORMAT STRUKTUR JSON YANG WAJIB ANDA HASILKAN:
 {
@@ -777,7 +778,7 @@ FORMAT STRUKTUR JSON YANG WAJIB ANDA HASILKAN:
   "category": "${targetCategory}",
   "tags": ["Tag1", "Tag2", "Tag3", "Tag4"],
   "coverCaption": "Deskripsi singkat foto/ilustrasi berita (maksimal 100 karakter)",
-  "content": "Isi lengkap berita dalam format Markdown..."
+  "content": "adafaktanews - [Isi lengkap berita mengalir dalam paragraf bersih...]"
 }`;
 
   let newsContext = '';
@@ -880,7 +881,21 @@ Ingat, balas HANYA dengan dokumen JSON yang valid sesuai format yang ditentukan.
     : [finalCategory, 'Teknologi', 'Ada Fakta'];
 
   const cleanedContent = cleanContentHeading(String(parsed.content).trim(), String(parsed.title).trim());
-  const finalContent = injectInternalLinkIfMissing(cleanedContent, internalCandidates, finalCategory);
+  let finalContent = cleanedContent;
+
+  // 1. Pastikan awalan selalu 'adafaktanews - '
+  if (!finalContent.toLowerCase().startsWith('adafaktanews -')) {
+    finalContent = finalContent.replace(/^adafaktanews\s*[-–—]?\s*/i, '');
+    finalContent = `adafaktanews - ${finalContent.trimStart()}`;
+  }
+
+  // 2. Pastikan akhiran selalu ada '*Sumber: ...*'
+  if (!finalContent.includes('*Sumber:')) {
+    const fallbackSources = researchSources.length > 0
+      ? researchSources.map((s) => s.source).slice(0, 3).join(', ')
+      : 'Berbagai Sumber';
+    finalContent = `${finalContent.trimEnd()}\n\n*Sumber: ${fallbackSources}*`;
+  }
 
   return {
     title: String(parsed.title).trim(),
