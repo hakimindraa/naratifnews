@@ -3,24 +3,7 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  X,
-  Search,
-  MessageCircle,
-  Layers,
-  Laptop,
-  Cpu,
-  Sparkles,
-  Radio,
-  Smartphone,
-  MapPin,
-  ChevronRight,
-  ShieldCheck,
-  FileText,
-  Users,
-  Info,
-  Mail,
-} from "lucide-react";
+import { X } from "lucide-react";
 
 interface CategoryItem {
   name: string;
@@ -54,44 +37,22 @@ export default function MobileDrawer({ isOpen, onClose, categories }: MobileDraw
     }
   }, [isOpen, onClose]);
 
-  // Ikon pendukung per kategori
-  const getCategoryIcon = (slug: string) => {
-    switch (slug) {
-      case "":
-        return <Layers className="w-4 h-4 text-gray-500" />;
-      case "software":
-        return <Laptop className="w-4 h-4 text-blue-500" />;
-      case "hardware":
-        return <Cpu className="w-4 h-4 text-amber-500" />;
-      case "ai":
-        return <Sparkles className="w-4 h-4 text-purple-500" />;
-      case "infrastruktur":
-        return <Radio className="w-4 h-4 text-emerald-500" />;
-      case "gadget":
-        return <Smartphone className="w-4 h-4 text-rose-500" />;
-      case "regional":
-        return <MapPin className="w-4 h-4 text-indigo-500" />;
-      default:
-        return <Layers className="w-4 h-4 text-gray-500" />;
-    }
-  };
-
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 lg:hidden">
-      {/* Backdrop Gelap dengan Blur */}
+      {/* Backdrop Gelap Tanpa Animasi / Blur Berat */}
       <div
         onClick={onClose}
-        className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity duration-300"
+        className="fixed inset-0 bg-black/60"
         aria-hidden="true"
       />
 
-      {/* Kontainer Drawer Menu */}
-      <aside className="fixed inset-y-0 left-0 w-80 max-w-[85vw] bg-white shadow-2xl flex flex-col justify-between overflow-y-auto animate-in slide-in-from-left duration-300">
+      {/* Kontainer Drawer Menu Bersih & Monokrom Dewasa */}
+      <aside className="fixed inset-y-0 left-0 w-80 max-w-[85vw] bg-white shadow-xl flex flex-col justify-between overflow-y-auto">
         <div>
           {/* Header Drawer: Logo & Tombol Tutup */}
-          <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/80">
+          <div className="p-4 border-b border-gray-100 flex items-center justify-between">
             <Link
               href="/"
               onClick={onClose}
@@ -102,34 +63,31 @@ export default function MobileDrawer({ isOpen, onClose, categories }: MobileDraw
             </Link>
             <button
               onClick={onClose}
-              className="p-1.5 rounded-full text-gray-500 hover:text-gray-900 hover:bg-gray-200 transition-colors"
+              className="p-1.5 rounded-md text-gray-700 hover:text-black hover:bg-gray-100 cursor-pointer"
               aria-label="Tutup menu"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
 
-          {/* Pencarian Cepat di Drawer */}
+          {/* Pencarian Cepat (Tanpa Ikon & Tanpa Warna Mencolok) */}
           <div className="p-4 border-b border-gray-100">
             <form action="/cari" method="GET" onSubmit={onClose}>
-              <div className="relative">
-                <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  name="q"
-                  placeholder="Cari berita atau fakta..."
-                  className="w-full bg-gray-100/80 hover:bg-gray-100 focus:bg-white text-xs pl-9 pr-4 py-2 rounded-lg border border-transparent focus:border-red-500 focus:outline-none transition-all"
-                />
-              </div>
+              <input
+                type="text"
+                name="q"
+                placeholder="Cari berita atau fakta..."
+                className="w-full bg-gray-100 focus:bg-white text-xs px-3.5 py-2.5 rounded-lg border border-transparent focus:border-gray-900 focus:outline-none text-gray-900"
+              />
             </form>
           </div>
 
-          {/* Kategori Berita Utama */}
+          {/* Kategori Berita Utama (Monokrom, Bebas Ikon, Gaya Editorial) */}
           <div className="py-3 px-3">
             <div className="px-3 pb-2 text-[11px] font-bold uppercase tracking-wider text-gray-400">
               Kategori Berita
             </div>
-            <nav className="space-y-1">
+            <nav className="space-y-0.5">
               {categories.map((cat) => {
                 const isActive =
                   cat.href === "/"
@@ -141,106 +99,88 @@ export default function MobileDrawer({ isOpen, onClose, categories }: MobileDraw
                     key={cat.name}
                     href={cat.href}
                     onClick={onClose}
-                    className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
+                    className={`block px-3 py-2 rounded-lg text-sm transition-colors ${
                       isActive
-                        ? "bg-red-50 text-red-600 font-bold"
-                        : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+                        ? "bg-gray-100 text-gray-950 font-bold"
+                        : "text-gray-700 hover:bg-gray-50 hover:text-black font-medium"
                     }`}
                   >
-                    <div className="flex items-center space-x-3">
-                      {getCategoryIcon(cat.slug)}
-                      <span>{cat.name}</span>
-                    </div>
-                    <ChevronRight
-                      className={`w-4 h-4 ${
-                        isActive ? "text-red-500" : "text-gray-300"
-                      }`}
-                    />
+                    {cat.name}
                   </Link>
                 );
               })}
             </nav>
           </div>
 
-          {/* Banner Saluran WhatsApp Redaksi */}
+          {/* Banner Saluran WhatsApp Redaksi (Gaya Editorial Bersih) */}
           <div className="px-4 py-2">
             <a
               href="https://whatsapp.com/channel/0029VbDdM7DFSAszJWyjca01"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center space-x-3 p-3 bg-emerald-50 hover:bg-emerald-100/80 rounded-xl border border-emerald-100 transition-colors group"
+              className="block p-3.5 bg-gray-50 hover:bg-gray-100 rounded-xl border border-gray-200 transition-colors"
             >
-              <div className="w-9 h-9 rounded-full bg-emerald-600 flex items-center justify-center text-white shrink-0 shadow-xs">
-                <MessageCircle className="w-5 h-5" />
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-gray-900">
+                  Saluran WhatsApp
+                </span>
+                <span className="text-[10px] bg-gray-900 text-white font-semibold px-1.5 py-0.5 rounded">
+                  Resmi
+                </span>
               </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center space-x-1.5">
-                  <span className="text-xs font-bold text-emerald-900">
-                    Saluran WhatsApp
-                  </span>
-                  <span className="text-[10px] bg-emerald-600 text-white font-extrabold px-1.5 py-0.2 rounded-full">
-                    Resmi
-                  </span>
-                </div>
-                <p className="text-[11px] text-emerald-700 truncate">
-                  Dapatkan update berita terverifikasi
-                </p>
-              </div>
+              <p className="text-[11px] text-gray-500 mt-1">
+                Dapatkan update berita terverifikasi
+              </p>
             </a>
           </div>
 
-          {/* Tautan Redaksi & Legal */}
+          {/* Tautan Redaksi & Legal (Teks Monokrom Bersih) */}
           <div className="py-3 px-3 border-t border-gray-100 mt-2">
             <div className="px-3 pb-2 text-[11px] font-bold uppercase tracking-wider text-gray-400">
               Informasi & Kebijakan
             </div>
-            <div className="grid grid-cols-1 gap-1 text-xs text-gray-600 font-medium">
+            <div className="grid grid-cols-1 gap-0.5 text-xs text-gray-600 font-medium">
               <Link
                 href="/tentang"
                 onClick={onClose}
-                className="flex items-center space-x-2.5 px-3 py-2 rounded-md hover:bg-gray-100 hover:text-gray-900 transition-colors"
+                className="block px-3 py-2 rounded-md hover:bg-gray-100 hover:text-black transition-colors"
               >
-                <Info className="w-4 h-4 text-gray-400" />
-                <span>Tentang Kami</span>
+                Tentang Kami
               </Link>
               <Link
                 href="/redaksi"
                 onClick={onClose}
-                className="flex items-center space-x-2.5 px-3 py-2 rounded-md hover:bg-gray-100 hover:text-gray-900 transition-colors"
+                className="block px-3 py-2 rounded-md hover:bg-gray-100 hover:text-black transition-colors"
               >
-                <Users className="w-4 h-4 text-gray-400" />
-                <span>Susunan Redaksi</span>
+                Susunan Redaksi
               </Link>
               <Link
                 href="/pedoman"
                 onClick={onClose}
-                className="flex items-center space-x-2.5 px-3 py-2 rounded-md hover:bg-gray-100 hover:text-gray-900 transition-colors"
+                className="block px-3 py-2 rounded-md hover:bg-gray-100 hover:text-black transition-colors"
               >
-                <FileText className="w-4 h-4 text-gray-400" />
-                <span>Pedoman Media Siber</span>
+                Pedoman Media Siber
               </Link>
               <Link
                 href="/privasi"
                 onClick={onClose}
-                className="flex items-center space-x-2.5 px-3 py-2 rounded-md hover:bg-gray-100 hover:text-gray-900 transition-colors"
+                className="block px-3 py-2 rounded-md hover:bg-gray-100 hover:text-black transition-colors"
               >
-                <ShieldCheck className="w-4 h-4 text-gray-400" />
-                <span>Kebijakan Privasi</span>
+                Kebijakan Privasi
               </Link>
               <Link
                 href="/kontak"
                 onClick={onClose}
-                className="flex items-center space-x-2.5 px-3 py-2 rounded-md hover:bg-gray-100 hover:text-gray-900 transition-colors"
+                className="block px-3 py-2 rounded-md hover:bg-gray-100 hover:text-black transition-colors"
               >
-                <Mail className="w-4 h-4 text-gray-400" />
-                <span>Hubungi Redaksi</span>
+                Hubungi Redaksi
               </Link>
             </div>
           </div>
         </div>
 
         {/* Footer Drawer */}
-        <div className="p-4 border-t border-gray-100 bg-gray-50/50 text-center">
+        <div className="p-4 border-t border-gray-100 text-center">
           <p className="text-[11px] text-gray-400">
             &copy; 2026 Ada Fakta. All rights reserved.
           </p>
