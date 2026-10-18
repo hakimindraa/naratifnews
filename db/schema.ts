@@ -54,3 +54,19 @@ export const systemSettings = pgTable('system_settings', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
+export const jurnalisDrafts = pgTable('jurnalis_drafts', {
+  id: serial('id').primaryKey(),
+  title: text('title').notNull(),
+  source: text('source').notNull(),
+  originalUrl: text('original_url').notNull(),
+  publishedAt: timestamp('published_at', { withTimezone: true }),
+  summary: text('summary'),
+  status: varchar('status', { length: 50 }).notNull().default('draft'), // draft | generated | published | archived
+  generatedTitle: text('generated_title'),
+  generatedArticle: text('generated_article'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex('jurnalis_drafts_original_url_idx').on(table.originalUrl),
+  index('jurnalis_drafts_status_created_at_idx').on(table.status, table.createdAt),
+]);
+

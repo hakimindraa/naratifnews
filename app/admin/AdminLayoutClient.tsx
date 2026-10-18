@@ -19,6 +19,7 @@ import {
   Coins,
   Image as ImageIcon,
   Users,
+  Newspaper,
 } from 'lucide-react';
 import { logoutAdmin } from './auth-actions';
 import VercelStatusBadge from './VercelStatusBadge';
@@ -44,6 +45,12 @@ export default function AdminLayoutClient({ children }: AdminLayoutClientProps) 
       href: '/admin',
       icon: LayoutDashboard,
       exact: true,
+    },
+    {
+      label: 'Jurnalis AI',
+      href: '/admin/jurnalis',
+      icon: Newspaper,
+      badge: 'Bot Intel',
     },
     {
       label: 'Tulis Berita',
