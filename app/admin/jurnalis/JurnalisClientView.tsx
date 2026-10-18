@@ -92,7 +92,7 @@ export default function JurnalisClientView({ initialDrafts }: JurnalisClientView
           tags: json.data.tags,
         });
       } else {
-        alert(json.error || json.details || 'Gagal membuat artikel AI');
+        alert(json.details ? `${json.error}: ${json.details}` : json.error || 'Gagal membuat artikel AI');
       }
     } catch (err: any) {
       alert('Terjadi kesalahan jaringan saat memanggil generator AI');

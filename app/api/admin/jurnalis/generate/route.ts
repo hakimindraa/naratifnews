@@ -1,9 +1,46 @@
 import { NextResponse } from "next/server";
 import { sql } from "@/db";
 
+export const maxDuration = 60;
+
+function parseAIResponseContent(rawBody: string): string {
+  const trimmed = rawBody.trim();
+
+  // 1. Tangani jika respons berupa SSE streaming (dimulai atau mengandung data:)
+  if (trimmed.startsWith("data:") || trimmed.includes("\ndata:") || trimmed.includes("\r\ndata:")) {
+    let accumulated = "";
+    const lines = trimmed.split(/\r?\n/);
+    for (const line of lines) {
+      const lineTrimmed = line.trim();
+      if (!lineTrimmed.startsWith("data:")) continue;
+      const dataPayload = lineTrimmed.slice(5).trim();
+      if (!dataPayload || dataPayload === "[DONE]") continue;
+      try {
+        const parsed = JSON.parse(dataPayload);
+        const piece =
+          parsed?.choices?.[0]?.delta?.content ??
+          parsed?.choices?.[0]?.message?.content ??
+          parsed?.choices?.[0]?.text ??
+          "";
+        accumulated += piece;
+      } catch {
+        // Abaikan chunk non-JSON
+      }
+    }
+    if (accumulated.trim()) return accumulated.trim();
+  }
+
+  // 2. Tangani respons JSON standar OpenAI
+  try {
+    const json = JSON.parse(trimmed);
+    return json?.choices?.[0]?.message?.content ?? trimmed;
+  } catch {
+    return trimmed;
+  }
+}
+
 function cleanJsonOutput(text: string): string {
   let cleaned = text.trim();
-  // Hapus markdown wrapper jika AI mengembalikan ```json ... ```
   if (cleaned.startsWith("```")) {
     cleaned = cleaned.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "");
   }
@@ -46,7 +83,7 @@ export async function POST(req: Request) {
     const apiKey =
       process.env.NINEROUTER_API_KEY ||
       process.env.LOCAL_9ROUTER_KEY ||
-      "";
+      "sk-d6bddb272e797ddb-oj08b1-36238240";
     const model =
       process.env.NINEROUTER_MODEL ||
       process.env.LOCAL_9ROUTER_MODEL ||
@@ -63,11 +100,11 @@ Pedoman penulisan:
    - Dampak atau implikasi peristiwa bagi masyarakat/sektor terkait.
    - Paragraf Penutup yang merangkum status terkini.
 3. Jangan mengarang fakta fiktif di luar konteks berita sumber.
-4. Format output dalam bentuk JSON persis seperti ini:
+4. Format output HANYA dalam bentuk JSON valid persis seperti ini tanpa komentar tambahan:
 {
   "title": "Judul Berita Baru",
   "content": "Isi lengkap artikel berita...",
-  "category": "Kategori yang cocok (misal: Nasional, Ekonomi, Teknologi, Regional, Internasional)",
+  "category": "Kategori yang cocok (misal: Olahraga, Nasional, Ekonomi, Teknologi, Internasional)",
   "tags": ["tag1", "tag2", "tag3"]
 }`;
 
@@ -87,12 +124,12 @@ Ringkasan Fakta: ${draft.summary || "-"}`;
       },
       body: JSON.stringify({
         model,
+        stream: false, // Menghindari response chunk SSE dari 9Router
         messages: [
           { role: "system", content: promptSystem },
           { role: "user", content: promptUser },
         ],
         temperature: 0.7,
-        response_format: { type: "json_object" },
       }),
     });
 
@@ -101,8 +138,8 @@ Ringkasan Fakta: ${draft.summary || "-"}`;
       throw new Error(`AI Gateway error (${aiRes.status}): ${errText}`);
     }
 
-    const aiData = await aiRes.json();
-    const rawContent = aiData.choices?.[0]?.message?.content ?? "{}";
+    const rawText = await aiRes.text();
+    const rawContent = parseAIResponseContent(rawText);
     const cleanedJson = cleanJsonOutput(rawContent);
 
     let aiParsed: {
