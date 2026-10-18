@@ -94,13 +94,15 @@ Tugasmu adalah menulis artikel berita utuh berbahasa Indonesia yang objektif, fa
 
 Pedoman penulisan:
 1. Buat judul berita yang lugas, menarik, dan informatif (tanpa clickbait murahan).
-2. Tulis isi berita sebanyak 350 sampai 500 kata yang terdiri dari:
-   - Paragraf Lead (inti peristiwa terhangat).
+2. Kalimat pertama pada paragraf pembuka WAJIB diawali langsung dengan teks "adafaktanews - " (huruf kecil semua diikuti tanda hubung dan spasi), contoh: "adafaktanews - [inti peristiwa terhangat...]".
+3. Tulis isi berita sebanyak 350 sampai 500 kata yang terdiri dari:
+   - Paragraf Lead (diawali adafaktanews - ).
    - Paragraf Penjelasan & Konteks (latar belakang kejadian).
    - Dampak atau implikasi peristiwa bagi masyarakat/sektor terkait.
    - Paragraf Penutup yang merangkum status terkini.
-3. Jangan mengarang fakta fiktif di luar konteks berita sumber.
-4. Format output HANYA dalam bentuk JSON valid persis seperti ini tanpa komentar tambahan:
+4. Di baris paling akhir naskah berita, sertakan satu baris atribusi rujukan dengan tulisan miring: "*Sumber: ${draft.source}*".
+5. Jangan mengarang fakta fiktif di luar konteks berita sumber.
+6. Format output HANYA dalam bentuk JSON valid persis seperti ini tanpa komentar tambahan:
 {
   "title": "Judul Berita Baru",
   "content": "Isi lengkap artikel berita...",
@@ -161,7 +163,20 @@ Ringkasan Fakta: ${draft.summary || "-"}`;
     }
 
     const finalTitle = aiParsed.title || draft.title;
-    const finalContent = aiParsed.content || "";
+    let finalContent = (aiParsed.content || "").trim();
+
+    // 1. Pastikan awalan selalu 'adafaktanews - '
+    if (!finalContent.toLowerCase().startsWith("adafaktanews -")) {
+      finalContent = finalContent.replace(/^adafaktanews\s*[-–—]?\s*/i, "");
+      finalContent = `adafaktanews - ${finalContent.trimStart()}`;
+    }
+
+    // 2. Pastikan akhiran selalu ada '*Sumber: [sumber]*'
+    const expectedSource = draft.source || "Media Partner";
+    if (!finalContent.includes("*Sumber:")) {
+      finalContent = `${finalContent.trimEnd()}\n\n*Sumber: ${expectedSource}*`;
+    }
+
     const finalCategory = aiParsed.category || "Umum";
     const finalTags = Array.isArray(aiParsed.tags) ? aiParsed.tags : [];
 
