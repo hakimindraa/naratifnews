@@ -3,7 +3,7 @@ import { jurnalisDrafts } from '@/db/schema';
 import { desc } from 'drizzle-orm';
 import JurnalisClientView, { JurnalisDraftItem } from './JurnalisClientView';
 
-export const dynamic = 'force-dynamic';
+export const instant = false;
 
 export default async function AdminJurnalisPage() {
   const drafts = await db

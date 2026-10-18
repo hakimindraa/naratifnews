@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
 import { sql } from "@/db";
 
-export const dynamic = "force-dynamic";
-
 function cleanJsonOutput(text: string): string {
   let cleaned = text.trim();
   // Hapus markdown wrapper jika AI mengembalikan ```json ... ```
