@@ -200,6 +200,16 @@ export default function JurnalisClientView({ initialDrafts }: JurnalisClientView
           </div>
 
           <div className="flex items-center gap-2 self-start md:self-center">
+            <a
+              href="https://bottelejurnalis.vercel.app/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 rounded-xl shadow-xs transition-all"
+              title="Buka web console bot jurnalis telegram"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              <span>Buka Bot Console ↗</span>
+            </a>
             <button
               onClick={() => router.refresh()}
               className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors cursor-pointer"

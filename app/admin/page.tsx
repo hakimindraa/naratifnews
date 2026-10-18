@@ -13,6 +13,7 @@ import Link from 'next/link';
 import UploadButton from './UploadButton';
 import MarkdownGuideAccordion from './MarkdownGuideAccordion';
 import ArticleManagerClient, { ArticleItem } from './ArticleManagerClient';
+import BotJurnalisWidget from './BotJurnalisWidget';
 import { db } from '@/db';
 import { articles, aiGenerationLogs } from '@/db/schema';
 import { desc } from 'drizzle-orm';
@@ -133,6 +134,9 @@ export default async function AdminDashboard() {
           <UploadButton />
         </div>
       </div>
+
+      {/* HIGHLIGHT WIDGET: PORTAL BOT JURNALIS TELEGRAM */}
+      <BotJurnalisWidget />
 
       {/* 2. KARTU BARIS 1: STATUS PUBLIKASI UTAMA */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">

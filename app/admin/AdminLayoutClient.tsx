@@ -20,6 +20,7 @@ import {
   Image as ImageIcon,
   Users,
   Newspaper,
+  Bot,
 } from 'lucide-react';
 import { logoutAdmin } from './auth-actions';
 import VercelStatusBadge from './VercelStatusBadge';
@@ -199,6 +200,20 @@ export default function AdminLayoutClient({ children }: AdminLayoutClientProps) 
         {/* Bottom Actions */}
         <div className="p-3.5 border-t border-gray-800 bg-gray-950/40 space-y-1 shrink-0">
           <a
+            href="https://bottelejurnalis.vercel.app/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-between px-3 py-2 rounded-xl text-xs text-purple-300 hover:bg-purple-950/40 hover:text-purple-200 transition-colors"
+            title="Buka konsol eksternal Bot Jurnalis Telegram"
+          >
+            <div className="flex items-center gap-2.5">
+              <Bot className="w-4 h-4 text-purple-400" />
+              <span>Konsol Bot Jurnalis</span>
+            </div>
+            <ExternalLink className="w-3.5 h-3.5 text-purple-400/80" />
+          </a>
+
+          <a
             href="/"
             target="_blank"
             rel="noopener noreferrer"
@@ -327,6 +342,15 @@ export default function AdminLayoutClient({ children }: AdminLayoutClientProps) 
             </nav>
 
             <div className="p-4 border-t border-gray-800 space-y-2">
+              <a
+                href="https://bottelejurnalis.vercel.app/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2.5 text-xs text-purple-300 hover:text-purple-200 py-1.5"
+              >
+                <Bot className="w-4 h-4 text-purple-400" />
+                <span>Konsol Bot Jurnalis ↗</span>
+              </a>
               <a
                 href="/"
                 target="_blank"
