@@ -834,6 +834,26 @@ export default function CronHubPage() {
                     </div>
                   </div>
 
+                  {/* URL 3: Jurnalis AI Queue Publisher */}
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-gray-600">URL Cron Antrean Jurnalis AI (Tiap 1-2 Jam):</label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        readOnly
+                        value={data.config.jurnalisQueueUrl}
+                        className="flex-1 px-3 py-2 text-xs font-mono bg-gray-50 border border-gray-200 rounded-lg text-gray-700 select-all"
+                      />
+                      <button
+                        onClick={() => copyToClipboard(data.config.jurnalisQueueUrl, 'jurnalis_queue_url')}
+                        className="p-2 border border-gray-200 rounded-lg hover:bg-gray-100 text-gray-600 transition-colors"
+                        title="Salin URL Antrean Jurnalis"
+                      >
+                        {copiedKey === 'jurnalis_queue_url' ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
                   {/* Secret Header */}
                   <div className="space-y-1 pt-1">
                     <label className="text-xs font-semibold text-gray-600">

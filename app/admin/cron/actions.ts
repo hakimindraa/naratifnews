@@ -24,6 +24,7 @@ export interface CronHubData {
     siteUrl: string;
     autopilotUrl: string;
     publishUrl: string;
+    jurnalisQueueUrl: string;
     cronSecret: string;
     autopilotEnabled: boolean;
     autopilotProvider: string;
@@ -260,6 +261,7 @@ export async function getCronHubData(): Promise<CronHubData> {
       siteUrl,
       autopilotUrl: `${siteUrl}/api/cron/autopilot`,
       publishUrl: `${siteUrl}/api/cron/publish`,
+      jurnalisQueueUrl: `${siteUrl}/api/cron/jurnalis-publisher`,
       cronSecret,
       autopilotEnabled,
       autopilotProvider,
@@ -402,5 +404,32 @@ export async function testIndexingPingAction(targetUrl?: string) {
     return { success: true, result, url };
   } catch (err: any) {
     return { success: false, message: err.message || 'Gagal mengirim sinyal pengindeksan' };
+  }
+}
+
+/**
+ * Trigger manual: Jalankan antrean penerbitan Jurnalis AI sekarang juga
+ */
+export async function triggerJurnalisPublisherAction() {
+  try {
+    const cronSecret = process.env.CRON_SECRET || '';
+    const req = new Request('http://localhost/api/cron/jurnalis-publisher', {
+      headers: {
+        authorization: `Bearer ${cronSecret}`,
+      },
+    });
+
+    const routeModule = await import('@/app/api/cron/jurnalis-publisher/route');
+    const response = await routeModule.GET(req);
+    const data = await response.json();
+
+    revalidatePath('/');
+    revalidatePath('/admin');
+    revalidatePath('/admin/cron');
+    revalidatePath('/admin/jurnalis');
+
+    return { success: response.ok, ...data };
+  } catch (error: any) {
+    return { success: false, message: error.message || 'Gagal memicu antrean jurnalis' };
   }
 }

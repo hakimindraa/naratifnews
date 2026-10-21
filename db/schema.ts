@@ -64,6 +64,10 @@ export const jurnalisDrafts = pgTable('jurnalis_drafts', {
   status: varchar('status', { length: 50 }).notNull().default('draft'), // draft | generated | published | archived
   generatedTitle: text('generated_title'),
   generatedArticle: text('generated_article'),
+  category: varchar('category', { length: 100 }),
+  tags: text('tags').array(),
+  coverUrl: text('cover_url'),
+  coverCaption: text('cover_caption'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [
   uniqueIndex('jurnalis_drafts_original_url_idx').on(table.originalUrl),

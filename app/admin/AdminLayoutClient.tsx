@@ -408,7 +408,7 @@ export default function AdminLayoutClient({ children }: AdminLayoutClientProps) 
           </div>
         </header>
 
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
+        <main className="flex-1 p-2.5 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
           {children}
         </main>
         <footer className="py-4 text-center text-xs text-gray-500 border-t border-gray-200/80 bg-white/60">

@@ -23,13 +23,21 @@ import {
   AlertTriangle,
   CheckSquare,
   Square,
+  Image as ImageIcon,
+  CalendarClock,
+  Send,
+  ArrowUpRight,
 } from 'lucide-react';
 import {
   deleteDraftAction,
   deleteMultipleDraftsAction,
   deleteAllDraftsAction,
   convertDraftToArticleAction,
+  attachPhotoToDraftAction,
+  removePhotoFromDraftAction,
+  instantPublishDraftAction,
 } from './actions';
+import DraftPhotoModal from './DraftPhotoModal';
 
 export interface JurnalisDraftItem {
   id: number;
@@ -38,9 +46,13 @@ export interface JurnalisDraftItem {
   original_url: string;
   published_at: string | null;
   summary: string;
-  status: string;
+  status: string; // 'draft' | 'generated' | 'ready_to_publish' | 'published' | 'archived'
   generated_title: string | null;
   generated_article: string | null;
+  category?: string | null;
+  tags?: string[];
+  cover_url?: string | null;
+  cover_caption?: string | null;
   created_at: string;
 }
 
@@ -54,8 +66,16 @@ export default function JurnalisClientView({ initialDrafts }: JurnalisClientView
   const [loadingId, setLoadingId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [convertingId, setConvertingId] = useState<number | null>(null);
+  const [instantPublishingId, setInstantPublishingId] = useState<number | null>(null);
+  const [removingPhotoId, setRemovingPhotoId] = useState<number | null>(null);
+  const [photoModalDraft, setPhotoModalDraft] = useState<{
+    draftId: number;
+    title: string;
+    currentCoverUrl?: string | null;
+    currentCaption?: string | null;
+  } | null>(null);
 
-  const [activeTab, setActiveTab] = useState<'all' | 'draft' | 'generated'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'draft' | 'need_photo' | 'ready_to_publish' | 'published'>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
   // Seleksi Massal & Hapus Semua
@@ -88,14 +108,17 @@ export default function JurnalisClientView({ initialDrafts }: JurnalisClientView
 
       const json = await res.json();
       if (json.success) {
+        const nextStatus = json.data.status || 'generated';
         setDrafts((prev) =>
           prev.map((d) =>
             d.id === draftId
               ? {
                   ...d,
-                  status: 'generated',
+                  status: nextStatus,
                   generated_title: json.data.generatedTitle,
                   generated_article: json.data.generatedArticle,
+                  category: json.data.category,
+                  tags: json.data.tags,
                 }
               : d
           )
@@ -114,6 +137,85 @@ export default function JurnalisClientView({ initialDrafts }: JurnalisClientView
       alert('Terjadi kesalahan jaringan saat memanggil generator AI');
     } finally {
       setLoadingId(null);
+    }
+  }
+
+  // Sukses pasang foto ImgBB dari modal
+  function handlePhotoSuccess(draftId: number, coverUrl: string, status: string) {
+    setDrafts((prev) =>
+      prev.map((d) =>
+        d.id === draftId
+          ? {
+              ...d,
+              cover_url: coverUrl,
+              status: status || 'ready_to_publish',
+            }
+          : d
+      )
+    );
+  }
+
+  // Hapus foto draf
+  async function handleRemovePhoto(draftId: number) {
+    if (!confirm('Hapus foto dari draf ini? Draf akan dikeluarkan dari antrean publikasi berkala.')) {
+      return;
+    }
+
+    setRemovingPhotoId(draftId);
+    try {
+      const res = await removePhotoFromDraftAction(draftId);
+      if (res.success) {
+        setDrafts((prev) =>
+          prev.map((d) =>
+            d.id === draftId
+              ? {
+                  ...d,
+                  cover_url: null,
+                  cover_caption: null,
+                  status: res.status || 'generated',
+                }
+              : d
+          )
+        );
+      } else {
+        alert(res.error || 'Gagal menghapus foto.');
+      }
+    } catch {
+      alert('Terjadi gangguan jaringan saat menghapus foto.');
+    } finally {
+      setRemovingPhotoId(null);
+    }
+  }
+
+  // Publikasi instan (bypass antrean cron)
+  async function handleInstantPublish(draftId: number) {
+    const draft = drafts.find((d) => d.id === draftId);
+    if (!draft) return;
+
+    if (!draft.cover_url) {
+      alert('Foto cover ImgBB wajib diisi sebelum menerbitkan berita!');
+      return;
+    }
+
+    if (!confirm(`Terbitkan berita "${draft.generated_title || draft.title}" sekarang ke portal?`)) {
+      return;
+    }
+
+    setInstantPublishingId(draftId);
+    try {
+      const res = await instantPublishDraftAction(draftId);
+      if (res.success) {
+        setDrafts((prev) =>
+          prev.map((d) => (d.id === draftId ? { ...d, status: 'published' } : d))
+        );
+        alert(res.message || 'Berita berhasil tayang di portal AdaFakta!');
+      } else {
+        alert(res.error || 'Gagal menerbitkan artikel.');
+      }
+    } catch {
+      alert('Terjadi kesalahan jaringan saat memproses publikasi.');
+    } finally {
+      setInstantPublishingId(null);
     }
   }
 
@@ -238,132 +340,170 @@ export default function JurnalisClientView({ initialDrafts }: JurnalisClientView
 
   // Filter usulan berita
   const filteredDrafts = drafts.filter((d) => {
-    const matchesTab =
-      activeTab === 'all'
-        ? true
-        : activeTab === 'draft'
-        ? d.status === 'draft'
-        : d.status === 'generated' || d.status === 'published';
+    let matchesTab = true;
+    if (activeTab === 'draft') {
+      matchesTab = d.status === 'draft';
+    } else if (activeTab === 'need_photo') {
+      matchesTab =
+        (d.status === 'generated' || !!d.generated_article) &&
+        (!d.cover_url || d.cover_url.trim() === '') &&
+        d.status !== 'published';
+    } else if (activeTab === 'ready_to_publish') {
+      matchesTab = d.status === 'ready_to_publish';
+    } else if (activeTab === 'published') {
+      matchesTab = d.status === 'published';
+    }
 
     const matchesSearch =
       searchQuery.trim() === '' ||
       d.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       d.source.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      d.summary.toLowerCase().includes(searchQuery.toLowerCase());
+      d.summary.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (d.category && d.category.toLowerCase().includes(searchQuery.toLowerCase()));
 
     return matchesTab && matchesSearch;
   });
 
   const totalAll = drafts.length;
   const totalDraft = drafts.filter((d) => d.status === 'draft').length;
-  const totalGenerated = drafts.filter(
-    (d) => d.status === 'generated' || d.status === 'published'
+  const totalNeedPhoto = drafts.filter(
+    (d) =>
+      (d.status === 'generated' || !!d.generated_article) &&
+      (!d.cover_url || d.cover_url.trim() === '') &&
+      d.status !== 'published'
   ).length;
+  const totalQueued = drafts.filter((d) => d.status === 'ready_to_publish').length;
+  const totalPublished = drafts.filter((d) => d.status === 'published').length;
+  const totalGenerated = drafts.filter((d) => d.status !== 'draft').length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header Banner */}
-      <div className="bg-white rounded-2xl border border-gray-200/80 p-6 shadow-xs">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-start gap-4">
-            <div className="w-12 h-12 rounded-xl bg-indigo-600/10 text-indigo-600 flex items-center justify-center shrink-0">
-              <Newspaper className="w-6 h-6" />
+      <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-200/80 p-3.5 sm:p-6 shadow-xs">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
+          <div className="flex items-start gap-3 sm:gap-4">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-indigo-600/10 text-indigo-600 flex items-center justify-center shrink-0">
+              <Newspaper className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight font-heading">
+              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                <h1 className="text-lg sm:text-2xl font-bold text-gray-900 tracking-tight font-heading">
                   Meja Redaksi Jurnalis AI
                 </h1>
-                <span className="text-xs px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-700 font-semibold border border-indigo-200">
-                  Bot Intel Live
+                <span className="text-[10px] sm:text-xs px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 font-semibold border border-indigo-200">
+                  Antrean Publikasi Aktif
                 </span>
               </div>
-              <p className="text-xs sm:text-sm text-gray-500 mt-1 max-w-2xl leading-relaxed">
-                Pusat penerimaan intelijen berita otomatis dari Bot Jurnalis (<code className="text-xs bg-gray-100 px-1 py-0.5 rounded">berita-ai</code>). Redaktur cukup memilih bahan dan 1-klik generate untuk menyusun naskah berita 5W+1H siap terbit.
+              <p className="text-[11px] sm:text-sm text-gray-500 mt-1 max-w-2xl leading-relaxed">
+                Pusat kurasi berita otomatis. Berita hanya akan masuk antrean tayang berkala (cron) setelah naskah AI siap dan foto ImgBB terisi.
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 self-start md:self-center">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 self-start md:self-center">
             <a
               href="https://bottelejurnalis.vercel.app/"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 rounded-xl shadow-xs transition-all"
+              className="inline-flex items-center gap-1 px-2.5 sm:px-3.5 py-1.5 sm:py-2 text-[11px] sm:text-xs font-bold text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 rounded-lg sm:rounded-xl shadow-xs transition-all"
               title="Buka web console bot jurnalis telegram"
             >
-              <ExternalLink className="w-3.5 h-3.5" />
-              <span>Buka Bot Console ↗</span>
+              <ExternalLink className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+              <span>Bot Console ↗</span>
             </a>
             {totalAll > 0 && (
               <button
                 type="button"
                 onClick={() => setShowDeleteAllModal(true)}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-red-700 bg-red-50 hover:bg-red-100 border border-red-200/80 rounded-xl transition-all cursor-pointer shadow-xs"
+                className="inline-flex items-center gap-1 px-2.5 sm:px-3.5 py-1.5 sm:py-2 text-[11px] sm:text-xs font-semibold text-red-700 bg-red-50 hover:bg-red-100 border border-red-200/80 rounded-lg sm:rounded-xl transition-all cursor-pointer shadow-xs"
                 title="Hapus seluruh usulan draf jurnalis"
               >
-                <Trash2 className="w-3.5 h-3.5 text-red-600" />
+                <Trash2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-red-600" />
                 <span>Hapus Semua</span>
               </button>
             )}
             <button
               onClick={() => router.refresh()}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1 px-2.5 sm:px-3.5 py-1.5 sm:py-2 text-[11px] sm:text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg sm:rounded-xl transition-colors cursor-pointer"
             >
-              <RefreshCw className="w-3.5 h-3.5" />
-              Segarkan
+              <RefreshCw className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+              <span>Segarkan</span>
             </button>
           </div>
         </div>
 
-        {/* Statistik Kartu */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 mt-6 pt-5 border-t border-gray-100">
-          <div className="bg-gray-50/70 border border-gray-200/60 rounded-xl p-3.5 flex items-center justify-between">
+        {/* Statistik Kartu Antrean 5 Kolom */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3 mt-4 sm:mt-6 pt-3.5 sm:pt-5 border-t border-gray-100">
+          <div className="bg-gray-50/70 border border-gray-200/60 rounded-xl p-2.5 sm:p-3 flex items-center justify-between">
             <div>
-              <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider block">
-                Total Usulan Masuk
+              <span className="text-[9px] sm:text-[10px] font-semibold text-gray-500 uppercase tracking-wider block">
+                Total Usulan
               </span>
-              <span className="text-2xl font-bold text-gray-900">{totalAll}</span>
+              <span className="text-lg sm:text-xl font-bold text-gray-900">{totalAll}</span>
             </div>
-            <div className="w-9 h-9 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center">
-              <Radio className="w-4 h-4" />
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center">
+              <Radio className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </div>
           </div>
 
-          <div className="bg-gray-50/70 border border-gray-200/60 rounded-xl p-3.5 flex items-center justify-between">
+          <div className="bg-gray-50/70 border border-gray-200/60 rounded-xl p-2.5 sm:p-3 flex items-center justify-between">
             <div>
-              <span className="text-[11px] font-semibold text-amber-600 uppercase tracking-wider block">
-                Draf Mentah (Menunggu AI)
+              <span className="text-[9px] sm:text-[10px] font-semibold text-amber-600 uppercase tracking-wider block">
+                Draf Mentah
               </span>
-              <span className="text-2xl font-bold text-amber-700">{totalDraft}</span>
+              <span className="text-lg sm:text-xl font-bold text-amber-700">{totalDraft}</span>
             </div>
-            <div className="w-9 h-9 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center">
-              <Clock className="w-4 h-4" />
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center">
+              <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </div>
           </div>
 
-          <div className="bg-gray-50/70 border border-gray-200/60 rounded-xl p-3.5 flex items-center justify-between">
+          <div className="bg-amber-50/50 border border-amber-200/60 rounded-xl p-2.5 sm:p-3 flex items-center justify-between">
             <div>
-              <span className="text-[11px] font-semibold text-emerald-600 uppercase tracking-wider block">
-                Artikel Siap Terbit
+              <span className="text-[9px] sm:text-[10px] font-bold text-amber-700 uppercase tracking-wider block">
+                ⚠️ Butuh Foto
               </span>
-              <span className="text-2xl font-bold text-emerald-700">{totalGenerated}</span>
+              <span className="text-lg sm:text-xl font-bold text-amber-800">{totalNeedPhoto}</span>
             </div>
-            <div className="w-9 h-9 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center">
-              <CheckCircle2 className="w-4 h-4" />
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center">
+              <ImageIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            </div>
+          </div>
+
+          <div className="bg-indigo-50/50 border border-indigo-200/60 rounded-xl p-2.5 sm:p-3 flex items-center justify-between">
+            <div>
+              <span className="text-[9px] sm:text-[10px] font-bold text-indigo-700 uppercase tracking-wider block">
+                ⏳ Antrean
+              </span>
+              <span className="text-lg sm:text-xl font-bold text-indigo-800">{totalQueued}</span>
+            </div>
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center">
+              <CalendarClock className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            </div>
+          </div>
+
+          <div className="bg-emerald-50/50 border border-emerald-200/60 rounded-xl p-2.5 sm:p-3 flex items-center justify-between col-span-2 sm:col-span-1">
+            <div>
+              <span className="text-[9px] sm:text-[10px] font-bold text-emerald-700 uppercase tracking-wider block">
+                🚀 Sudah Tayang
+              </span>
+              <span className="text-lg sm:text-xl font-bold text-emerald-800">{totalPublished}</span>
+            </div>
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center">
+              <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </div>
           </div>
         </div>
       </div>
 
       {/* Filter Tab & Search Bar */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-1.5 bg-gray-200/70 p-1 rounded-xl">
+      <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-2.5 sm:gap-3">
+        <div className="flex items-center gap-1 sm:gap-1.5 bg-gray-200/70 p-1 rounded-xl overflow-x-auto no-scrollbar scroll-smooth">
           <button
             onClick={() => setActiveTab('all')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+            className={`shrink-0 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-medium whitespace-nowrap transition-all cursor-pointer ${
               activeTab === 'all'
-                ? 'bg-white text-gray-900 shadow-xs font-semibold'
+                ? 'bg-white text-gray-900 shadow-xs font-bold'
                 : 'text-gray-600 hover:text-gray-900'
             }`}
           >
@@ -371,32 +511,52 @@ export default function JurnalisClientView({ initialDrafts }: JurnalisClientView
           </button>
           <button
             onClick={() => setActiveTab('draft')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+            className={`shrink-0 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-medium whitespace-nowrap transition-all cursor-pointer ${
               activeTab === 'draft'
-                ? 'bg-white text-amber-700 shadow-xs font-semibold'
+                ? 'bg-white text-amber-700 shadow-xs font-bold'
                 : 'text-gray-600 hover:text-gray-900'
             }`}
           >
-            Draf Mentah ({totalDraft})
+            Mentah ({totalDraft})
           </button>
           <button
-            onClick={() => setActiveTab('generated')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
-              activeTab === 'generated'
-                ? 'bg-white text-emerald-700 shadow-xs font-semibold'
+            onClick={() => setActiveTab('need_photo')}
+            className={`shrink-0 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-medium whitespace-nowrap transition-all cursor-pointer ${
+              activeTab === 'need_photo'
+                ? 'bg-white text-amber-800 shadow-xs font-bold'
                 : 'text-gray-600 hover:text-gray-900'
             }`}
           >
-            Siap Terbit ({totalGenerated})
+            ⚠️ Butuh Foto ({totalNeedPhoto})
+          </button>
+          <button
+            onClick={() => setActiveTab('ready_to_publish')}
+            className={`shrink-0 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-medium whitespace-nowrap transition-all cursor-pointer ${
+              activeTab === 'ready_to_publish'
+                ? 'bg-white text-indigo-700 shadow-xs font-bold'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            ⏳ Antrean ({totalQueued})
+          </button>
+          <button
+            onClick={() => setActiveTab('published')}
+            className={`shrink-0 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-medium whitespace-nowrap transition-all cursor-pointer ${
+              activeTab === 'published'
+                ? 'bg-white text-emerald-700 shadow-xs font-bold'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            🚀 Sudah Tayang ({totalPublished})
           </button>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2">
           {filteredDrafts.length > 0 && (
             <button
               type="button"
               onClick={handleSelectAllFiltered}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
+              className={`inline-flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-semibold border transition-all cursor-pointer shrink-0 ${
                 filteredDrafts.length > 0 && filteredDrafts.every((d) => selectedIds.includes(d.id))
                   ? 'bg-indigo-50 border-indigo-300 text-indigo-700 font-bold'
                   : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
@@ -407,22 +567,22 @@ export default function JurnalisClientView({ initialDrafts }: JurnalisClientView
               ) : (
                 <Square className="w-3.5 h-3.5 text-gray-400" />
               )}
-              <span>
+              <span className="hidden xs:inline">
                 {filteredDrafts.length > 0 && filteredDrafts.every((d) => selectedIds.includes(d.id))
-                  ? 'Batalkan Semua'
+                  ? 'Batal'
                   : 'Pilih Semua'}
               </span>
             </button>
           )}
 
           <div className="relative flex-1 sm:w-64">
-            <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <Search className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400 absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Cari berita atau media..."
+              placeholder="Cari berita..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-1.5 text-xs bg-white border border-gray-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+              className="w-full pl-8 sm:pl-9 pr-3 py-1.5 text-[11px] sm:text-xs bg-white border border-gray-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
             />
           </div>
         </div>
@@ -430,37 +590,37 @@ export default function JurnalisClientView({ initialDrafts }: JurnalisClientView
 
       {/* Floating Bulk Action Bar (Muncul saat ada item dipilih) */}
       {selectedIds.length > 0 && (
-        <div className="bg-[#0f172a] text-white p-3.5 sm:p-4 rounded-2xl flex flex-wrap items-center justify-between gap-3 shadow-xl border border-slate-700 animate-in fade-in slide-in-from-top-2 duration-150">
-          <div className="flex items-center gap-2.5">
-            <span className="w-6 h-6 rounded-full bg-indigo-500/30 border border-indigo-400/40 flex items-center justify-center text-xs font-bold text-indigo-200">
+        <div className="bg-[#0f172a] text-white p-3 sm:p-4 rounded-xl sm:rounded-2xl flex flex-wrap items-center justify-between gap-2.5 shadow-xl border border-slate-700 animate-in fade-in slide-in-from-top-2 duration-150">
+          <div className="flex items-center gap-2">
+            <span className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-indigo-500/30 border border-indigo-400/40 flex items-center justify-center text-[10px] sm:text-xs font-bold text-indigo-200">
               {selectedIds.length}
             </span>
-            <span className="text-xs sm:text-sm font-semibold">
-              {selectedIds.length} usulan draf dipilih
+            <span className="text-[11px] sm:text-sm font-semibold">
+              {selectedIds.length} draf dipilih
             </span>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             <button
               type="button"
               disabled={isDeletingBulk}
               onClick={handleDeleteSelected}
-              className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-red-600 hover:bg-red-700 disabled:bg-red-400 rounded-xl transition-all cursor-pointer shadow-xs"
+              className="inline-flex items-center gap-1 px-3 sm:px-4 py-1.5 sm:py-2 text-[11px] sm:text-xs font-bold text-white bg-red-600 hover:bg-red-700 disabled:bg-red-400 rounded-lg sm:rounded-xl transition-all cursor-pointer shadow-xs"
             >
               {isDeletingBulk ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <Loader2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 animate-spin" />
               ) : (
-                <Trash2 className="w-3.5 h-3.5" />
+                <Trash2 className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
               )}
-              <span>Hapus {selectedIds.length} Terpilih</span>
+              <span>Hapus ({selectedIds.length})</span>
             </button>
 
             <button
               type="button"
               onClick={() => setSelectedIds([])}
-              className="px-3 py-2 text-xs font-medium text-slate-300 hover:text-white transition-colors cursor-pointer"
+              className="px-2.5 sm:px-3 py-1.5 sm:py-2 text-[11px] sm:text-xs font-medium text-slate-300 hover:text-white transition-colors cursor-pointer"
             >
-              Batal Pilihan
+              Batal
             </button>
           </div>
         </div>
@@ -480,143 +640,314 @@ export default function JurnalisClientView({ initialDrafts }: JurnalisClientView
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4 lg:gap-5">
           {filteredDrafts.map((draft) => {
-            const isGenerated = draft.status === 'generated' || draft.status === 'published';
+            const hasArticle = !!draft.generated_article;
+            const hasPhoto = !!(draft.cover_url && draft.cover_url.trim().length > 0);
+            const isQueued = draft.status === 'ready_to_publish';
+            const isPublished = draft.status === 'published';
+            const isNeedPhoto = hasArticle && !hasPhoto && !isPublished;
+
             const isGenerating = loadingId === draft.id;
             const isDeleting = deletingId === draft.id;
             const isConverting = convertingId === draft.id;
+            const isInstantPublishing = instantPublishingId === draft.id;
+            const isRemovingPhoto = removingPhotoId === draft.id;
 
             return (
               <div
                 key={draft.id}
-                className="bg-white rounded-2xl border border-gray-200/90 shadow-xs hover:shadow-md transition-all flex flex-col justify-between overflow-hidden group"
+                className={`bg-white rounded-xl sm:rounded-2xl border shadow-xs hover:shadow-md transition-all flex flex-col justify-between overflow-hidden group ${
+                  isQueued
+                    ? 'border-indigo-300 ring-1 ring-indigo-200/50'
+                    : isPublished
+                    ? 'border-emerald-300 bg-emerald-50/10'
+                    : isNeedPhoto
+                    ? 'border-amber-300'
+                    : 'border-gray-200/90'
+                }`}
               >
-                <div className="p-5">
-                  {/* Top Bar: Checkbox + Source + Status */}
-                  <div className="flex items-center justify-between gap-2 mb-3">
-                    <div className="flex items-center gap-2.5 min-w-0">
+                <div className="p-2 sm:p-4 flex-1 flex flex-col">
+                  {/* Top Bar: Checkbox + Source + Category + Queue Status */}
+                  <div className="flex items-center justify-between gap-1 mb-2">
+                    <div className="flex items-center gap-1.5 min-w-0">
                       <input
                         type="checkbox"
                         checked={selectedIds.includes(draft.id)}
                         onChange={() => handleToggleSelect(draft.id)}
-                        className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer shrink-0"
+                        className="w-3.5 h-3.5 sm:w-4 sm:h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer shrink-0"
                         title="Pilih draf ini"
                       />
-                      <span className="text-[11px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200/60 px-2.5 py-0.5 rounded-md truncate max-w-[130px]">
+                      <span className="text-[10px] sm:text-[11px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200/60 px-1.5 py-0.5 rounded truncate max-w-[55px] xs:max-w-[80px] sm:max-w-[110px]">
                         {draft.source}
                       </span>
+                      {draft.category && (
+                        <span className="hidden sm:inline-block text-[10px] font-semibold text-purple-700 bg-purple-50 border border-purple-200 px-1.5 py-0.5 rounded shrink-0 truncate max-w-[80px]">
+                          {draft.category}
+                        </span>
+                      )}
                     </div>
 
-                    <span
-                      className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border shrink-0 ${
-                        isGenerated
-                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                          : 'bg-amber-50 text-amber-700 border-amber-200'
-                      }`}
-                    >
-                      {isGenerated ? '✓ Siap Terbit' : '⏳ Draf Mentah'}
-                    </span>
+                    {isPublished ? (
+                      <span className="text-[9px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 shrink-0 flex items-center gap-1">
+                        <CheckCircle2 className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-emerald-600" />
+                        <span className="hidden xs:inline">Tayang</span>
+                        <span className="xs:hidden">Live</span>
+                      </span>
+                    ) : isQueued ? (
+                      <span className="text-[9px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 border border-indigo-300 shrink-0 flex items-center gap-1">
+                        <CalendarClock className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-indigo-600" />
+                        <span className="hidden xs:inline">Antrean</span>
+                        <span className="xs:hidden">Antre</span>
+                      </span>
+                    ) : isNeedPhoto ? (
+                      <span className="text-[9px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 shrink-0 flex items-center gap-1">
+                        <AlertCircle className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-amber-600" />
+                        <span className="hidden xs:inline">Butuh Foto</span>
+                        <span className="xs:hidden">Foto</span>
+                      </span>
+                    ) : (
+                      <span className="text-[9px] sm:text-[10px] font-semibold px-1.5 sm:px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200 shrink-0">
+                        <span className="hidden sm:inline">⏳ Draf Mentah</span>
+                        <span className="sm:hidden">Mentah</span>
+                      </span>
+                    )}
                   </div>
 
-                  {/* Judul Berita */}
-                  <h3 className="font-bold text-sm sm:text-base text-gray-900 line-clamp-2 leading-snug group-hover:text-indigo-600 transition-colors mb-2">
-                    {draft.title}
-                  </h3>
-
-                  {/* Ringkasan Intelijen */}
-                  <p className="text-xs text-gray-600 line-clamp-3 leading-relaxed mb-3">
-                    {draft.summary || 'Tidak ada ringkasan teks dari sumber berita.'}
-                  </p>
-
-                  <div className="text-[11px] text-gray-400 flex items-center gap-1.5">
-                    <Clock className="w-3 h-3" />
-                    <span>
-                      {draft.published_at
-                        ? new Date(draft.published_at).toLocaleString('id-ID', {
-                            dateStyle: 'medium',
-                            timeStyle: 'short',
-                          })
-                        : new Date(draft.created_at).toLocaleDateString('id-ID')}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Bottom Actions */}
-                <div className="px-5 py-3.5 bg-gray-50/70 border-t border-gray-100 space-y-2.5">
-                  <div className="flex items-center justify-between text-xs">
-                    <a
-                      href={draft.original_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-gray-500 hover:text-indigo-600 inline-flex items-center gap-1 font-medium transition-colors"
-                    >
-                      <span>Sumber Asli</span>
-                      <ExternalLink className="w-3 h-3" />
-                    </a>
-
-                    <button
-                      type="button"
-                      disabled={isDeleting}
-                      onClick={() => setConfirmSingleDelete({ id: draft.id, title: draft.title })}
-                      className="text-gray-400 hover:text-red-600 hover:bg-red-50 p-1.5 rounded-lg transition-colors cursor-pointer"
-                      title="Hapus Usulan Draf Ini"
-                    >
-                      {isDeleting ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      ) : (
-                        <Trash2 className="w-3.5 h-3.5" />
+                  {/* Visual Anchor: Slot Foto ImgBB atau Status Cover */}
+                  {draft.cover_url ? (
+                    <div className="space-y-1 mb-2">
+                      <div className="relative rounded-lg sm:rounded-xl overflow-hidden border border-gray-200 bg-gray-100 aspect-video group/img">
+                        <img
+                          src={draft.cover_url}
+                          alt={draft.title}
+                          className="w-full h-full object-cover transition-transform group-hover/img:scale-105 duration-300"
+                        />
+                        <div className="absolute top-1 left-1 bg-black/60 backdrop-blur-xs text-white text-[8px] sm:text-[10px] font-semibold px-1.5 py-0.5 rounded flex items-center gap-1">
+                          <ImageIcon className="w-2.5 h-2.5 text-emerald-400" />
+                          <span className="hidden sm:inline">ImgBB</span>
+                        </div>
+                        <div className="absolute bottom-1 right-1 flex items-center gap-0.5 sm:gap-1 bg-black/60 backdrop-blur-xs p-0.5 sm:p-1 rounded-md">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setPhotoModalDraft({
+                                draftId: draft.id,
+                                title: draft.generated_title || draft.title,
+                                currentCoverUrl: draft.cover_url,
+                                currentCaption: draft.cover_caption,
+                              })
+                            }
+                            className="px-1.5 py-0.5 text-[9px] sm:text-[10px] font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded transition-colors cursor-pointer"
+                            title="Ganti Foto"
+                          >
+                            Ganti
+                          </button>
+                          <button
+                            type="button"
+                            disabled={isRemovingPhoto}
+                            onClick={() => handleRemovePhoto(draft.id)}
+                            className="px-1.5 py-0.5 text-[9px] sm:text-[10px] font-bold text-white bg-red-600 hover:bg-red-700 rounded transition-colors cursor-pointer"
+                            title="Hapus Foto"
+                          >
+                            {isRemovingPhoto ? (
+                              <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                            ) : (
+                              'Hapus'
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                      {draft.cover_caption && (
+                        <p className="text-[9px] sm:text-[10px] text-gray-500 truncate" title={draft.cover_caption}>
+                          {draft.cover_caption}
+                        </p>
                       )}
-                    </button>
-                  </div>
-
-                  {isGenerated ? (
-                    <div className="grid grid-cols-2 gap-2">
+                    </div>
+                  ) : isPublished ? (
+                    <div className="rounded-lg sm:rounded-xl bg-emerald-50/80 border border-emerald-200/80 p-2 sm:p-2.5 text-center mb-2">
+                      <div className="flex items-center justify-center gap-1 text-[10px] sm:text-xs font-bold text-emerald-800">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
+                        <span className="truncate">Tayang di Portal</span>
+                      </div>
+                      <p className="text-[9px] sm:text-[10px] text-emerald-600 mt-0.5 line-clamp-1">
+                        Artikel sudah live di website
+                      </p>
+                    </div>
+                  ) : isNeedPhoto ? (
+                    <div className="rounded-lg sm:rounded-xl border border-dashed border-amber-300 bg-amber-50/40 p-2 sm:p-2.5 text-center mb-2">
+                      <div className="flex items-center justify-center gap-1 text-[10px] sm:text-xs font-semibold text-amber-900">
+                        <ImageIcon className="w-3 h-3 text-amber-600 shrink-0" />
+                        <span className="truncate">Foto Belum Diisi</span>
+                      </div>
+                      <p className="text-[9px] sm:text-[10px] text-amber-700/80 mt-0.5 line-clamp-1">
+                        Isi foto agar antre terbit
+                      </p>
                       <button
                         type="button"
                         onClick={() =>
-                          setActivePreview({
+                          setPhotoModalDraft({
                             draftId: draft.id,
                             title: draft.generated_title || draft.title,
-                            content: draft.generated_article || '',
+                            currentCoverUrl: null,
+                            currentCaption: null,
                           })
                         }
-                        className="w-full py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                        className="mt-1.5 inline-flex items-center justify-center gap-1 w-full py-1 px-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-md text-[10px] sm:text-xs font-bold transition-all shadow-2xs cursor-pointer"
                       >
-                        <BookOpen className="w-3.5 h-3.5" />
-                        <span>Lihat Hasil AI</span>
+                        <ImageIcon className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                        <span>+ Pasang Foto</span>
                       </button>
+                    </div>
+                  ) : (
+                    <div className="rounded-lg sm:rounded-xl border border-dashed border-gray-200 bg-gray-50/60 p-2 sm:p-2.5 text-center mb-2">
+                      <div className="flex items-center justify-center gap-1 text-[10px] sm:text-xs text-gray-500 font-medium">
+                        <Sparkles className="w-3 h-3 text-indigo-400 shrink-0" />
+                        <span className="truncate">Draf Mentah</span>
+                      </div>
+                      <p className="text-[9px] sm:text-[10px] text-gray-400 mt-0.5 line-clamp-1">
+                        Klik Generate AI di bawah
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Judul Berita */}
+                  <h3
+                    className="font-bold text-xs sm:text-sm lg:text-base text-gray-900 line-clamp-2 leading-tight sm:leading-snug group-hover:text-indigo-600 transition-colors mb-1"
+                    title={draft.generated_title || draft.title}
+                  >
+                    {draft.generated_title || draft.title}
+                  </h3>
+
+                  {/* Ringkasan Berita */}
+                  <p className="text-[10px] sm:text-xs text-gray-600 line-clamp-2 leading-relaxed mb-2 flex-1">
+                    {draft.summary || 'Tidak ada ringkasan teks dari sumber berita.'}
+                  </p>
+
+                  {/* Meta Bar: Jam, Link Sumber, Tombol Hapus */}
+                  <div className="flex items-center justify-between text-[9px] sm:text-[11px] text-gray-400 pt-1.5 border-t border-gray-100 mt-auto">
+                    <div className="flex items-center gap-1 truncate max-w-[95px] xs:max-w-[120px] sm:max-w-none">
+                      <Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3 shrink-0" />
+                      <span className="truncate">
+                        {draft.published_at
+                          ? new Date(draft.published_at).toLocaleDateString('id-ID', {
+                              day: 'numeric',
+                              month: 'short',
+                            })
+                          : new Date(draft.created_at).toLocaleDateString('id-ID', {
+                              day: 'numeric',
+                              month: 'short',
+                            })}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
+                      <a
+                        href={draft.original_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-gray-400 hover:text-indigo-600 p-1 rounded transition-colors"
+                        title="Buka Sumber Asli"
+                      >
+                        <ExternalLink className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                      </a>
 
                       <button
                         type="button"
-                        disabled={isConverting}
-                        onClick={() => handleConvertToArticle(draft.id)}
-                        className="w-full py-2 px-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white rounded-xl text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                        disabled={isDeleting}
+                        onClick={() => setConfirmSingleDelete({ id: draft.id, title: draft.title })}
+                        className="text-gray-400 hover:text-red-600 hover:bg-red-50 p-1 rounded transition-colors cursor-pointer"
+                        title="Hapus Usulan Draf Ini"
                       >
-                        {isConverting ? (
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        {isDeleting ? (
+                          <Loader2 className="w-2.5 h-2.5 sm:w-3 sm:h-3 animate-spin" />
                         ) : (
-                          <FileEdit className="w-3.5 h-3.5" />
+                          <Trash2 className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
                         )}
-                        <span>Ke Meja Tulis</span>
                       </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bottom Actions Footer */}
+                <div className="p-2 sm:p-3 bg-gray-50/70 border-t border-gray-100 space-y-1.5 sm:space-y-2">
+                  {hasArticle ? (
+                    <div className="space-y-1.5 sm:space-y-2">
+                      <div className="grid grid-cols-2 gap-1 sm:gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setActivePreview({
+                              draftId: draft.id,
+                              title: draft.generated_title || draft.title,
+                              content: draft.generated_article || '',
+                              category: draft.category || undefined,
+                              tags: draft.tags || undefined,
+                            })
+                          }
+                          className="w-full py-1.5 sm:py-2 px-1 sm:px-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-semibold transition-colors flex items-center justify-center gap-1 cursor-pointer shadow-2xs"
+                          title="Lihat Hasil Naskah AI"
+                        >
+                          <BookOpen className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
+                          <span className="truncate">Naskah</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          disabled={isConverting}
+                          onClick={() => handleConvertToArticle(draft.id)}
+                          className="w-full py-1.5 sm:py-2 px-1 sm:px-2 bg-white hover:bg-gray-100 border border-gray-300 text-gray-700 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-semibold transition-colors flex items-center justify-center gap-1 cursor-pointer shadow-2xs"
+                          title="Buka Editor Lengkap"
+                        >
+                          {isConverting ? (
+                            <Loader2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 animate-spin" />
+                          ) : (
+                            <FileEdit className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
+                          )}
+                          <span className="truncate">Editor</span>
+                        </button>
+                      </div>
+
+                      {/* Tombol Publikasi Instan (Bypass Cron) jika draf sudah siap di antrean */}
+                      {isQueued && (
+                        <button
+                          type="button"
+                          disabled={isInstantPublishing}
+                          onClick={() => handleInstantPublish(draft.id)}
+                          className="w-full py-1.5 sm:py-2 px-1.5 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 disabled:opacity-50 text-white rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer shadow-2xs"
+                          title="Terbitkan detik ini juga tanpa menunggu jadwal cron berkala"
+                        >
+                          {isInstantPublishing ? (
+                            <>
+                              <Loader2 className="w-3 h-3 animate-spin shrink-0" />
+                              <span className="truncate">Menerbitkan...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Send className="w-3 h-3 shrink-0" />
+                              <span className="truncate">🚀 Terbitkan (Bypass)</span>
+                            </>
+                          )}
+                        </button>
+                      )}
                     </div>
                   ) : (
                     <button
                       type="button"
                       disabled={isGenerating}
                       onClick={() => handleGenerate(draft.id)}
-                      className="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+                      className="w-full py-1.5 sm:py-2.5 px-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-semibold transition-all flex items-center justify-center gap-1 cursor-pointer shadow-2xs"
+                      title="Generate Berita AI (5W+1H)"
                     >
                       {isGenerating ? (
                         <>
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          <span>AI Sedang Menulis 5W+1H...</span>
+                          <Loader2 className="w-3 h-3 animate-spin shrink-0" />
+                          <span className="truncate">Menulis...</span>
                         </>
                       ) : (
                         <>
-                          <Sparkles className="w-3.5 h-3.5" />
-                          <span>⚡ Generate Berita Lengkap</span>
+                          <Sparkles className="w-3 h-3 text-indigo-200 shrink-0" />
+                          <span className="truncate">⚡ Generate AI</span>
                         </>
                       )}
                     </button>
@@ -910,6 +1241,21 @@ export default function JurnalisClientView({ initialDrafts }: JurnalisClientView
             </div>
           </div>
         </div>
+      )}
+
+      {/* Modal Upload / Tempel Foto ImgBB */}
+      {photoModalDraft && (
+        <DraftPhotoModal
+          isOpen={!!photoModalDraft}
+          onClose={() => setPhotoModalDraft(null)}
+          draftId={photoModalDraft.draftId}
+          draftTitle={photoModalDraft.title}
+          initialCoverUrl={photoModalDraft.currentCoverUrl}
+          initialCaption={photoModalDraft.currentCaption}
+          onSuccess={(coverUrl, status) =>
+            handlePhotoSuccess(photoModalDraft.draftId, coverUrl, status)
+          }
+        />
       )}
     </div>
   );

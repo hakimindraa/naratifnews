@@ -22,11 +22,15 @@ export default async function AdminJurnalisPage() {
     status: d.status,
     generated_title: d.generatedTitle,
     generated_article: d.generatedArticle,
+    category: d.category,
+    tags: d.tags || [],
+    cover_url: d.coverUrl,
+    cover_caption: d.coverCaption,
     created_at: d.createdAt.toISOString(),
   }));
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <JurnalisClientView initialDrafts={formattedDrafts} />
     </div>
   );

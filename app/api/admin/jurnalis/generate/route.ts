@@ -57,7 +57,7 @@ export async function POST(req: Request) {
 
     // 1. Ambil data draf dari database
     const rows = (await sql`
-      SELECT id, title, source, original_url, summary
+      SELECT id, title, source, original_url, summary, cover_url
       FROM jurnalis_drafts
       WHERE id = ${draftId}
       LIMIT 1;
@@ -67,6 +67,7 @@ export async function POST(req: Request) {
       source: string;
       original_url: string;
       summary: string | null;
+      cover_url: string | null;
     }>;
 
     if (!rows || rows.length === 0) {
@@ -179,6 +180,7 @@ Ringkasan Fakta: ${draft.summary || "-"}`;
 
     const finalCategory = aiParsed.category || "Umum";
     const finalTags = Array.isArray(aiParsed.tags) ? aiParsed.tags : [];
+    const nextStatus = draft.cover_url && draft.cover_url.trim().length > 0 ? 'ready_to_publish' : 'generated';
 
     // 3. Simpan hasil generate ke database
     await sql`
@@ -186,7 +188,9 @@ Ringkasan Fakta: ${draft.summary || "-"}`;
       SET 
         generated_title = ${finalTitle},
         generated_article = ${finalContent},
-        status = 'generated'
+        category = ${finalCategory},
+        tags = ${finalTags},
+        status = ${nextStatus}
       WHERE id = ${draftId};
     `;
 
@@ -198,6 +202,8 @@ Ringkasan Fakta: ${draft.summary || "-"}`;
         generatedArticle: finalContent,
         category: finalCategory,
         tags: finalTags,
+        status: nextStatus,
+        coverUrl: draft.cover_url,
       },
     });
   } catch (error) {
