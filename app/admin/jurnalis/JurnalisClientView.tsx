@@ -20,8 +20,16 @@ import {
   X,
   Radio,
   BookOpen,
+  AlertTriangle,
+  CheckSquare,
+  Square,
 } from 'lucide-react';
-import { deleteDraftAction, convertDraftToArticleAction } from './actions';
+import {
+  deleteDraftAction,
+  deleteMultipleDraftsAction,
+  deleteAllDraftsAction,
+  convertDraftToArticleAction,
+} from './actions';
 
 export interface JurnalisDraftItem {
   id: number;
@@ -49,6 +57,14 @@ export default function JurnalisClientView({ initialDrafts }: JurnalisClientView
 
   const [activeTab, setActiveTab] = useState<'all' | 'draft' | 'generated'>('all');
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Seleksi Massal & Hapus Semua
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [isDeletingBulk, setIsDeletingBulk] = useState(false);
+  const [showDeleteAllModal, setShowDeleteAllModal] = useState(false);
+  const [deleteAllScope, setDeleteAllScope] = useState<'all' | 'draft' | 'generated'>('all');
+  const [isDeletingAll, setIsDeletingAll] = useState(false);
+  const [confirmSingleDelete, setConfirmSingleDelete] = useState<{ id: number; title: string } | null>(null);
 
   const [activePreview, setActivePreview] = useState<{
     draftId: number;
@@ -101,17 +117,18 @@ export default function JurnalisClientView({ initialDrafts }: JurnalisClientView
     }
   }
 
-  // Hapus draf
-  async function handleDelete(draftId: number) {
-    if (!confirm('Apakah Anda yakin ingin menghapus usulan draf ini?')) return;
+  // Eksekusi Hapus 1 Draf
+  async function executeSingleDelete(draftId: number) {
     setDeletingId(draftId);
     try {
       const res = await deleteDraftAction(draftId);
       if (res.success) {
         setDrafts((prev) => prev.filter((d) => d.id !== draftId));
+        setSelectedIds((prev) => prev.filter((id) => id !== draftId));
         if (activePreview?.draftId === draftId) {
           setActivePreview(null);
         }
+        setConfirmSingleDelete(null);
       } else {
         alert(res.error || 'Gagal menghapus draf');
       }
@@ -119,6 +136,74 @@ export default function JurnalisClientView({ initialDrafts }: JurnalisClientView
       alert('Terjadi kesalahan jaringan saat menghapus draf');
     } finally {
       setDeletingId(null);
+    }
+  }
+
+  // Toggle Checkbox Seleksi Draf
+  function handleToggleSelect(draftId: number) {
+    setSelectedIds((prev) =>
+      prev.includes(draftId) ? prev.filter((id) => id !== draftId) : [...prev, draftId]
+    );
+  }
+
+  // Pilih Semua yang Tampil Sesuai Filter
+  function handleSelectAllFiltered() {
+    const allFilteredIds = filteredDrafts.map((d) => d.id);
+    const isAllSelected = allFilteredIds.length > 0 && allFilteredIds.every((id) => selectedIds.includes(id));
+    if (isAllSelected) {
+      setSelectedIds((prev) => prev.filter((id) => !allFilteredIds.includes(id)));
+    } else {
+      setSelectedIds((prev) => Array.from(new Set([...prev, ...allFilteredIds])));
+    }
+  }
+
+  // Eksekusi Hapus Draf Terpilih (Bulk Delete)
+  async function handleDeleteSelected() {
+    if (selectedIds.length === 0) return;
+    if (!confirm(`Hapus ${selectedIds.length} usulan draf berita jurnalis yang dipilih?`)) return;
+
+    setIsDeletingBulk(true);
+    try {
+      const res = await deleteMultipleDraftsAction(selectedIds);
+      if (res.success) {
+        setDrafts((prev) => prev.filter((d) => !selectedIds.includes(d.id)));
+        setSelectedIds([]);
+        if (activePreview && selectedIds.includes(activePreview.draftId)) {
+          setActivePreview(null);
+        }
+      } else {
+        alert(res.error || 'Gagal menghapus draf terpilih');
+      }
+    } catch {
+      alert('Terjadi kesalahan jaringan saat menghapus draf terpilih');
+    } finally {
+      setIsDeletingBulk(false);
+    }
+  }
+
+  // Eksekusi Hapus Semua Draf (Berdasarkan Scope)
+  async function handleExecuteDeleteAll() {
+    setIsDeletingAll(true);
+    try {
+      const res = await deleteAllDraftsAction(deleteAllScope);
+      if (res.success) {
+        if (deleteAllScope === 'draft') {
+          setDrafts((prev) => prev.filter((d) => d.status !== 'draft'));
+        } else if (deleteAllScope === 'generated') {
+          setDrafts((prev) => prev.filter((d) => d.status !== 'generated' && d.status !== 'published'));
+        } else {
+          setDrafts([]);
+        }
+        setSelectedIds([]);
+        setActivePreview(null);
+        setShowDeleteAllModal(false);
+      } else {
+        alert(res.error || 'Gagal menghapus draf');
+      }
+    } catch {
+      alert('Terjadi kesalahan jaringan saat menghapus draf');
+    } finally {
+      setIsDeletingAll(false);
     }
   }
 
@@ -210,6 +295,17 @@ export default function JurnalisClientView({ initialDrafts }: JurnalisClientView
               <ExternalLink className="w-3.5 h-3.5" />
               <span>Buka Bot Console ↗</span>
             </a>
+            {totalAll > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowDeleteAllModal(true)}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-red-700 bg-red-50 hover:bg-red-100 border border-red-200/80 rounded-xl transition-all cursor-pointer shadow-xs"
+                title="Hapus seluruh usulan draf jurnalis"
+              >
+                <Trash2 className="w-3.5 h-3.5 text-red-600" />
+                <span>Hapus Semua</span>
+              </button>
+            )}
             <button
               onClick={() => router.refresh()}
               className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors cursor-pointer"
@@ -295,17 +391,80 @@ export default function JurnalisClientView({ initialDrafts }: JurnalisClientView
           </button>
         </div>
 
-        <div className="relative flex-1 sm:max-w-xs">
-          <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            placeholder="Cari berita atau media..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-3 py-1.5 text-xs bg-white border border-gray-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
-          />
+        <div className="flex items-center gap-2">
+          {filteredDrafts.length > 0 && (
+            <button
+              type="button"
+              onClick={handleSelectAllFiltered}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
+                filteredDrafts.length > 0 && filteredDrafts.every((d) => selectedIds.includes(d.id))
+                  ? 'bg-indigo-50 border-indigo-300 text-indigo-700 font-bold'
+                  : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              {filteredDrafts.length > 0 && filteredDrafts.every((d) => selectedIds.includes(d.id)) ? (
+                <CheckSquare className="w-3.5 h-3.5 text-indigo-600" />
+              ) : (
+                <Square className="w-3.5 h-3.5 text-gray-400" />
+              )}
+              <span>
+                {filteredDrafts.length > 0 && filteredDrafts.every((d) => selectedIds.includes(d.id))
+                  ? 'Batalkan Semua'
+                  : 'Pilih Semua'}
+              </span>
+            </button>
+          )}
+
+          <div className="relative flex-1 sm:w-64">
+            <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Cari berita atau media..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-3 py-1.5 text-xs bg-white border border-gray-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+            />
+          </div>
         </div>
       </div>
+
+      {/* Floating Bulk Action Bar (Muncul saat ada item dipilih) */}
+      {selectedIds.length > 0 && (
+        <div className="bg-[#0f172a] text-white p-3.5 sm:p-4 rounded-2xl flex flex-wrap items-center justify-between gap-3 shadow-xl border border-slate-700 animate-in fade-in slide-in-from-top-2 duration-150">
+          <div className="flex items-center gap-2.5">
+            <span className="w-6 h-6 rounded-full bg-indigo-500/30 border border-indigo-400/40 flex items-center justify-center text-xs font-bold text-indigo-200">
+              {selectedIds.length}
+            </span>
+            <span className="text-xs sm:text-sm font-semibold">
+              {selectedIds.length} usulan draf dipilih
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              disabled={isDeletingBulk}
+              onClick={handleDeleteSelected}
+              className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-red-600 hover:bg-red-700 disabled:bg-red-400 rounded-xl transition-all cursor-pointer shadow-xs"
+            >
+              {isDeletingBulk ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Trash2 className="w-3.5 h-3.5" />
+              )}
+              <span>Hapus {selectedIds.length} Terpilih</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSelectedIds([])}
+              className="px-3 py-2 text-xs font-medium text-slate-300 hover:text-white transition-colors cursor-pointer"
+            >
+              Batal Pilihan
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Grid Usulan Berita */}
       {filteredDrafts.length === 0 ? (
@@ -334,14 +493,23 @@ export default function JurnalisClientView({ initialDrafts }: JurnalisClientView
                 className="bg-white rounded-2xl border border-gray-200/90 shadow-xs hover:shadow-md transition-all flex flex-col justify-between overflow-hidden group"
               >
                 <div className="p-5">
-                  {/* Top Bar: Source + Date + Status */}
+                  {/* Top Bar: Checkbox + Source + Status */}
                   <div className="flex items-center justify-between gap-2 mb-3">
-                    <span className="text-[11px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200/60 px-2.5 py-0.5 rounded-md truncate max-w-[140px]">
-                      {draft.source}
-                    </span>
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.includes(draft.id)}
+                        onChange={() => handleToggleSelect(draft.id)}
+                        className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer shrink-0"
+                        title="Pilih draf ini"
+                      />
+                      <span className="text-[11px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200/60 px-2.5 py-0.5 rounded-md truncate max-w-[130px]">
+                        {draft.source}
+                      </span>
+                    </div>
 
                     <span
-                      className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
+                      className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border shrink-0 ${
                         isGenerated
                           ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                           : 'bg-amber-50 text-amber-700 border-amber-200'
@@ -390,9 +558,9 @@ export default function JurnalisClientView({ initialDrafts }: JurnalisClientView
                     <button
                       type="button"
                       disabled={isDeleting}
-                      onClick={() => handleDelete(draft.id)}
-                      className="text-gray-400 hover:text-red-600 p-1 rounded-md transition-colors cursor-pointer"
-                      title="Hapus Usulan"
+                      onClick={() => setConfirmSingleDelete({ id: draft.id, title: draft.title })}
+                      className="text-gray-400 hover:text-red-600 hover:bg-red-50 p-1.5 rounded-lg transition-colors cursor-pointer"
+                      title="Hapus Usulan Draf Ini"
                     >
                       {isDeleting ? (
                         <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -565,6 +733,180 @@ export default function JurnalisClientView({ initialDrafts }: JurnalisClientView
                   Tutup
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Konfirmasi Hapus 1 Draf */}
+      {confirmSingleDelete && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-gray-200 animate-in zoom-in-95 duration-150 space-y-4">
+            <div className="flex items-start gap-3.5">
+              <div className="w-10 h-10 rounded-xl bg-red-100 text-red-600 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <h3 className="font-bold text-base text-gray-900 font-heading">
+                  Hapus Usulan Draf Ini?
+                </h3>
+                <p className="text-xs text-gray-500 mt-1 line-clamp-2 font-medium">
+                  &ldquo;{confirmSingleDelete.title}&rdquo;
+                </p>
+              </div>
+            </div>
+
+            <p className="text-xs text-gray-600 leading-relaxed bg-gray-50 p-3 rounded-xl border border-gray-100">
+              Draf berita intelijen ini akan dihapus permanen dari antrean redaksi AdaFakta.
+            </p>
+
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setConfirmSingleDelete(null)}
+                className="px-4 py-2 text-xs font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                disabled={deletingId === confirmSingleDelete.id}
+                onClick={() => executeSingleDelete(confirmSingleDelete.id)}
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-red-600 hover:bg-red-700 disabled:bg-red-400 rounded-xl transition-colors cursor-pointer shadow-xs"
+              >
+                {deletingId === confirmSingleDelete.id ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Trash2 className="w-3.5 h-3.5" />
+                )}
+                <span>Ya, Hapus Sekarang</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Konfirmasi Hapus Semua Draf */}
+      {showDeleteAllModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-gray-200 animate-in zoom-in-95 duration-150 space-y-5">
+            <div className="flex items-start gap-3.5">
+              <div className="w-11 h-11 rounded-xl bg-red-100 text-red-600 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="font-bold text-lg text-gray-900 font-heading">
+                  Hapus Semua Usulan Draf Jurnalis?
+                </h3>
+                <p className="text-xs sm:text-sm text-gray-500 mt-1">
+                  Pilih cakupan draf berita yang ingin dibersihkan dari antrean redaksi:
+                </p>
+              </div>
+            </div>
+
+            {/* Pilihan Scope */}
+            <div className="space-y-2">
+              <label
+                onClick={() => setDeleteAllScope('all')}
+                className={`flex items-center justify-between p-3.5 rounded-xl border cursor-pointer transition-all ${
+                  deleteAllScope === 'all'
+                    ? 'bg-red-50/70 border-red-300 text-red-950 font-bold'
+                    : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100 font-medium'
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <input
+                    type="radio"
+                    name="scope"
+                    checked={deleteAllScope === 'all'}
+                    onChange={() => setDeleteAllScope('all')}
+                    className="text-red-600 focus:ring-red-500"
+                  />
+                  <span className="text-xs sm:text-sm">Hapus Seluruh Usulan Berita</span>
+                </div>
+                <span className="text-xs bg-white px-2 py-0.5 rounded-md border border-gray-200 font-bold">
+                  {totalAll} Draf
+                </span>
+              </label>
+
+              <label
+                onClick={() => setDeleteAllScope('draft')}
+                className={`flex items-center justify-between p-3.5 rounded-xl border cursor-pointer transition-all ${
+                  deleteAllScope === 'draft'
+                    ? 'bg-amber-50/70 border-amber-300 text-amber-950 font-bold'
+                    : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100 font-medium'
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <input
+                    type="radio"
+                    name="scope"
+                    checked={deleteAllScope === 'draft'}
+                    onChange={() => setDeleteAllScope('draft')}
+                    className="text-amber-600 focus:ring-amber-500"
+                  />
+                  <span className="text-xs sm:text-sm">Hapus Draf Mentah Saja (Belum AI)</span>
+                </div>
+                <span className="text-xs bg-white px-2 py-0.5 rounded-md border border-gray-200 font-bold">
+                  {totalDraft} Draf
+                </span>
+              </label>
+
+              <label
+                onClick={() => setDeleteAllScope('generated')}
+                className={`flex items-center justify-between p-3.5 rounded-xl border cursor-pointer transition-all ${
+                  deleteAllScope === 'generated'
+                    ? 'bg-emerald-50/70 border-emerald-300 text-emerald-950 font-bold'
+                    : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100 font-medium'
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <input
+                    type="radio"
+                    name="scope"
+                    checked={deleteAllScope === 'generated'}
+                    onChange={() => setDeleteAllScope('generated')}
+                    className="text-emerald-600 focus:ring-emerald-500"
+                  />
+                  <span className="text-xs sm:text-sm">Hapus Naskah Siap Terbit Saja</span>
+                </div>
+                <span className="text-xs bg-white px-2 py-0.5 rounded-md border border-gray-200 font-bold">
+                  {totalGenerated} Draf
+                </span>
+              </label>
+            </div>
+
+            <div className="p-3 bg-red-50 border border-red-200/80 rounded-xl text-xs text-red-800 leading-relaxed">
+              ⚠️ <b>Peringatan:</b> Tindakan ini akan mengosongkan antrean terpilih secara permanen dari database.
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                disabled={isDeletingAll}
+                onClick={() => setShowDeleteAllModal(false)}
+                className="px-4 py-2.5 text-xs font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors cursor-pointer"
+              >
+                Batalkan
+              </button>
+              <button
+                type="button"
+                disabled={isDeletingAll || totalAll === 0}
+                onClick={handleExecuteDeleteAll}
+                className="inline-flex items-center gap-1.5 px-5 py-2.5 text-xs font-bold text-white bg-red-600 hover:bg-red-700 disabled:bg-red-400 rounded-xl transition-all cursor-pointer shadow-xs"
+              >
+                {isDeletingAll ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Sedang Membersihkan...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4" />
+                    <span>Ya, Hapus Sekarang</span>
+                  </>
+                )}
+              </button>
             </div>
           </div>
         </div>

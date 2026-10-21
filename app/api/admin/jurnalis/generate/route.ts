@@ -106,7 +106,7 @@ Pedoman penulisan:
 {
   "title": "Judul Berita Baru",
   "content": "Isi lengkap artikel berita...",
-  "category": "Kategori yang cocok (misal: Olahraga, Nasional, Ekonomi, Teknologi, Internasional)",
+  "category": "Kategori yang cocok (WAJIB SALAH SATU: Nasional, Internasional, Regional, Sport, AI, Gadget, Software, Hardware, Infrastruktur)",
   "tags": ["tag1", "tag2", "tag3"]
 }`;
 
