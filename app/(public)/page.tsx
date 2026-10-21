@@ -383,19 +383,25 @@ export default async function Home() {
       {/* Seksi Khusus: Kabar Nusantara (Pojok Daerah) */}
       <KabarNusantaraSection articles={regionalArticles} />
 
-      {/* Bagian Bawah (Opsi 1): Feed Berita Terbaru (Lebar 8) + Sidebar Tematik (Lebar 4) */}
+      {/* Bagian Bawah: Feed Berita Terbaru (Lebar 8) + Sidebar Tematik (Lebar 4 Desktop Only) */}
       <div className="mt-14 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-start">
-        {/* Kolom Kiri: Feed Berita Terbaru */}
+        {/* Kolom Kiri: Feed Berita Terbaru (Mobile: 2 Kolom dengan Selingan Carousel Tematik) */}
         <div className="lg:col-span-8 min-w-0">
           <LatestNewsSection
             initialArticles={initialLatestArticles}
             initialHasMore={hasMore}
             initialOffset={11 + rawLatestArticles.length}
+            thematicData={{
+              nasional: nasionalArticles,
+              internasional: internasionalArticles,
+              sport: sportArticles,
+            }}
           />
         </div>
 
-        {/* Kolom Kanan: Sidebar Tematik (Nasional, Internasional, Sport) */}
-        <div className="lg:col-span-4 min-w-0 lg:sticky lg:top-24">
+        {/* Kolom Kanan: Sidebar Tematik Desktop (Nasional, Internasional, Sport) */}
+        {/* Disembunyikan di mobile (hidden lg:block) karena di mobile sudah diselipkan rapi di sela-sela feed */}
+        <div className="hidden lg:block lg:col-span-4 min-w-0 lg:sticky lg:top-24">
           <ThematicSidebar
             nasionalArticles={nasionalArticles}
             internasionalArticles={internasionalArticles}
