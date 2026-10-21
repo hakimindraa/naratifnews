@@ -114,7 +114,15 @@ export default function SadurPage() {
       setSimilarInitial(res.similarInitial || null);
       // Auto-tebak kategori dari judul jika memungkinkan
       const lowerTitle = res.data.title.toLowerCase();
-      if (lowerTitle.includes('ai') || lowerTitle.includes('model') || lowerTitle.includes('gpt') || lowerTitle.includes('intelligence')) {
+      if (lowerTitle.includes('sport') || lowerTitle.includes('olahraga') || lowerTitle.includes('football') || lowerTitle.includes('soccer') || lowerTitle.includes('liga') || lowerTitle.includes('match') || lowerTitle.includes('badminton') || lowerTitle.includes('championship')) {
+        setCategory('Sport');
+      } else if (lowerTitle.includes('presiden') || lowerTitle.includes('menteri') || lowerTitle.includes('dpr') || lowerTitle.includes('kpk') || lowerTitle.includes('polri') || lowerTitle.includes('pemilu') || lowerTitle.includes('nasional')) {
+        setCategory('Nasional');
+      } else if (lowerTitle.includes('gaza') || lowerTitle.includes('israel') || lowerTitle.includes('ukraina') || lowerTitle.includes('russia') || lowerTitle.includes('us') || lowerTitle.includes('china') || lowerTitle.includes('global') || lowerTitle.includes('world') || lowerTitle.includes('un')) {
+        setCategory('Internasional');
+      } else if (lowerTitle.includes('pemda') || lowerTitle.includes('pemkot') || lowerTitle.includes('pemprov') || lowerTitle.includes('gubernur') || lowerTitle.includes('bupati') || lowerTitle.includes('walikota') || lowerTitle.includes('daerah')) {
+        setCategory('Regional');
+      } else if (lowerTitle.includes('ai') || lowerTitle.includes('model') || lowerTitle.includes('gpt') || lowerTitle.includes('intelligence')) {
         setCategory('AI');
       } else if (lowerTitle.includes('phone') || lowerTitle.includes('iphone') || lowerTitle.includes('samsung') || lowerTitle.includes('camera') || lowerTitle.includes('watch')) {
         setCategory('Gadget');

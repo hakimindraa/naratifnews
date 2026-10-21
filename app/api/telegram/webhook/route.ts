@@ -29,6 +29,22 @@ import { notifySearchEngines } from '@/lib/indexing';
 export const maxDuration = 60; // Timeout 60 detik untuk operasi AI
 
 const PRESET_TOPICS: Record<string, { label: string; prompt: string }> = {
+  Nasional: {
+    label: '🇮🇩 Berita Nasional & Kebijakan',
+    prompt: 'Dinamika kebijakan publik nasional, keputusan pemerintah pusat, dan isu strategis masyarakat Indonesia terkini',
+  },
+  Internasional: {
+    label: '🌐 Kabar Dunia & Geopolitik',
+    prompt: 'Perkembangan geopolitik global, peristiwa dunia terkini, diplomasi dan dinamika internasional',
+  },
+  Sport: {
+    label: '⚽ Berita & Prestasi Olahraga',
+    prompt: 'Kabar kompetisi olahraga terhangat, turnamen nasional dan dunia, serta dinamika prestasi atlet',
+  },
+  Regional: {
+    label: '🏛️ Berita Regional & Daerah',
+    prompt: 'Dinamika kebijakan publik pemerintah daerah, fasilitas publik, dan isu masyarakat regional terkini',
+  },
   AI: {
     label: '🤖 Tren & Inovasi AI Terkini',
     prompt: 'Tren & inovasi kecerdasan buatan AI terkini dan dampaknya bagi ekosistem industri dan masyarakat',
@@ -49,14 +65,10 @@ const PRESET_TOPICS: Record<string, { label: string; prompt: string }> = {
     label: '📱 Inovasi Gadget & Konsumen',
     prompt: 'Inovasi gadget konsumen, smartphone flagship, dan tren perangkat pintar terkini',
   },
-  Regional: {
-    label: '🏛️ Berita Regional & Daerah',
-    prompt: 'Dinamika kebijakan publik pemerintah daerah, fasilitas publik, dan isu masyarakat regional terkini',
-  },
 };
 
 const REGIONAL_PROVINCES = [
-  // Halaman 1 (Pusat & Jawa-Bali)
+  // Halaman 1: Pusat, Jawa & Bali (8 item)
   'Umum',
   'DKI Jakarta',
   'Jawa Barat',
@@ -65,24 +77,41 @@ const REGIONAL_PROVINCES = [
   'Jawa Timur',
   'Banten',
   'Bali',
-  // Halaman 2 (Sumatera & Kalimantan Timur)
+  // Halaman 2: Nusa Tenggara & Sumatera Bagian Utara (8 item)
+  'Nusa Tenggara Barat',
+  'Nusa Tenggara Timur',
+  'Aceh',
   'Sumatera Utara',
   'Sumatera Barat',
   'Riau',
   'Kepulauan Riau',
+  'Jambi',
+  // Halaman 3: Sumatera Bagian Selatan & Kalimantan (8 item)
   'Sumatera Selatan',
+  'Bangka Belitung',
+  'Bengkulu',
   'Lampung',
-  'Aceh',
-  'Kalimantan Timur',
-  // Halaman 3 (Kalimantan, Sulawesi, Nusa Tenggara, Maluku & Papua)
   'Kalimantan Barat',
+  'Kalimantan Tengah',
   'Kalimantan Selatan',
-  'Sulawesi Selatan',
+  'Kalimantan Timur',
+  // Halaman 4: Kalimantan Utara, Sulawesi & Maluku (8 item)
+  'Kalimantan Utara',
   'Sulawesi Utara',
-  'Nusa Tenggara Barat',
-  'Nusa Tenggara Timur',
+  'Sulawesi Tengah',
+  'Sulawesi Selatan',
+  'Sulawesi Tenggara',
+  'Gorontalo',
+  'Sulawesi Barat',
   'Maluku',
+  // Halaman 5: Maluku Utara & Papua (7 item)
+  'Maluku Utara',
   'Papua',
+  'Papua Barat',
+  'Papua Selatan',
+  'Papua Tengah',
+  'Papua Pegunungan',
+  'Papua Barat Daya',
 ];
 
 function buildRegionalKeyboard(page: number) {
@@ -123,12 +152,14 @@ function buildRegionalKeyboard(page: number) {
 }
 
 function getRegionalStepText(safePage: number, totalPages: number) {
-  const pageLabel =
-    safePage === 1
-      ? 'Jawa, Bali & Nasional'
-      : safePage === 2
-      ? 'Sumatera & Kalimantan Timur'
-      : 'Kalimantan, Sulawesi, NT & Papua';
+  const pageLabels: Record<number, string> = {
+    1: 'Umum, Jawa & Bali',
+    2: 'Nusa Tenggara & Sumatera Bagian Utara',
+    3: 'Sumatera Bagian Selatan & Kalimantan',
+    4: 'Kalimantan Utara, Sulawesi & Maluku',
+    5: 'Maluku Utara & Wilayah Papua',
+  };
+  const pageLabel = pageLabels[safePage] || 'Wilayah Indonesia';
 
   return `🏛️ <b>PILIH WILAYAH LIPUTAN REGIONAL (${safePage}/${totalPages})</b>
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -835,12 +866,25 @@ function parseManualArticleText(rawText: string): {
     // Normalisasi Kategori
     const catLower = category.toLowerCase();
     let normalizedCategory = 'Software';
-    if (catLower.includes('hard') || catLower.includes('perangkat keras')) normalizedCategory = 'Hardware';
-    else if (catLower.includes('ai') || catLower.includes('kecerdasan') || catLower.includes('intel')) normalizedCategory = 'AI';
-    else if (catLower.includes('infra') || catLower.includes('cloud') || catLower.includes('data center')) normalizedCategory = 'Infrastruktur';
-    else if (catLower.includes('gadget') || catLower.includes('hp') || catLower.includes('smartphone')) normalizedCategory = 'Gadget';
-    else if (catLower.includes('reg') || catLower.includes('daerah') || catLower.includes('wilayah') || catLower.includes('pemda')) normalizedCategory = 'Regional';
-    else if (catLower.includes('soft') || catLower.includes('aplikasi') || catLower.includes('web')) normalizedCategory = 'Software';
+    if (catLower.includes('nasional') || catLower.includes('indonesia') || catLower.includes('pusat') || catLower.includes('polri') || catLower.includes('dpr')) {
+      normalizedCategory = 'Nasional';
+    } else if (catLower.includes('internasional') || catLower.includes('dunia') || catLower.includes('global') || catLower.includes('world')) {
+      normalizedCategory = 'Internasional';
+    } else if (catLower.includes('sport') || catLower.includes('olahraga') || catLower.includes('bola') || catLower.includes('badminton') || catLower.includes('atlet')) {
+      normalizedCategory = 'Sport';
+    } else if (catLower.includes('reg') || catLower.includes('daerah') || catLower.includes('wilayah') || catLower.includes('pemda')) {
+      normalizedCategory = 'Regional';
+    } else if (catLower.includes('hard') || catLower.includes('perangkat keras') || catLower.includes('chip') || catLower.includes('semikonduktor')) {
+      normalizedCategory = 'Hardware';
+    } else if (catLower.includes('ai') || catLower.includes('kecerdasan') || catLower.includes('intel')) {
+      normalizedCategory = 'AI';
+    } else if (catLower.includes('infra') || catLower.includes('cloud') || catLower.includes('data center') || catLower.includes('jaringan')) {
+      normalizedCategory = 'Infrastruktur';
+    } else if (catLower.includes('gadget') || catLower.includes('hp') || catLower.includes('smartphone')) {
+      normalizedCategory = 'Gadget';
+    } else if (catLower.includes('soft') || catLower.includes('aplikasi') || catLower.includes('web')) {
+      normalizedCategory = 'Software';
+    }
 
     return {
       success: true,
@@ -1176,9 +1220,9 @@ async function startManualWizard(chatId: number | string, messageId?: number) {
 Pilih salah satu bidang liputan redaksi:
 
 ┌── 📂 <b>Kategori Tersedia</b>
-│ • AI & Software : Tren kecerdasan buatan, aplikasi & open source
-│ • Hardware & Infra : Semikonduktor, chip & data center
-│ • Gadget & Regional : Konsumen pintar & dinamika daerah
+│ • Umum : 🇮🇩 Nasional, 🌐 Internasional, ⚽ Sport
+│ • Daerah : 🏛️ Regional (38 Provinsi)
+│ • Teknologi : 🤖 AI, 📱 Gadget, 💻 Software, ⚙️ Hardware, ☁️ Infrastruktur
 └──
 
 👇 <i>Pilih salah satu kategori di bawah:</i>`;
@@ -1186,16 +1230,23 @@ Pilih salah satu bidang liputan redaksi:
   await updateOrSendMessage(chatId, messageId, step1Text, {
     inlineKeyboard: [
       [
-        { text: '🤖 AI', callback_data: 'mwiz:cat:AI' },
-        { text: '💻 Software', callback_data: 'mwiz:cat:Software' },
+        { text: '🇮🇩 Nasional', callback_data: 'mwiz:cat:Nasional' },
+        { text: '🌐 Internasional', callback_data: 'mwiz:cat:Internasional' },
       ],
       [
-        { text: '⚙️ Hardware', callback_data: 'mwiz:cat:Hardware' },
-        { text: '☁️ Infrastruktur', callback_data: 'mwiz:cat:Infrastruktur' },
-      ],
-      [
-        { text: '📱 Gadget', callback_data: 'mwiz:cat:Gadget' },
+        { text: '⚽ Sport', callback_data: 'mwiz:cat:Sport' },
         { text: '🏛️ Regional', callback_data: 'mwiz:cat:Regional' },
+      ],
+      [
+        { text: '🤖 AI', callback_data: 'mwiz:cat:AI' },
+        { text: '📱 Gadget', callback_data: 'mwiz:cat:Gadget' },
+      ],
+      [
+        { text: '💻 Software', callback_data: 'mwiz:cat:Software' },
+        { text: '⚙️ Hardware', callback_data: 'mwiz:cat:Hardware' },
+      ],
+      [
+        { text: '☁️ Infrastruktur', callback_data: 'mwiz:cat:Infrastruktur' },
       ],
       [
         { text: '⬅️ Kembali ke Panduan', callback_data: 'btn:manual' },
@@ -2402,25 +2453,31 @@ Anda bisa merevisi artikel yang sudah ada di database melalui perintah AI:
 Pilih salah satu bidang liputan redaksi:
 
 ┌── 📂 <b>Pilihan Kategori</b>
-│ • AI & Software : Tren teknologi & rekayasa modern
-│ • Hardware & Infra : Semikonduktor, chip & data center
-│ • Gadget : Konsumen & smartphone flagship terkini
-│ • Regional : Dinamika kebijakan publik daerah
+│ • Umum : 🇮🇩 Nasional, 🌐 Internasional, ⚽ Sport
+│ • Daerah : 🏛️ Regional (38 Provinsi)
+│ • Teknologi : 🤖 AI, 📱 Gadget, 💻 Software, ⚙️ Hardware, ☁️ Infrastruktur
 └──`;
 
         await updateOrSendMessage(chatId, messageId, step1Text, {
           inlineKeyboard: [
             [
-              { text: '🤖 Tren AI', callback_data: 'cat:AI' },
-              { text: '💻 Software', callback_data: 'cat:Software' },
+              { text: '🇮🇩 Nasional', callback_data: 'cat:Nasional' },
+              { text: '🌐 Internasional', callback_data: 'cat:Internasional' },
             ],
             [
-              { text: '⚙️ Hardware', callback_data: 'cat:Hardware' },
-              { text: '☁️ Infrastruktur', callback_data: 'cat:Infrastruktur' },
-            ],
-            [
-              { text: '📱 Inovasi Gadget', callback_data: 'cat:Gadget' },
+              { text: '⚽ Sport', callback_data: 'cat:Sport' },
               { text: '🏛️ Berita Daerah', callback_data: 'cat:Regional' },
+            ],
+            [
+              { text: '🤖 Tren AI', callback_data: 'cat:AI' },
+              { text: '📱 Inovasi Gadget', callback_data: 'cat:Gadget' },
+            ],
+            [
+              { text: '💻 Software', callback_data: 'cat:Software' },
+              { text: '⚙️ Hardware', callback_data: 'cat:Hardware' },
+            ],
+            [
+              { text: '☁️ Infrastruktur', callback_data: 'cat:Infrastruktur' },
             ],
             [{ text: '✍️ Ketik Topik Sendiri...', callback_data: 'cat:CUSTOM' }],
             [
@@ -3205,25 +3262,31 @@ Ketik <code>/start</code> atau pilih aksi cepat:`;
 Pilih salah satu bidang liputan redaksi:
 
 ┌── 📂 <b>Pilihan Kategori</b>
-│ • AI & Software : Tren teknologi & rekayasa modern
-│ • Hardware & Infra : Semikonduktor, chip & data center
-│ • Gadget : Konsumen & smartphone flagship terkini
-│ • Regional : Dinamika kebijakan publik daerah
+│ • Umum : 🇮🇩 Nasional, 🌐 Internasional, ⚽ Sport
+│ • Daerah : 🏛️ Regional (38 Provinsi)
+│ • Teknologi : 🤖 AI, 📱 Gadget, 💻 Software, ⚙️ Hardware, ☁️ Infrastruktur
 └──`;
 
       await sendTelegramMessage(chatId, step1Text, {
         inlineKeyboard: [
           [
-            { text: '🤖 Tren AI', callback_data: 'cat:AI' },
-            { text: '💻 Software', callback_data: 'cat:Software' },
+            { text: '🇮🇩 Nasional', callback_data: 'cat:Nasional' },
+            { text: '🌐 Internasional', callback_data: 'cat:Internasional' },
           ],
           [
-            { text: '⚙️ Hardware', callback_data: 'cat:Hardware' },
-            { text: '☁️ Infrastruktur', callback_data: 'cat:Infrastruktur' },
-          ],
-          [
-            { text: '📱 Inovasi Gadget', callback_data: 'cat:Gadget' },
+            { text: '⚽ Sport', callback_data: 'cat:Sport' },
             { text: '🏛️ Berita Daerah', callback_data: 'cat:Regional' },
+          ],
+          [
+            { text: '🤖 Tren AI', callback_data: 'cat:AI' },
+            { text: '📱 Inovasi Gadget', callback_data: 'cat:Gadget' },
+          ],
+          [
+            { text: '💻 Software', callback_data: 'cat:Software' },
+            { text: '⚙️ Hardware', callback_data: 'cat:Hardware' },
+          ],
+          [
+            { text: '☁️ Infrastruktur', callback_data: 'cat:Infrastruktur' },
           ],
           [{ text: '✍️ Ketik Topik Sendiri...', callback_data: 'cat:CUSTOM' }],
           [

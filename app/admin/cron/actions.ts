@@ -111,7 +111,7 @@ export async function getCronHubData(): Promise<CronHubData> {
   const autopilotStatus = settingsMap.get('autopilot_status') || 'published';
   const cronjobApiKey = settingsMap.get('cronjob_api_key') || process.env.CRONJOB_API_KEY || '';
 
-  let allCategories = ['AI', 'Software', 'Hardware', 'Gadget', 'Infrastruktur', 'Regional'];
+  let allCategories = ['Nasional', 'Internasional', 'Regional', 'Sport', 'AI', 'Software', 'Hardware', 'Gadget', 'Infrastruktur'];
   try {
     const parsed = JSON.parse(settingsMap.get('autopilot_categories') || '[]');
     if (Array.isArray(parsed) && parsed.length > 0) {

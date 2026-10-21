@@ -22,6 +22,8 @@ import {
   Trash2,
   Search,
   Globe,
+  Landmark,
+  Trophy,
   Wand2,
   Settings,
   Building2,
@@ -72,6 +74,27 @@ const PRESET_TOPICS = [
       'Bahas perkembangan terkini teknologi kecerdasan buatan dan model generasi baru, bagaimana inovasi mutakhir ini mengubah industri, serta efisiensi dan dampaknya bagi masyarakat berdasarkan riset dan data faktual terkini.',
   },
   {
+    icon: Landmark,
+    label: 'Isu Nasional & Kebijakan',
+    category: 'Nasional',
+    prompt:
+      'Ulas perkembangan dinamika kebijakan publik pemerintah pusat, keputusan strategis nasional, atau isu sosial ekonomi yang tengah menjadi sorotan masyarakat Indonesia berdasarkan laporan fakta dan data terkini.',
+  },
+  {
+    icon: Globe,
+    label: 'Geopolitik & Dunia',
+    category: 'Internasional',
+    prompt:
+      'Bahas perkembangan geopolitik global, hubungan diplomatik antarnegara, peristiwa penting dunia, atau kerja sama internasional strategis yang berdampak luas berdasarkan laporan berita internasional terpercaya.',
+  },
+  {
+    icon: Trophy,
+    label: 'Dunia Olahraga',
+    category: 'Sport',
+    prompt:
+      'Sorot perkembangan kompetisi olahraga terhangat, dinamika performa atlet atau tim unggulan, hasil turnamen bergengsi, dan analisis taktik terkini berdasarkan laporan pertandingan dan berita olahraga faktual.',
+  },
+  {
     icon: Building2,
     label: 'Kebijakan Pemda',
     category: 'Regional',
@@ -117,6 +140,8 @@ const PRESET_TOPICS = [
 
 const INDONESIA_REGIONS = [
   'Umum',
+  'Kepulauan Riau',
+  'Riau',
   'DKI Jakarta',
   'Jawa Barat',
   'Jawa Tengah',
@@ -126,19 +151,33 @@ const INDONESIA_REGIONS = [
   'Bali',
   'Sumatera Utara',
   'Sumatera Barat',
-  'Riau',
-  'Kepulauan Riau',
   'Sumatera Selatan',
-  'Lampung',
   'Aceh',
-  'Kalimantan Timur',
+  'Lampung',
+  'Jambi',
+  'Bengkulu',
+  'Bangka Belitung',
   'Kalimantan Barat',
+  'Kalimantan Tengah',
   'Kalimantan Selatan',
+  'Kalimantan Timur',
+  'Kalimantan Utara',
   'Sulawesi Selatan',
   'Sulawesi Utara',
+  'Sulawesi Tengah',
+  'Sulawesi Tenggara',
+  'Gorontalo',
+  'Sulawesi Barat',
   'Nusa Tenggara Barat',
   'Nusa Tenggara Timur',
+  'Maluku',
+  'Maluku Utara',
   'Papua',
+  'Papua Barat',
+  'Papua Selatan',
+  'Papua Tengah',
+  'Papua Pegunungan',
+  'Papua Barat Daya',
 ];
 
 export default function GeneratorStudioPage() {

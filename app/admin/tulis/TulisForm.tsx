@@ -10,6 +10,48 @@ import BacaJugaPickerModal from '../BacaJugaPickerModal';
 import CoverImagePicker from '../CoverImagePicker';
 import AuthorSelector from '../AuthorSelector';
 
+const INDONESIA_REGIONS = [
+  'Umum',
+  'Kepulauan Riau',
+  'Riau',
+  'DKI Jakarta',
+  'Jawa Barat',
+  'Jawa Tengah',
+  'DI Yogyakarta',
+  'Jawa Timur',
+  'Banten',
+  'Bali',
+  'Sumatera Utara',
+  'Sumatera Barat',
+  'Sumatera Selatan',
+  'Aceh',
+  'Lampung',
+  'Jambi',
+  'Bengkulu',
+  'Bangka Belitung',
+  'Kalimantan Barat',
+  'Kalimantan Tengah',
+  'Kalimantan Selatan',
+  'Kalimantan Timur',
+  'Kalimantan Utara',
+  'Sulawesi Selatan',
+  'Sulawesi Utara',
+  'Sulawesi Tengah',
+  'Sulawesi Tenggara',
+  'Gorontalo',
+  'Sulawesi Barat',
+  'Nusa Tenggara Barat',
+  'Nusa Tenggara Timur',
+  'Maluku',
+  'Maluku Utara',
+  'Papua',
+  'Papua Barat',
+  'Papua Selatan',
+  'Papua Tengah',
+  'Papua Pegunungan',
+  'Papua Barat Daya',
+];
+
 export default function TulisForm() {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -21,6 +63,7 @@ export default function TulisForm() {
   const [slug, setSlug] = useState('');
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
   const [category, setCategory] = useState('Software');
+  const [selectedRegion, setSelectedRegion] = useState('Umum');
   const [coverUrl, setCoverUrl] = useState('');
   const [coverCaption, setCoverCaption] = useState('');
   const [excerpt, setExcerpt] = useState('');
@@ -69,6 +112,9 @@ export default function TulisForm() {
     formData.append('title', title);
     formData.append('slug', slug);
     formData.append('category', category);
+    if (category === 'Regional') {
+      formData.append('region', selectedRegion);
+    }
     formData.append('coverUrl', coverUrl);
     formData.append('coverCaption', coverCaption);
     formData.append('excerpt', excerpt);
@@ -146,6 +192,30 @@ export default function TulisForm() {
               <option key={cat} value={cat}>{cat}</option>
             ))}
           </select>
+
+          {/* Sub-selector Wilayah (Hanya tampil jika Kategori = Regional) */}
+          {category === 'Regional' && (
+            <div className="p-3 bg-emerald-50/70 border border-emerald-200 rounded-xl space-y-1.5 transition-all">
+              <label className="block text-xs font-bold text-emerald-950 flex items-center gap-1.5">
+                <span>📍</span> Wilayah / Provinsi Liputan <span className="text-red-500">*</span>
+              </label>
+              <select
+                name="region"
+                value={selectedRegion}
+                onChange={(e) => setSelectedRegion(e.target.value)}
+                className="w-full px-3 py-2 border border-emerald-300 rounded-lg bg-white text-xs sm:text-sm font-semibold text-emerald-950 focus:ring-2 focus:ring-emerald-600 focus:border-emerald-600 cursor-pointer"
+              >
+                {INDONESIA_REGIONS.map((r) => (
+                  <option key={r} value={r}>
+                    {r === 'Umum' ? '🌐 Umum (Seluruh Daerah)' : `📍 ${r}`}
+                  </option>
+                ))}
+              </select>
+              <p className="text-[11px] text-emerald-700">
+                Pilih provinsi liputan berita ini agar terklasifikasi dan tampil di badge daerah yang tepat.
+              </p>
+            </div>
+          )}
         </div>
 
         <div className="space-y-2">

@@ -43,7 +43,7 @@ export async function GET(request: Request) {
     const articleLength = (settingsMap.get('autopilot_length') as 'ringkas' | 'standar' | 'mendalam') || 'standar';
     const telegramNotify = settingsMap.get('autopilot_telegram_notify') !== 'false';
 
-    let rawCategories: string[] = ['AI', 'Software', 'Hardware', 'Gadget', 'Infrastruktur', 'Regional'];
+    let rawCategories: string[] = ['Nasional', 'Internasional', 'Regional', 'Sport', 'AI', 'Software', 'Hardware', 'Gadget', 'Infrastruktur'];
     try {
       const parsedCat = JSON.parse(settingsMap.get('autopilot_categories') || '[]');
       if (Array.isArray(parsedCat) && parsedCat.length > 0) {
@@ -89,14 +89,38 @@ export async function GET(request: Request) {
       chosenNewsItem = newsSources[0];
     }
 
-    const isRegionalCategory = selectedCategory.toLowerCase() === 'regional';
-    const topicPrompt = chosenNewsItem
-      ? (isRegionalCategory
-          ? `Liput dan analisis perkembangan berita daerah terkini: "${chosenNewsItem.title}". Berikan laporan mendalam mengenai kebijakan pemerintah daerah, pelayanan fasilitas publik, dan dampaknya bagi masyarakat setempat.`
-          : `Liput dan analisis perkembangan berita terkini: "${chosenNewsItem.title}". Berikan analisis mendalam mengenai latar belakang, dampak bagi ekosistem industri teknologi, serta relevansinya bagi Indonesia dan dunia.`)
-      : (isRegionalCategory
-          ? `Bahas isu kebijakan pemerintah daerah, pelayanan publik, atau dinamika sosial masyarakat terkini di daerah berdasarkan fakta dan laporan terkini.`
-          : `Bahas tren teknologi terkini dan kemajuan inovasi di bidang ${selectedCategory} serta pengaruhnya terhadap perkembangan industri digital saat ini.`);
+    const catLower = selectedCategory.toLowerCase();
+    const isRegionalCategory = catLower === 'regional';
+    const isNasional = catLower === 'nasional';
+    const isInternasional = catLower === 'internasional';
+    const isSport = catLower === 'sport';
+
+    let topicPrompt = '';
+    if (chosenNewsItem) {
+      if (isRegionalCategory) {
+        topicPrompt = `Liput dan analisis perkembangan berita daerah terkini: "${chosenNewsItem.title}". Berikan laporan mendalam mengenai kebijakan pemerintah daerah, pelayanan fasilitas publik, dan dampaknya bagi masyarakat setempat.`;
+      } else if (isNasional) {
+        topicPrompt = `Liput dan analisis perkembangan berita nasional Indonesia terkini: "${chosenNewsItem.title}". Berikan laporan mendalam mengenai kebijakan pemerintah pusat, keputusan strategis nasional, atau dampak sosial ekonomi bagi masyarakat luas.`;
+      } else if (isInternasional) {
+        topicPrompt = `Liput dan analisis perkembangan berita internasional dunia terkini: "${chosenNewsItem.title}". Berikan ulasan mendalam mengenai konteks geopolitik global, peristiwa dunia, atau hubungan diplomatik strategis yang relevan.`;
+      } else if (isSport) {
+        topicPrompt = `Liput dan analisis perkembangan berita olahraga terkini: "${chosenNewsItem.title}". Berikan laporan mendalam mengenai jalannya kompetisi, dinamika performa atlet/tim, hasil pertandingan, dan analisis taktik faktual.`;
+      } else {
+        topicPrompt = `Liput dan analisis perkembangan berita terkini: "${chosenNewsItem.title}". Berikan analisis mendalam mengenai latar belakang, dampak bagi ekosistem industri teknologi ${selectedCategory}, serta relevansinya bagi Indonesia dan dunia.`;
+      }
+    } else {
+      if (isRegionalCategory) {
+        topicPrompt = `Bahas isu kebijakan pemerintah daerah, pelayanan publik, atau dinamika sosial masyarakat terkini di daerah berdasarkan fakta dan laporan terkini.`;
+      } else if (isNasional) {
+        topicPrompt = `Bahas dinamika kebijakan pemerintah pusat, keputusan strategis nasional, atau isu sosial ekonomi yang tengah menjadi sorotan masyarakat Indonesia berdasarkan laporan fakta terkini.`;
+      } else if (isInternasional) {
+        topicPrompt = `Bahas perkembangan geopolitik global, peristiwa dunia terkini, atau kerja sama internasional strategis yang berdampak luas berdasarkan laporan berita terpercaya.`;
+      } else if (isSport) {
+        topicPrompt = `Sorot perkembangan kompetisi olahraga terhangat, turnamen nasional dan dunia, serta analisis performa atlet dan tim unggulan berdasarkan laporan faktual terkini.`;
+      } else {
+        topicPrompt = `Bahas tren teknologi terkini dan kemajuan inovasi di bidang ${selectedCategory} serta pengaruhnya terhadap perkembangan industri digital saat ini.`;
+      }
+    }
 
     // 6. Racik Naskah Berita menggunakan AI Engine
     const startTime = performance.now();

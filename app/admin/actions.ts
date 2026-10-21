@@ -408,6 +408,7 @@ export async function createArticle(formData: FormData) {
     const title = (formData.get('title') as string || '').trim();
     let slug = (formData.get('slug') as string || '').trim();
     const category = (formData.get('category') as string || 'Software').trim();
+    const region = (formData.get('region') as string || '').trim();
     let excerpt = (formData.get('excerpt') as string || '').trim();
     const coverUrl = (formData.get('coverUrl') as string || '').trim();
     const coverCaption = (formData.get('coverCaption') as string || '').trim();
@@ -475,9 +476,27 @@ export async function createArticle(formData: FormData) {
       publishedAt = null;
     }
 
-    const tags = tagsStr
+    let tags = tagsStr
       ? tagsStr.split(',').map(t => t.trim().replace(/^#/, '')).filter(t => t.length > 0)
       : [];
+
+    // Jika kategori Regional dan ada wilayah yang dipilih (bukan 'Umum'),
+    // sinkronkan nama wilayah ke dalam tags
+    if (catFormatted === 'Regional' && region && region !== 'Umum') {
+      const PROVINCES_TO_CLEAN = [
+        'Kepulauan Riau', 'Riau', 'DKI Jakarta', 'Jawa Barat', 'Jawa Tengah', 'DI Yogyakarta', 'Jawa Timur',
+        'Banten', 'Bali', 'Sumatera Utara', 'Sumatera Barat', 'Sumatera Selatan', 'Aceh', 'Lampung', 'Jambi',
+        'Bengkulu', 'Bangka Belitung', 'Kalimantan Barat', 'Kalimantan Tengah', 'Kalimantan Selatan',
+        'Kalimantan Timur', 'Kalimantan Utara', 'Sulawesi Selatan', 'Sulawesi Utara', 'Sulawesi Tengah',
+        'Sulawesi Tenggara', 'Gorontalo', 'Sulawesi Barat', 'Nusa Tenggara Barat', 'Nusa Tenggara Timur',
+        'Maluku', 'Maluku Utara', 'Papua', 'Papua Barat', 'Papua Selatan', 'Papua Tengah', 'Papua Pegunungan', 'Papua Barat Daya'
+      ];
+      // Hapus provinsi lain dari tags agar tidak terjadi tumpang tindih
+      tags = tags.filter(t => !PROVINCES_TO_CLEAN.some(p => p.toLowerCase() === t.toLowerCase()));
+      // Masukkan wilayah terpilih di awal tags
+      tags.unshift(region);
+      tags = Array.from(new Set(tags));
+    }
 
     const [newArticle] = await db.insert(articles).values({
       title,

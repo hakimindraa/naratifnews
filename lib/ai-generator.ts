@@ -98,7 +98,7 @@ function extractKeywords(prompt: string, category = 'AI', region?: string): { lo
     };
   }
 
-  // Kategori Teknologi (AI, Software, Hardware, Infrastruktur, Gadget)
+  // Kategori Pemetaan Kata Kunci (Teknologi, Nasional, Internasional, Sport)
   const categoryTerms: Record<string, { id: string[]; en: string[] }> = {
     ai: {
       id: ['AI kecerdasan buatan', 'model AI OpenAI Google', 'kecerdasan buatan terapan', 'AI agent inovasi'],
@@ -120,12 +120,24 @@ function extractKeywords(prompt: string, category = 'AI', region?: string): { lo
       id: ['smartphone gadget teknologi', 'HP terbaru kamera baterai', 'perangkat wearable tablet pintar', 'gadget consumer tech'],
       en: ['smartphone consumer tech gadget', 'flagship smartphone review', 'wearable smart devices', 'mobile consumer electronics'],
     },
+    nasional: {
+      id: ['berita nasional indonesia', 'kebijakan pemerintah pusat dpr', 'isu publik sosial ekonomi indonesia', 'regulasi hukum nasional'],
+      en: ['Indonesia national news policy', 'Indonesian government developments', 'Indonesia economic outlook'],
+    },
+    internasional: {
+      id: ['kabar dunia geopolitik internasional', 'peristiwa global hubungan internasional', 'diplomasi krisis dunia pbb'],
+      en: ['world news international relations', 'geopolitics global summit', 'international affairs breaking'],
+    },
+    sport: {
+      id: ['berita olahraga hasil pertandingan', 'turnamen kompetisi tim atlet', 'klasemen liga sepak bola bulu tangkis'],
+      en: ['sports news tournament match results', 'championship league competition', 'world sports athletics tournament'],
+    },
   };
 
   const catKey = category.toLowerCase();
   const defaultTerms = categoryTerms[catKey] || {
-    id: ['teknologi terkini', 'inovasi teknologi digital'],
-    en: ['technology news', 'digital innovation tech'],
+    id: ['berita terkini', 'informasi publik update'],
+    en: ['breaking news', 'current affairs update'],
   };
 
   // Pilih variasi istilah kategori secara acak agar query dinamis jika prompt berupa preset umum
@@ -141,8 +153,25 @@ function extractKeywords(prompt: string, category = 'AI', region?: string): { lo
     keywordSlice = uniqueWords.join(' ');
   }
 
+  const isTech = ['ai', 'software', 'hardware', 'infrastruktur', 'gadget'].includes(catKey);
+  const isInternasional = catKey === 'internasional';
+  const isSport = catKey === 'sport';
+  const isNasional = catKey === 'nasional';
+
   const localQuery = keywordSlice ? `${keywordSlice} ${randomIdTerm.split(' ')[0]}`.trim() : randomIdTerm;
-  const globalQuery = keywordSlice ? `${keywordSlice} tech`.trim() : randomEnTerm;
+
+  let globalQuery = '';
+  if (isTech) {
+    globalQuery = keywordSlice ? `${keywordSlice} tech`.trim() : randomEnTerm;
+  } else if (isInternasional) {
+    globalQuery = keywordSlice ? `${keywordSlice} world news`.trim() : randomEnTerm;
+  } else if (isSport) {
+    globalQuery = keywordSlice ? `${keywordSlice} sports`.trim() : randomEnTerm;
+  } else if (isNasional) {
+    globalQuery = ''; // Nasional fokus 100% feed Indonesia
+  } else {
+    globalQuery = keywordSlice || randomEnTerm;
+  }
 
   return {
     localQuery: localQuery.slice(0, 60),
@@ -246,18 +275,20 @@ export async function fetchGoogleNewsResearch(
 ): Promise<NewsSource[]> {
   try {
     const isRegional = category.toLowerCase() === 'regional';
+    const isNasional = category.toLowerCase() === 'nasional';
+    const isOnlyLocal = isRegional || isNasional;
     const cleanRegion = (region && region !== 'Umum' && !region.toLowerCase().includes('semua')) ? region.trim() : '';
     const { localQuery, globalQuery } = extractKeywords(query, category, region);
 
     let combined: NewsSource[] = [];
 
     // TIER 1: Prioritas Berita Super Terkini (1-4 Jam Terakhir: when:4h)
-    if (isRegional) {
-      // REGIONAL: Murni Google News ID lokal, sama sekali tidak memanggil Global US
+    if (isOnlyLocal) {
+      // REGIONAL & NASIONAL: Murni Google News ID lokal, sama sekali tidak memanggil Global US
       const localUrl4h = `https://news.google.com/rss/search?q=${encodeURIComponent(localQuery + ' when:4h')}&hl=id&gl=ID&ceid=ID:id`;
       combined = await fetchFromRssUrl(localUrl4h, 'ID', maxItems);
     } else {
-      // TEKNOLOGI: Dual Engine (Google News ID + Google News US) 4 jam terakhir
+      // INTERNASIONAL, SPORT & TEKNOLOGI: Dual Engine (Google News ID + Google News US) 4 jam terakhir
       const localUrl4h = `https://news.google.com/rss/search?q=${encodeURIComponent(localQuery + ' when:4h')}&hl=id&gl=ID&ceid=ID:id`;
       const globalUrl4h = `https://news.google.com/rss/search?q=${encodeURIComponent(globalQuery + ' when:4h')}&hl=en-US&gl=US&ceid=US:en`;
       const [localRes, globalRes] = await Promise.allSettled([
@@ -271,7 +302,7 @@ export async function fetchGoogleNewsResearch(
 
     // TIER 2: Fallback 24 Jam Terakhir (when:1d) jika berita 4 jam terakhir minim (< 2 artikel)
     if (combined.length < 2) {
-      if (isRegional) {
+      if (isOnlyLocal) {
         const localUrl1d = `https://news.google.com/rss/search?q=${encodeURIComponent(localQuery + ' when:1d')}&hl=id&gl=ID&ceid=ID:id`;
         const moreLocal = await fetchFromRssUrl(localUrl1d, 'ID', maxItems);
         combined = [...combined, ...moreLocal];
@@ -297,9 +328,18 @@ export async function fetchGoogleNewsResearch(
 
     // TIER 4: Fallback kata kunci umum kategori dalam 48 jam jika masih minim
     if (combined.length < 2) {
-      const fallbackCatQuery = isRegional
-        ? `berita daerah pemda pelayanan publik ${cleanRegion} when:2d`.trim()
-        : `${category} teknologi when:2d`;
+      const catLower = category.toLowerCase();
+      let fallbackCatQuery = `${category} teknologi when:2d`;
+      if (isRegional) {
+        fallbackCatQuery = `berita daerah pemda pelayanan publik ${cleanRegion} when:2d`.trim();
+      } else if (catLower === 'nasional') {
+        fallbackCatQuery = `berita nasional kebijakan pemerintah isu publik when:2d`;
+      } else if (catLower === 'internasional') {
+        fallbackCatQuery = `berita internasional geopolitik kabar dunia when:2d`;
+      } else if (catLower === 'sport') {
+        fallbackCatQuery = `berita olahraga hasil pertandingan kompetisi when:2d`;
+      }
+
       const fallbackCatUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(fallbackCatQuery)}&hl=id&gl=ID&ceid=ID:id`;
       const fallbackCatItems = await fetchFromRssUrl(fallbackCatUrl, 'ID', 4);
       combined = [...combined, ...fallbackCatItems];
@@ -876,9 +916,10 @@ Ingat, balas HANYA dengan dokumen JSON yang valid sesuai format yang ditentukan.
     finalCategory = parsed.category;
   }
 
+  const defaultMiddleTag = ['Nasional', 'Internasional', 'Sport', 'Regional'].includes(finalCategory) ? 'Berita' : 'Teknologi';
   const tags = Array.isArray(parsed.tags) && parsed.tags.length > 0
     ? parsed.tags.map((t: any) => String(t).trim()).filter(Boolean)
-    : [finalCategory, 'Teknologi', 'Ada Fakta'];
+    : [finalCategory, defaultMiddleTag, 'Ada Fakta'];
 
   const cleanedContent = cleanContentHeading(String(parsed.content).trim(), String(parsed.title).trim());
   let finalContent = cleanedContent;
@@ -1089,9 +1130,10 @@ Ingat, balas HANYA dengan dokumen JSON yang valid sesuai format yang ditentukan.
     finalCategory = parsed.category;
   }
 
+  const defaultMiddleTag = ['Nasional', 'Internasional', 'Sport', 'Regional'].includes(finalCategory) ? 'Berita' : 'Teknologi';
   const tags = Array.isArray(parsed.tags) && parsed.tags.length > 0
     ? parsed.tags.map((t: any) => String(t).trim()).filter(Boolean)
-    : [finalCategory, 'Teknologi', options.domain || 'Ada Fakta'];
+    : [finalCategory, defaultMiddleTag, options.domain || 'Ada Fakta'];
 
   const cleanedContent = cleanContentHeading(String(parsed.content).trim(), String(parsed.title).trim());
   const finalContent = injectInternalLinkIfMissing(cleanedContent, internalCandidates, finalCategory);
