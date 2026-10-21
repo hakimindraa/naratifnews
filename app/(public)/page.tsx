@@ -142,6 +142,9 @@ export default async function Home() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* H1 Semantik Brand & SEO untuk Google Search & Aksesibilitas */}
+      <h1 className="sr-only">Ada Fakta: Berita Terkini Hari Ini, Fakta Aktual Terpercaya</h1>
+
       {publishedArticles.length === 0 && (
         <div className="text-center py-20 bg-white rounded-sm border border-gray-200">
           <h2 className="text-2xl font-bold text-gray-700 mb-2">Belum Ada Berita yang Terbit</h2>

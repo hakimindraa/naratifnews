@@ -5,6 +5,9 @@ import { ChevronRight, Award, Mail } from "lucide-react";
 export const metadata: Metadata = {
   title: "Susunan Redaksi",
   description: "Susunan tim dan dewan redaksi Ada Fakta - Portal Berita Faktual Terpercaya.",
+  alternates: {
+    canonical: '/redaksi',
+  },
 };
 
 export default function RedaksiPage() {

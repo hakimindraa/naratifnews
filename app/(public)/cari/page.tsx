@@ -13,6 +13,9 @@ export const instant = false;
 export const metadata: Metadata = {
   title: "Cari Berita",
   description: "Cari berita dan informasi teknologi terbaru di Ada Fakta.",
+  alternates: {
+    canonical: '/cari',
+  },
 };
 
 export default async function SearchPage({

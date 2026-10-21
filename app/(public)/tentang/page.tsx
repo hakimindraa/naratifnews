@@ -5,6 +5,9 @@ import { ChevronRight, Target, ShieldCheck, Zap, Users } from "lucide-react";
 export const metadata: Metadata = {
   title: "Tentang Kami",
   description: "Profil, visi, misi, dan komitmen Ada Fakta dalam menghadirkan informasi dan berita terpercaya di Indonesia.",
+  alternates: {
+    canonical: '/tentang',
+  },
 };
 
 export default function TentangPage() {

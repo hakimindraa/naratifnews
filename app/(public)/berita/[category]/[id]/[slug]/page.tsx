@@ -48,6 +48,9 @@ export async function generateMetadata({
   return {
     title: `${article.title} - Ada Fakta`,
     description: plainTextContent,
+    alternates: {
+      canonical: articleUrl,
+    },
     openGraph: {
       title: article.title,
       description: plainTextContent,

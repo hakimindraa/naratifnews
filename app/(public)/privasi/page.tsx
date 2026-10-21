@@ -5,6 +5,9 @@ import { ChevronRight, ShieldCheck } from "lucide-react";
 export const metadata: Metadata = {
   title: "Kebijakan Privasi",
   description: "Kebijakan privasi Ada Fakta mengenai pengumpulan, penggunaan, dan perlindungan data pengunjung situs.",
+  alternates: {
+    canonical: '/privasi',
+  },
 };
 
 export default function PrivasiPage() {

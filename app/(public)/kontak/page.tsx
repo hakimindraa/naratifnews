@@ -5,6 +5,9 @@ import { ChevronRight, Mail, MessageSquare, MapPin, Globe } from "lucide-react";
 export const metadata: Metadata = {
   title: "Kontak Kami",
   description: "Hubungi redaksi Ada Fakta untuk siaran pers, kemitraan media, maupun pertanyaan seputar berita.",
+  alternates: {
+    canonical: '/kontak',
+  },
 };
 
 export default function KontakPage() {

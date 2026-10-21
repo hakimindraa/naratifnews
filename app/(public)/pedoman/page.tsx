@@ -5,6 +5,9 @@ import { ChevronRight, BookOpen } from "lucide-react";
 export const metadata: Metadata = {
   title: "Pedoman Pemberitaan Media Siber",
   description: "Pedoman pemberitaan media siber yang menjadi landasan etika dan standar jurnalisme Ada Fakta.",
+  alternates: {
+    canonical: '/pedoman',
+  },
 };
 
 export default function PedomanPage() {

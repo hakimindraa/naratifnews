@@ -37,9 +37,14 @@ export async function generateMetadata({
     ? `Kumpulan berita regional terkini, dinamika pemerintahan daerah, dan isu fasilitas publik di Ada Fakta.`
     : `Kumpulan berita, analisis, dan informasi terkini seputar ${categoryName} di Ada Fakta.`;
 
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.adafakta.web.id';
+
   return {
     title,
     description,
+    alternates: {
+      canonical: `${siteUrl}/berita/${rawCat}`,
+    },
     openGraph: {
       title,
       description,
