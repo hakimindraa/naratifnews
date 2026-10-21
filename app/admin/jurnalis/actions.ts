@@ -2,7 +2,7 @@
 
 import { db, sql } from '@/db';
 import { articles, jurnalisDrafts } from '@/db/schema';
-import { eq, desc, inArray } from 'drizzle-orm';
+import { eq, desc, inArray, and, isNotNull, gt } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { uploadImageToImgbb } from '../media-actions';
 import { notifySearchEngines } from '@/lib/indexing';
@@ -182,11 +182,26 @@ export async function attachPhotoToDraftAction(draftId: number, formData: FormDa
     // Jika draf sudah memiliki teks artikel ter-generate, otomatis aktifkan antrean 'ready_to_publish'
     const newStatus = draft.generatedArticle ? 'ready_to_publish' : draft.status;
 
+    // Ambil publishAt dari form atau hitung auto-slot +2 jam
+    const publishAtRaw = formData.get('publishAt') as string | null;
+    let targetPublishAt: Date | null = null;
+    if (publishAtRaw) {
+      const parsed = new Date(publishAtRaw);
+      if (!isNaN(parsed.getTime())) {
+        targetPublishAt = parsed;
+      }
+    }
+    if (!targetPublishAt && newStatus === 'ready_to_publish') {
+      const slotRes = await getNextSuggestedPublishTimeAction();
+      targetPublishAt = new Date(slotRes.iso);
+    }
+
     await db
       .update(jurnalisDrafts)
       .set({
         coverUrl: finalCoverUrl,
         coverCaption: caption || draft.coverCaption || `Ilustrasi: ${draft.generatedTitle || draft.title}`,
+        publishAt: targetPublishAt || draft.publishAt,
         status: newStatus,
       })
       .where(eq(jurnalisDrafts.id, draftId));
@@ -198,13 +213,94 @@ export async function attachPhotoToDraftAction(draftId: number, formData: FormDa
       success: true,
       coverUrl: finalCoverUrl,
       status: newStatus,
+      publishAt: targetPublishAt ? targetPublishAt.toISOString() : null,
       message: newStatus === 'ready_to_publish' 
-        ? 'Foto terpasang & draf resmi masuk antrean publikasi berkala!' 
+        ? 'Foto terpasang & draf resmi masuk antrean publikasi terjadwal!' 
         : 'Foto berhasil disimpan.',
     };
   } catch (err: any) {
     console.error('Gagal memasang foto draf:', err);
     return { success: false, error: err?.message || 'Gagal menyimpan foto' };
+  }
+}
+
+/**
+ * Menghitung waktu slot tayang rekomendasi berikutnya (interval 2 jam).
+ * Mencari jadwal publish_at terjauh yang ada di antrean aktif, lalu menambah 2 jam.
+ */
+export async function getNextSuggestedPublishTimeAction() {
+  try {
+    const now = new Date();
+
+    // 1. Cek antrean jurnalis yang aktif dan memiliki publish_at di masa depan
+    const [latestJurnalis] = await db
+      .select({ publishAt: jurnalisDrafts.publishAt })
+      .from(jurnalisDrafts)
+      .where(
+        and(
+          eq(jurnalisDrafts.status, 'ready_to_publish'),
+          isNotNull(jurnalisDrafts.publishAt),
+          gt(jurnalisDrafts.publishAt, now)
+        )
+      )
+      .orderBy(desc(jurnalisDrafts.publishAt))
+      .limit(1);
+
+    // 2. Cek artikel scheduled manual yang memiliki publish_at di masa depan
+    const [latestArticle] = await db
+      .select({ publishAt: articles.publishAt })
+      .from(articles)
+      .where(
+        and(
+          eq(articles.status, 'scheduled'),
+          isNotNull(articles.publishAt),
+          gt(articles.publishAt, now)
+        )
+      )
+      .orderBy(desc(articles.publishAt))
+      .limit(1);
+
+    let baseTime = now;
+    if (latestJurnalis?.publishAt && latestArticle?.publishAt) {
+      baseTime = latestJurnalis.publishAt > latestArticle.publishAt ? latestJurnalis.publishAt : latestArticle.publishAt;
+    } else if (latestJurnalis?.publishAt) {
+      baseTime = latestJurnalis.publishAt;
+    } else if (latestArticle?.publishAt) {
+      baseTime = latestArticle.publishAt;
+    }
+
+    // Tambah interval 2 jam
+    const nextSlot = new Date(baseTime.getTime() + 2 * 60 * 60 * 1000);
+
+    return {
+      success: true,
+      iso: nextSlot.toISOString(),
+    };
+  } catch (err: any) {
+    console.error('Gagal menghitung slot waktu:', err);
+    const fallback = new Date(Date.now() + 2 * 60 * 60 * 1000);
+    return {
+      success: true,
+      iso: fallback.toISOString(),
+    };
+  }
+}
+
+/**
+ * Update jadwal terbit khusus draf jurnalis
+ */
+export async function updateDraftScheduleAction(draftId: number, publishAtStr: string) {
+  try {
+    const publishAt = new Date(publishAtStr);
+    if (isNaN(publishAt.getTime())) {
+      return { success: false, error: 'Format tanggal dan jam tidak valid' };
+    }
+    await db.update(jurnalisDrafts).set({ publishAt }).where(eq(jurnalisDrafts.id, draftId));
+    revalidatePath('/admin/jurnalis');
+    revalidatePath('/admin');
+    return { success: true, publishAt: publishAt.toISOString() };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Gagal mengubah jadwal' };
   }
 }
 
@@ -228,6 +324,7 @@ export async function removePhotoFromDraftAction(draftId: number) {
       .set({
         coverUrl: null,
         coverCaption: null,
+        publishAt: null,
         status: fallbackStatus,
       })
       .where(eq(jurnalisDrafts.id, draftId));

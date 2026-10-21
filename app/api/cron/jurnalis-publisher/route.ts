@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/db';
 import { articles, jurnalisDrafts, aiGenerationLogs } from '@/db/schema';
-import { eq, and, isNotNull, asc, sql } from 'drizzle-orm';
+import { eq, and, isNotNull, asc, lte, or, isNull, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { notifySearchEngines } from '@/lib/indexing';
 import { sendTelegramMessage } from '@/lib/telegram';
@@ -30,7 +30,7 @@ export async function GET(request: Request) {
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.adafakta.web.id';
     const now = new Date();
 
-    // 2. Ambil 1 draf terlama dengan status 'ready_to_publish' yang sudah punya foto & naskah
+    // 2. Ambil 1 draf 'ready_to_publish' yang sudah punya foto & naskah, dan jam tayangnya sudah tiba
     const [draftToPublish] = await db
       .select()
       .from(jurnalisDrafts)
@@ -38,16 +38,20 @@ export async function GET(request: Request) {
         and(
           eq(jurnalisDrafts.status, 'ready_to_publish'),
           isNotNull(jurnalisDrafts.coverUrl),
-          isNotNull(jurnalisDrafts.generatedArticle)
+          isNotNull(jurnalisDrafts.generatedArticle),
+          or(
+            isNull(jurnalisDrafts.publishAt),
+            lte(jurnalisDrafts.publishAt, now)
+          )
         )
       )
-      .orderBy(asc(jurnalisDrafts.createdAt))
+      .orderBy(asc(jurnalisDrafts.publishAt), asc(jurnalisDrafts.createdAt))
       .limit(1);
 
     if (!draftToPublish) {
       return NextResponse.json({
         success: true,
-        message: 'Antrean jurnalis kosong: Tidak ada draf siap tayang.',
+        message: 'Tidak ada draf jurnalis yang jatuh tempo untuk diterbitkan saat ini.',
         published: null,
         timestamp: now.toISOString(),
       });

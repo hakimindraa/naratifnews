@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/db';
-import { articles, aiGenerationLogs } from '@/db/schema';
-import { lte, eq, and } from 'drizzle-orm';
+import { articles, aiGenerationLogs, jurnalisDrafts } from '@/db/schema';
+import { lte, eq, and, isNotNull, or, isNull, asc } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { notifySearchEngines } from '@/lib/indexing';
+import { instantPublishDraftAction } from '@/app/admin/jurnalis/actions';
 
 export const maxDuration = 20; // 20 seconds, below cron-job.org's 30s timeout
 
@@ -60,10 +61,42 @@ export async function GET(request: Request) {
       revalidatePath('/', 'layout'); // Revalidate seluruh situs agar data baru muncul
     }
 
-    // 5. Kembalikan JSON kecil (syarat cron-job.org)
+    // 5. Cek apakah ada draf Jurnalis AI yang jatuh tempo (publish_at <= now)
+    let jurnalisPublishedCount = 0;
+    try {
+      const [dueJurnalis] = await db
+        .select({ id: jurnalisDrafts.id })
+        .from(jurnalisDrafts)
+        .where(
+          and(
+            eq(jurnalisDrafts.status, 'ready_to_publish'),
+            isNotNull(jurnalisDrafts.coverUrl),
+            isNotNull(jurnalisDrafts.generatedArticle),
+            or(
+              isNull(jurnalisDrafts.publishAt),
+              lte(jurnalisDrafts.publishAt, now)
+            )
+          )
+        )
+        .orderBy(asc(jurnalisDrafts.publishAt), asc(jurnalisDrafts.createdAt))
+        .limit(1);
+
+      if (dueJurnalis) {
+        const pubRes = await instantPublishDraftAction(dueJurnalis.id);
+        if (pubRes.success) {
+          jurnalisPublishedCount = 1;
+        }
+      }
+    } catch (jErr) {
+      console.warn('Gagal menerbitkan antrean draf jurnalis di cron publish:', jErr);
+    }
+
+    // 6. Kembalikan JSON kecil (syarat cron-job.org)
     return NextResponse.json({
       success: true,
-      published_count: updatedArticles.length,
+      published_count: updatedArticles.length + jurnalisPublishedCount,
+      articles_published: updatedArticles.length,
+      jurnalis_published: jurnalisPublishedCount,
       timestamp: now.toISOString()
     });
 

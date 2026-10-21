@@ -53,6 +53,7 @@ export interface JurnalisDraftItem {
   tags?: string[];
   cover_url?: string | null;
   cover_caption?: string | null;
+  publish_at?: string | null;
   created_at: string;
 }
 
@@ -73,6 +74,7 @@ export default function JurnalisClientView({ initialDrafts }: JurnalisClientView
     title: string;
     currentCoverUrl?: string | null;
     currentCaption?: string | null;
+    currentPublishAt?: string | null;
   } | null>(null);
 
   const [activeTab, setActiveTab] = useState<'all' | 'draft' | 'need_photo' | 'ready_to_publish' | 'published'>('all');
@@ -141,7 +143,7 @@ export default function JurnalisClientView({ initialDrafts }: JurnalisClientView
   }
 
   // Sukses pasang foto ImgBB dari modal
-  function handlePhotoSuccess(draftId: number, coverUrl: string, status: string) {
+  function handlePhotoSuccess(draftId: number, coverUrl: string, status: string, publishAt?: string | null) {
     setDrafts((prev) =>
       prev.map((d) =>
         d.id === draftId
@@ -149,6 +151,7 @@ export default function JurnalisClientView({ initialDrafts }: JurnalisClientView
               ...d,
               cover_url: coverUrl,
               status: status || 'ready_to_publish',
+              publish_at: publishAt || d.publish_at,
             }
           : d
       )
@@ -736,10 +739,11 @@ export default function JurnalisClientView({ initialDrafts }: JurnalisClientView
                                 title: draft.generated_title || draft.title,
                                 currentCoverUrl: draft.cover_url,
                                 currentCaption: draft.cover_caption,
+                                currentPublishAt: draft.publish_at,
                               })
                             }
                             className="px-1.5 py-0.5 text-[9px] sm:text-[10px] font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded transition-colors cursor-pointer"
-                            title="Ganti Foto"
+                            title="Ganti Foto / Atur Jam"
                           >
                             Ganti
                           </button>
@@ -762,6 +766,19 @@ export default function JurnalisClientView({ initialDrafts }: JurnalisClientView
                         <p className="text-[9px] sm:text-[10px] text-gray-500 truncate" title={draft.cover_caption}>
                           {draft.cover_caption}
                         </p>
+                      )}
+                      {isQueued && draft.publish_at && (
+                        <div className="flex items-center gap-1 text-[9px] sm:text-[10px] font-semibold text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-md px-1.5 py-0.5 mt-1">
+                          <CalendarClock className="w-3 h-3 text-indigo-600 shrink-0" />
+                          <span className="truncate">
+                            Terjadwal: {new Date(draft.publish_at).toLocaleDateString('id-ID', {
+                              day: 'numeric',
+                              month: 'short',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })} WIB
+                          </span>
+                        </div>
                       )}
                     </div>
                   ) : isPublished ? (
@@ -1252,8 +1269,9 @@ export default function JurnalisClientView({ initialDrafts }: JurnalisClientView
           draftTitle={photoModalDraft.title}
           initialCoverUrl={photoModalDraft.currentCoverUrl}
           initialCaption={photoModalDraft.currentCaption}
-          onSuccess={(coverUrl, status) =>
-            handlePhotoSuccess(photoModalDraft.draftId, coverUrl, status)
+          initialPublishAt={photoModalDraft.currentPublishAt}
+          onSuccess={(coverUrl, status, publishAt) =>
+            handlePhotoSuccess(photoModalDraft.draftId, coverUrl, status, publishAt)
           }
         />
       )}

@@ -15,15 +15,28 @@ import MarkdownGuideAccordion from './MarkdownGuideAccordion';
 import ArticleManagerClient, { ArticleItem } from './ArticleManagerClient';
 import BotJurnalisWidget from './BotJurnalisWidget';
 import { db } from '@/db';
-import { articles, aiGenerationLogs } from '@/db/schema';
-import { desc } from 'drizzle-orm';
+import { articles, aiGenerationLogs, jurnalisDrafts } from '@/db/schema';
+import { desc, eq, and, isNotNull } from 'drizzle-orm';
 
 export const instant = false;
 
 export default async function AdminDashboard() {
-  const [dbArticles, logs] = await Promise.all([
+  const [dbArticles, logs, jurnalisQueued, allJurnalisDrafts] = await Promise.all([
     db.select().from(articles).orderBy(desc(articles.createdAt)),
     db.select({ articleId: aiGenerationLogs.articleId, prompt: aiGenerationLogs.prompt }).from(aiGenerationLogs),
+    db
+      .select()
+      .from(jurnalisDrafts)
+      .where(
+        and(
+          eq(jurnalisDrafts.status, 'ready_to_publish'),
+          isNotNull(jurnalisDrafts.coverUrl)
+        )
+      )
+      .orderBy(desc(jurnalisDrafts.publishAt)),
+    db
+      .select({ id: jurnalisDrafts.id, status: jurnalisDrafts.status })
+      .from(jurnalisDrafts),
   ]);
 
   const logMap = new Map<number, string>();
@@ -52,22 +65,44 @@ export default async function AdminDashboard() {
     return 'manual';
   }
 
-  const articlesData: ArticleItem[] = dbArticles.map((a) => ({
-    id: a.id,
-    slug: a.slug,
-    title: a.title,
-    excerpt: a.excerpt,
-    coverUrl: a.coverUrl,
-    coverCaption: a.coverCaption,
-    category: a.category,
-    author: a.author,
-    tags: a.tags,
-    status: a.status,
-    publishAt: a.publishAt,
-    publishedAt: a.publishedAt,
-    createdAt: a.createdAt,
-    source: getArticleSource(a.author, logMap.get(a.id)),
+  const jurnalisItems: ArticleItem[] = jurnalisQueued.map((d) => ({
+    id: -(100000 + d.id),
+    slug: `jurnalis-draft-${d.id}`,
+    title: d.generatedTitle || d.title,
+    excerpt: d.summary || '',
+    coverUrl: d.coverUrl,
+    coverCaption: d.coverCaption || `Ilustrasi: ${d.generatedTitle || d.title}`,
+    category: d.category || 'Nasional',
+    author: 'Redaksi 2',
+    tags: d.tags || ['antrean-jurnalis'],
+    status: 'scheduled',
+    publishAt: d.publishAt || new Date(Date.now() + 2 * 60 * 60 * 1000),
+    publishedAt: null,
+    createdAt: d.createdAt,
+    source: 'jurnalis' as const,
+    isJurnalisQueue: true,
+    jurnalisDraftId: d.id,
   }));
+
+  const articlesData: ArticleItem[] = [
+    ...jurnalisItems,
+    ...dbArticles.map((a) => ({
+      id: a.id,
+      slug: a.slug,
+      title: a.title,
+      excerpt: a.excerpt,
+      coverUrl: a.coverUrl,
+      coverCaption: a.coverCaption,
+      category: a.category,
+      author: a.author,
+      tags: a.tags,
+      status: a.status,
+      publishAt: a.publishAt,
+      publishedAt: a.publishedAt,
+      createdAt: a.createdAt,
+      source: getArticleSource(a.author, logMap.get(a.id)),
+    })),
+  ];
 
   // Metrik Status Utama
   const totalArticles = articlesData.length;
@@ -84,6 +119,9 @@ export default async function AdminDashboard() {
 
   const autopilotDrafts = articlesData.filter((a) => a.status === 'draft' && a.source === 'autopilot').length;
   const autopilotTotal = articlesData.filter((a) => a.source === 'autopilot').length;
+
+  const jurnalisQueueCount = jurnalisQueued.length;
+  const jurnalisTotalCount = allJurnalisDrafts.length;
 
   const manualDrafts = articlesData.filter((a) => a.status === 'draft' && a.source === 'manual').length;
   const manualTotal = articlesData.filter((a) => a.source === 'manual').length;
@@ -224,7 +262,7 @@ export default async function AdminDashboard() {
           </span>
         </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
           {/* 1. AI Studio Generator */}
           <Link
             href="/admin/generator"
@@ -318,7 +356,38 @@ export default async function AdminDashboard() {
             </div>
           </Link>
 
-          {/* 4. Manual & File .MD */}
+          {/* 4. Jurnalis AI (Bot Intelijen & Antrean Terjadwal) */}
+          <Link
+            href="/admin/jurnalis"
+            className="group bg-gradient-to-br from-purple-50/70 to-white p-4 sm:p-4.5 rounded-2xl border border-purple-100 hover:border-purple-300 hover:shadow-md transition-all"
+          >
+            <div className="flex items-center justify-between">
+              <div className="w-8 h-8 rounded-lg bg-purple-600 text-white flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                <Bot className="w-4 h-4" />
+              </div>
+              <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-purple-100/80 text-purple-800">
+                Jurnalis AI
+              </span>
+            </div>
+            <div className="mt-3">
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-xl sm:text-2xl font-black font-heading text-purple-950">
+                  {jurnalisQueueCount}
+                </span>
+                <span className="text-xs font-semibold text-purple-700">Terjadwal</span>
+                <span className="text-[11px] text-gray-400">/ {jurnalisTotalCount} usulan</span>
+              </div>
+              <p className="text-[11px] text-gray-500 mt-0.5 line-clamp-1">
+                Antrean berkala per 2 jam
+              </p>
+            </div>
+            <div className="mt-2.5 pt-2 border-t border-purple-100/60 flex items-center justify-between text-[11px] font-bold text-purple-700 group-hover:text-purple-900">
+              <span>Buka Jurnalis AI</span>
+              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+            </div>
+          </Link>
+
+          {/* 5. Manual & File .MD */}
           <Link
             href="/admin/tulis"
             className="group bg-gradient-to-br from-gray-50/80 to-white p-4 sm:p-4.5 rounded-2xl border border-gray-200 hover:border-gray-300 hover:shadow-md transition-all"

@@ -26,6 +26,7 @@ export default async function AdminJurnalisPage() {
     tags: d.tags || [],
     cover_url: d.coverUrl,
     cover_caption: d.coverCaption,
+    publish_at: d.publishAt ? d.publishAt.toISOString() : null,
     created_at: d.createdAt.toISOString(),
   }));
 

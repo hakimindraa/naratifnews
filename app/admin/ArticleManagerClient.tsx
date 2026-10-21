@@ -32,6 +32,7 @@ import {
   bulkDeleteArticlesAction,
   bulkDraftArticlesAction,
 } from './actions';
+import { instantPublishDraftAction } from './jurnalis/actions';
 
 export interface ArticleItem {
   id: number;
@@ -47,7 +48,9 @@ export interface ArticleItem {
   publishAt: Date | string | null;
   publishedAt: Date | string | null;
   createdAt: Date | string;
-  source: 'studio' | 'sadur' | 'autopilot' | 'telegram' | 'manual';
+  source: 'studio' | 'sadur' | 'autopilot' | 'telegram' | 'manual' | 'jurnalis';
+  isJurnalisQueue?: boolean;
+  jurnalisDraftId?: number;
 }
 
 interface ArticleManagerClientProps {
@@ -75,6 +78,25 @@ export default function ArticleManagerClient({ initialArticles }: ArticleManager
     startTransition(async () => {
       await quickPublishArticleAction(id);
       setPublishingId(null);
+    });
+  };
+
+  const handleBypassJurnalisPublish = (draftId: number) => {
+    if (!confirm('Bypass antrean dan terbitkan berita Jurnalis AI ini sekarang juga ke website?')) return;
+    setPublishingId(draftId);
+    startTransition(async () => {
+      try {
+        const res = await instantPublishDraftAction(draftId);
+        if (res.success) {
+          setFeedback({ type: 'success', message: res.message || 'Berita Jurnalis AI berhasil diterbitkan ke website!' });
+        } else {
+          setFeedback({ type: 'error', message: res.error || 'Gagal menerbitkan draf jurnalis.' });
+        }
+      } catch (err: any) {
+        setFeedback({ type: 'error', message: err?.message || 'Terjadi gangguan jaringan.' });
+      } finally {
+        setPublishingId(null);
+      }
     });
   };
 
@@ -231,6 +253,13 @@ export default function ArticleManagerClient({ initialArticles }: ArticleManager
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-sky-50 text-sky-800 border border-sky-200/80">
             <Smartphone className="w-3 h-3 text-sky-600" />
             <span>Telegram</span>
+          </span>
+        );
+      case 'jurnalis':
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-purple-50 text-purple-800 border border-purple-200/80">
+            <Bot className="w-3 h-3 text-purple-600" />
+            <span>Jurnalis AI</span>
           </span>
         );
       default:
@@ -437,6 +466,7 @@ export default function ArticleManagerClient({ initialArticles }: ArticleManager
               <option value="sadur">🔗 Sadur Berita URL</option>
               <option value="autopilot">⚡ Autopilot AI Cron</option>
               <option value="telegram">📱 Telegram Bot AI</option>
+              <option value="jurnalis">🤖 Jurnalis AI (Antrean)</option>
               <option value="manual">✍️ Manual & File .MD</option>
             </select>
           </div>
@@ -544,7 +574,7 @@ export default function ArticleManagerClient({ initialArticles }: ArticleManager
 
             return (
               <div
-                key={article.id}
+                key={article.isJurnalisQueue ? `jurnalis-${article.jurnalisDraftId || article.id}` : `article-${article.id}`}
                 className={`p-4 sm:p-5 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-4 ${
                   isSelected ? 'bg-indigo-50/60 ring-1 ring-inset ring-indigo-200' : 'hover:bg-gray-50/70'
                 }`}
@@ -564,14 +594,16 @@ export default function ArticleManagerClient({ initialArticles }: ArticleManager
                     {/* Badge Status */}
                     <span
                       className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${
-                        isPublished
+                        article.isJurnalisQueue
+                          ? 'bg-purple-100 text-purple-900 border border-purple-200'
+                          : isPublished
                           ? 'bg-emerald-100 text-emerald-800'
                           : isScheduled
                           ? 'bg-blue-100 text-blue-800'
                           : 'bg-amber-100 text-amber-900'
                       }`}
                     >
-                      {article.status}
+                      {article.isJurnalisQueue ? 'Antrean Jurnalis' : article.status}
                     </span>
 
                     {/* Badge Kategori */}
@@ -595,9 +627,9 @@ export default function ArticleManagerClient({ initialArticles }: ArticleManager
                   {/* Judul Artikel */}
                   <h3 className="text-sm sm:text-base font-bold text-gray-900 leading-snug line-clamp-2">
                     <Link
-                      href={`/admin/edit/${article.id}`}
+                      href={article.isJurnalisQueue ? '/admin/jurnalis' : `/admin/edit/${article.id}`}
                       className="hover:text-indigo-600 transition-colors"
-                      title="Klik untuk mengedit artikel ini"
+                      title={article.isJurnalisQueue ? 'Buka di Halaman Jurnalis AI' : 'Klik untuk mengedit artikel ini'}
                     >
                       {article.title}
                     </Link>
@@ -606,8 +638,12 @@ export default function ArticleManagerClient({ initialArticles }: ArticleManager
                   {/* Cuplikan & Waktu */}
                   <div className="flex flex-wrap items-center gap-y-1 gap-x-4 text-xs text-gray-500">
                     <div className="flex items-center gap-1.5">
-                      <Calendar className="w-3.5 h-3.5 text-gray-400" />
-                      <span>{formatDate(article.publishAt || article.publishedAt || article.createdAt)}</span>
+                      <Clock className="w-3.5 h-3.5 text-indigo-500" />
+                      <span className={article.isJurnalisQueue ? 'font-semibold text-indigo-900' : ''}>
+                        {article.isJurnalisQueue
+                          ? `Jadwal Tayang: ${formatDate(article.publishAt)}`
+                          : formatDate(article.publishAt || article.publishedAt || article.createdAt)}
+                      </span>
                     </div>
 
                     {article.tags && article.tags.length > 0 && (
@@ -624,8 +660,38 @@ export default function ArticleManagerClient({ initialArticles }: ArticleManager
 
                 {/* Kolom Kanan: Tombol Aksi Cepat */}
                 <div className="flex items-center gap-2 self-start md:self-center shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-gray-100 w-full md:w-auto justify-end">
-                  {/* Quick Publish Button (Khusus Draf) */}
-                  {isDraft && (
+                  {/* Quick Publish / Bypass Button */}
+                  {article.isJurnalisQueue ? (
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => handleBypassJurnalisPublish(article.jurnalisDraftId || article.id)}
+                        disabled={isCurrentlyPublishing}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold text-xs shadow-2xs transition-all active:scale-98 cursor-pointer disabled:opacity-50"
+                        title="Bypass Antrean: Terbitkan artikel ini detik ini juga ke website"
+                      >
+                        {isCurrentlyPublishing ? (
+                          <>
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                            <span>Menerbitkan...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Rocket className="w-3.5 h-3.5" />
+                            <span>Bypass Terbitkan</span>
+                          </>
+                        )}
+                      </button>
+                      <Link
+                        href="/admin/jurnalis"
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-700 font-semibold text-xs border border-purple-200 shadow-2xs transition-colors"
+                        title="Buka di pipeline Jurnalis AI"
+                      >
+                        <Bot className="w-3.5 h-3.5" />
+                        <span>Jurnalis AI</span>
+                      </Link>
+                    </div>
+                  ) : isDraft ? (
                     <button
                       type="button"
                       onClick={() => handleQuickPublish(article.id)}
@@ -645,7 +711,7 @@ export default function ArticleManagerClient({ initialArticles }: ArticleManager
                         </>
                       )}
                     </button>
-                  )}
+                  ) : null}
 
                   {/* Buka di Web (Khusus Published) */}
                   {isPublished && (
@@ -697,7 +763,7 @@ export default function ArticleManagerClient({ initialArticles }: ArticleManager
 
             return (
               <div
-                key={article.id}
+                key={article.isJurnalisQueue ? `jurnalis-${article.jurnalisDraftId || article.id}` : `article-${article.id}`}
                 className={`rounded-xl border p-4 hover:shadow-md transition-all flex flex-col justify-between space-y-3 group ${
                   isSelected
                     ? 'bg-indigo-50/40 border-indigo-300 ring-2 ring-indigo-500/30'
@@ -716,14 +782,16 @@ export default function ArticleManagerClient({ initialArticles }: ArticleManager
                       />
                       <span
                         className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${
-                          isPublished
+                          article.isJurnalisQueue
+                            ? 'bg-purple-100 text-purple-900 border border-purple-200'
+                            : isPublished
                             ? 'bg-emerald-100 text-emerald-800'
                             : isScheduled
                             ? 'bg-blue-100 text-blue-800'
                             : 'bg-amber-100 text-amber-900'
                         }`}
                       >
-                        {article.status}
+                        {article.isJurnalisQueue ? 'Antrean Jurnalis' : article.status}
                       </span>
                     </div>
                     {getSourceBadge(article.source)}
@@ -731,7 +799,9 @@ export default function ArticleManagerClient({ initialArticles }: ArticleManager
 
                   {/* Judul Artikel */}
                   <h3 className="text-sm font-bold text-gray-900 group-hover:text-indigo-600 transition-colors line-clamp-2 leading-snug">
-                    <Link href={`/admin/edit/${article.id}`}>{article.title}</Link>
+                    <Link href={article.isJurnalisQueue ? '/admin/jurnalis' : `/admin/edit/${article.id}`}>
+                      {article.title}
+                    </Link>
                   </h3>
 
                   {/* Cuplikan */}
@@ -746,14 +816,38 @@ export default function ArticleManagerClient({ initialArticles }: ArticleManager
                     <span className={`px-2 py-0.5 rounded font-bold border ${getCategoryColor(article.category)}`}>
                       {article.category}
                     </span>
-                    <span className="truncate max-w-[130px]">
+                    <span className={`truncate max-w-[130px] ${article.isJurnalisQueue ? 'font-bold text-indigo-700' : ''}`}>
                       {formatDate(article.publishAt || article.publishedAt || article.createdAt)}
                     </span>
                   </div>
 
                   {/* Action buttons */}
                   <div className="flex items-center justify-between gap-2 pt-1">
-                    {isDraft ? (
+                    {article.isJurnalisQueue ? (
+                      <div className="flex items-center gap-1.5 flex-1">
+                        <button
+                          type="button"
+                          onClick={() => handleBypassJurnalisPublish(article.jurnalisDraftId || article.id)}
+                          disabled={isCurrentlyPublishing}
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold text-xs shadow-2xs transition-all cursor-pointer flex-1 justify-center disabled:opacity-50"
+                          title="Bypass Antrean: Terbitkan artikel ini detik ini juga ke website"
+                        >
+                          {isCurrentlyPublishing ? (
+                            <RefreshCw className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <Rocket className="w-3 h-3" />
+                          )}
+                          <span>Bypass Terbit</span>
+                        </button>
+                        <Link
+                          href="/admin/jurnalis"
+                          className="p-1.5 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-700 font-semibold text-xs border border-purple-200 shadow-2xs transition-colors"
+                          title="Buka di Jurnalis AI"
+                        >
+                          <Bot className="w-3.5 h-3.5" />
+                        </Link>
+                      </div>
+                    ) : isDraft ? (
                       <button
                         type="button"
                         onClick={() => handleQuickPublish(article.id)}

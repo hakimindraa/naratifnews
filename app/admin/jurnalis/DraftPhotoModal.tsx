@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
-import { X, Upload, Link2, Image as ImageIcon, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
-import { attachPhotoToDraftAction } from './actions';
+import { useState, useEffect } from 'react';
+import { X, Upload, Link2, Image as ImageIcon, Loader2, CheckCircle2, AlertCircle, Clock } from 'lucide-react';
+import { attachPhotoToDraftAction, getNextSuggestedPublishTimeAction } from './actions';
 
 interface DraftPhotoModalProps {
   isOpen: boolean;
@@ -11,7 +11,18 @@ interface DraftPhotoModalProps {
   draftTitle: string;
   initialCoverUrl?: string | null;
   initialCaption?: string | null;
-  onSuccess: (coverUrl: string, newStatus: string) => void;
+  initialPublishAt?: string | null;
+  onSuccess: (coverUrl: string, newStatus: string, publishAt?: string | null) => void;
+}
+
+function toDateTimeLocalString(date: Date) {
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  const year = date.getFullYear();
+  const month = pad(date.getMonth() + 1);
+  const day = pad(date.getDate());
+  const hours = pad(date.getHours());
+  const minutes = pad(date.getMinutes());
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
 }
 
 export default function DraftPhotoModal({
@@ -21,6 +32,7 @@ export default function DraftPhotoModal({
   draftTitle,
   initialCoverUrl,
   initialCaption,
+  initialPublishAt,
   onSuccess,
 }: DraftPhotoModalProps) {
   const [activeTab, setActiveTab] = useState<'upload' | 'url'>('upload');
@@ -30,8 +42,37 @@ export default function DraftPhotoModal({
   const [caption, setCaption] = useState(
     initialCaption || `Ilustrasi liputan: ${draftTitle.slice(0, 80)}`
   );
+  const [publishAt, setPublishAt] = useState<string>(() => {
+    if (initialPublishAt) {
+      const d = new Date(initialPublishAt);
+      if (!isNaN(d.getTime())) return toDateTimeLocalString(d);
+    }
+    return toDateTimeLocalString(new Date(Date.now() + 2 * 60 * 60 * 1000));
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      if (initialPublishAt) {
+        const d = new Date(initialPublishAt);
+        if (!isNaN(d.getTime())) {
+          setPublishAt(toDateTimeLocalString(d));
+          return;
+        }
+      }
+      getNextSuggestedPublishTimeAction()
+        .then((res) => {
+          if (res?.success && res.iso) {
+            const d = new Date(res.iso);
+            if (!isNaN(d.getTime())) {
+              setPublishAt(toDateTimeLocalString(d));
+            }
+          }
+        })
+        .catch(console.error);
+    }
+  }, [isOpen, initialPublishAt]);
 
   if (!isOpen) return null;
 
@@ -77,9 +118,13 @@ export default function DraftPhotoModal({
         formData.append('caption', caption.trim());
       }
 
+      if (publishAt) {
+        formData.append('publishAt', publishAt);
+      }
+
       const res = await attachPhotoToDraftAction(draftId, formData);
       if (res.success && res.coverUrl) {
-        onSuccess(res.coverUrl, res.status || 'ready_to_publish');
+        onSuccess(res.coverUrl, res.status || 'ready_to_publish', res.publishAt);
         onClose();
       } else {
         setError(res.error || 'Gagal mengunggah foto ke ImgBB.');
@@ -231,13 +276,35 @@ export default function DraftPhotoModal({
             />
           </div>
 
-          <div className="bg-blue-50 border border-blue-200/80 rounded-xl p-3 text-[11px] text-blue-800 space-y-1">
-            <div className="flex items-center gap-1.5 font-bold">
-              <CheckCircle2 className="w-3.5 h-3.5 text-blue-600" />
-              <span>Otomatis Masuk Antrean Tayang</span>
+          {/* Jadwal Jam Tayang (Auto-Slot 2 Jam) */}
+          <div className="space-y-1.5 pt-1">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5 text-indigo-600" />
+                <span>Jadwal Jam Tayang (Auto-Slot 2 Jam)</span>
+              </label>
+              <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100">
+                Rekomendasi Otomatis
+              </span>
             </div>
-            <p className="text-blue-700 leading-relaxed">
-              Setelah foto tersimpan, status berita otomatis menjadi <b>Siap Terbit</b> dan akan dipublikasikan oleh cron job berkala (setiap 1-2 jam).
+            <input
+              type="datetime-local"
+              value={publishAt}
+              onChange={(e) => setPublishAt(e.target.value)}
+              className="w-full text-xs px-3.5 py-2 rounded-xl border border-gray-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none font-medium text-gray-800"
+            />
+            <p className="text-[11px] text-gray-500">
+              Otomatis diatur per jeda 2 jam setelah antrean aktif sebelumnya. Anda bebas mengubah tanggal & jam ini sesuai keinginan.
+            </p>
+          </div>
+
+          <div className="bg-indigo-50 border border-indigo-200/80 rounded-xl p-3 text-[11px] text-indigo-900 space-y-1">
+            <div className="flex items-center gap-1.5 font-bold">
+              <CheckCircle2 className="w-3.5 h-3.5 text-indigo-600" />
+              <span>Sinkron ke Tab &quot;Terjadwal&quot; Dasbor Redaksi</span>
+            </div>
+            <p className="text-indigo-700 leading-relaxed">
+              Setelah foto disimpan, draf resmi masuk antrean dan langsung tampil di tab <b>Terjadwal</b> pada Dasbor Redaksi serta terbit otomatis saat jamnya tiba.
             </p>
           </div>
 

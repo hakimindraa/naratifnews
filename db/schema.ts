@@ -68,9 +68,11 @@ export const jurnalisDrafts = pgTable('jurnalis_drafts', {
   tags: text('tags').array(),
   coverUrl: text('cover_url'),
   coverCaption: text('cover_caption'),
+  publishAt: timestamp('publish_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [
   uniqueIndex('jurnalis_drafts_original_url_idx').on(table.originalUrl),
   index('jurnalis_drafts_status_created_at_idx').on(table.status, table.createdAt),
+  index('jurnalis_drafts_publish_at_idx').on(table.publishAt),
 ]);
 
