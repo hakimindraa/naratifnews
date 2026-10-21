@@ -10,10 +10,76 @@ import BacaJugaPickerModal from '../../BacaJugaPickerModal';
 import CoverImagePicker from '../../CoverImagePicker';
 import AuthorSelector from '../../AuthorSelector';
 
+const INDONESIA_REGIONS = [
+  'Umum',
+  'Kepulauan Riau',
+  'Riau',
+  'DKI Jakarta',
+  'Jawa Barat',
+  'Jawa Tengah',
+  'DI Yogyakarta',
+  'Jawa Timur',
+  'Banten',
+  'Bali',
+  'Sumatera Utara',
+  'Sumatera Barat',
+  'Sumatera Selatan',
+  'Aceh',
+  'Lampung',
+  'Jambi',
+  'Bengkulu',
+  'Bangka Belitung',
+  'Kalimantan Barat',
+  'Kalimantan Tengah',
+  'Kalimantan Selatan',
+  'Kalimantan Timur',
+  'Kalimantan Utara',
+  'Sulawesi Selatan',
+  'Sulawesi Utara',
+  'Sulawesi Tengah',
+  'Sulawesi Tenggara',
+  'Gorontalo',
+  'Sulawesi Barat',
+  'Nusa Tenggara Barat',
+  'Nusa Tenggara Timur',
+  'Maluku',
+  'Maluku Utara',
+  'Papua',
+  'Papua Barat',
+  'Papua Selatan',
+  'Papua Tengah',
+  'Papua Pegunungan',
+  'Papua Barat Daya',
+];
+
 export default function EditForm({ article }: { article: any }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState('');
+  const [category, setCategory] = useState(article.category || 'Software');
+  const [selectedRegion, setSelectedRegion] = useState<string>(() => {
+    const rawTags: string[] = Array.isArray(article.tags)
+      ? article.tags
+      : typeof article.tags === 'string'
+      ? article.tags.split(',').map((t: string) => t.trim())
+      : [];
+
+    // Prioritas 1: Kecocokan langsung nama provinsi
+    for (const reg of INDONESIA_REGIONS) {
+      if (reg === 'Umum') continue;
+      if (rawTags.some(t => t.toLowerCase() === reg.toLowerCase())) {
+        return reg;
+      }
+    }
+
+    // Prioritas 2: Deteksi kata kunci khas
+    for (const t of rawTags) {
+      if (/karimun|kundur|batam|tanjungpinang|bintan|kepri/i.test(t)) return 'Kepulauan Riau';
+      if (/pekanbaru|dumai|kampar|siak/i.test(t)) return 'Riau';
+    }
+
+    return 'Umum';
+  });
   const [content, setContent] = useState(article.content || '');
   const [coverUrl, setCoverUrl] = useState(article.coverUrl || '');
   const [coverCaption, setCoverCaption] = useState(article.coverCaption || '');
@@ -27,13 +93,13 @@ export default function EditForm({ article }: { article: any }) {
     if (!dateString) return '';
     const date = new Date(dateString);
     if (isNaN(date.getTime())) return '';
-    
+
     const yyyy = date.getFullYear();
     const mm = String(date.getMonth() + 1).padStart(2, '0');
     const dd = String(date.getDate()).padStart(2, '0');
     const hh = String(date.getHours()).padStart(2, '0');
     const min = String(date.getMinutes()).padStart(2, '0');
-    
+
     return `${yyyy}-${mm}-${dd}T${hh}:${min}`;
   };
 
@@ -41,6 +107,10 @@ export default function EditForm({ article }: { article: any }) {
     e.preventDefault();
     setError('');
     const formData = new FormData(e.currentTarget);
+    formData.set('category', category);
+    if (category === 'Regional') {
+      formData.set('region', selectedRegion);
+    }
     formData.set('content', content);
     formData.set('coverUrl', coverUrl);
     formData.set('coverCaption', coverCaption);
@@ -50,7 +120,7 @@ export default function EditForm({ article }: { article: any }) {
     } else {
       formData.delete('authorId');
     }
-    
+
     startTransition(async () => {
       const result = await updateArticle(article.id, formData);
       if (result.error) {
@@ -62,8 +132,8 @@ export default function EditForm({ article }: { article: any }) {
     });
   };
 
-  const initialTags = Array.isArray(article.tags) 
-    ? article.tags.join(', ') 
+  const initialTags = Array.isArray(article.tags)
+    ? article.tags.join(', ')
     : (article.tags || '');
 
   return (
@@ -74,35 +144,35 @@ export default function EditForm({ article }: { article: any }) {
           <div>{error}</div>
         </div>
       )}
-      
+
       {/* Grid Utama (Judul, Slug, Kategori, Waktu, Penulis) */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6">
         <div className="space-y-2 md:col-span-2">
           <label className="block text-sm font-bold text-gray-900">
             Judul Artikel <span className="text-red-500">*</span>
           </label>
-          <input 
-            type="text" 
-            name="title" 
-            defaultValue={article.title} 
-            required 
+          <input
+            type="text"
+            name="title"
+            defaultValue={article.title}
+            required
             className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-gray-900 text-sm sm:text-base font-medium"
           />
         </div>
-        
+
         <div className="space-y-2">
           <label className="block text-sm font-bold text-gray-900">
             Slug URL <span className="text-red-500">*</span>
           </label>
-          <input 
-            type="text" 
-            name="slug" 
-            defaultValue={article.slug} 
-            required 
+          <input
+            type="text"
+            name="slug"
+            defaultValue={article.slug}
+            required
             className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-gray-900 text-sm font-mono"
           />
           <p className="text-xs text-gray-500">
-            URL: /berita/{(article.category || 'software').toLowerCase()}/{article.id}/[slug]
+            URL: /berita/{(category || 'software').toLowerCase()}/{article.id}/[slug]
           </p>
         </div>
 
@@ -110,24 +180,49 @@ export default function EditForm({ article }: { article: any }) {
           <label className="block text-sm font-bold text-gray-900">
             Kategori Berita <span className="text-red-500">*</span>
           </label>
-          <select 
-            name="category" 
-            defaultValue={article.category}
+          <select
+            name="category"
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
             className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-gray-900 text-sm bg-white font-medium"
           >
-            {['Software', 'Hardware', 'AI', 'Infrastruktur', 'Gadget', 'Regional'].map(cat => (
+            {['Nasional', 'Internasional', 'Regional', 'Sport', 'AI', 'Gadget', 'Software', 'Hardware', 'Infrastruktur'].map(cat => (
               <option key={cat} value={cat}>{cat}</option>
             ))}
           </select>
+
+          {/* Sub-selector Wilayah (Hanya tampil jika Kategori = Regional) */}
+          {category === 'Regional' && (
+            <div className="p-3 bg-emerald-50/70 border border-emerald-200 rounded-xl space-y-1.5 transition-all">
+              <label className="block text-xs font-bold text-emerald-950 flex items-center gap-1.5">
+                <span>📍</span> Wilayah / Provinsi Liputan <span className="text-red-500">*</span>
+              </label>
+              <select
+                name="region"
+                value={selectedRegion}
+                onChange={(e) => setSelectedRegion(e.target.value)}
+                className="w-full px-3 py-2 border border-emerald-300 rounded-lg bg-white text-xs sm:text-sm font-semibold text-emerald-950 focus:ring-2 focus:ring-emerald-600 focus:border-emerald-600 cursor-pointer"
+              >
+                {INDONESIA_REGIONS.map((r) => (
+                  <option key={r} value={r}>
+                    {r === 'Umum' ? '🌐 Umum (Seluruh Daerah)' : `📍 ${r}`}
+                  </option>
+                ))}
+              </select>
+              <p className="text-[11px] text-emerald-700">
+                Pilih provinsi liputan berita ini agar terklasifikasi dan tampil di badge daerah yang tepat.
+              </p>
+            </div>
+          )}
         </div>
 
         <div className="space-y-2">
           <label className="block text-sm font-bold text-gray-900">
             Waktu Tayang (Local Time) <span className="text-red-500">*</span>
           </label>
-          <input 
-            type="datetime-local" 
-            name="publishAt" 
+          <input
+            type="datetime-local"
+            name="publishAt"
             defaultValue={formatForInput(article.publishAt)}
             required
             className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-gray-900 text-sm"
@@ -163,12 +258,12 @@ export default function EditForm({ article }: { article: any }) {
         <label className="block text-sm font-bold text-gray-900">
           Keterangan Gambar Cover (Opsional)
         </label>
-        <input 
-          type="text" 
-          name="coverCaption" 
-          value={coverCaption} 
+        <input
+          type="text"
+          name="coverCaption"
+          value={coverCaption}
           onChange={(e) => setCoverCaption(e.target.value)}
-          placeholder="Contoh: Ilustrasi server AI dan komputasi awan. (Dok. Unsplash)" 
+          placeholder="Contoh: Ilustrasi server AI dan komputasi awan. (Dok. Unsplash)"
           className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-gray-900 text-sm"
         />
       </div>
@@ -181,9 +276,9 @@ export default function EditForm({ article }: { article: any }) {
           </label>
           <span className="text-xs text-gray-400">Otomatis diambil dari konten jika dikosongkan</span>
         </div>
-        <textarea 
-          name="excerpt" 
-          defaultValue={article.excerpt || ''} 
+        <textarea
+          name="excerpt"
+          defaultValue={article.excerpt || ''}
           rows={2}
           placeholder="Ringkasan singkat 1-2 kalimat untuk preview berita di kartu depan..."
           className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-gray-900 text-sm"
@@ -195,11 +290,11 @@ export default function EditForm({ article }: { article: any }) {
         <label className="block text-sm font-bold text-gray-900">
           Tags / Topik Terkait (Opsional)
         </label>
-        <input 
-          type="text" 
-          name="tags" 
-          defaultValue={initialTags} 
-          placeholder="AI, Software, Machine Learning (pisahkan dengan koma)" 
+        <input
+          type="text"
+          name="tags"
+          defaultValue={initialTags}
+          placeholder="AI, Software, Machine Learning (pisahkan dengan koma)"
           className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-gray-900 text-sm"
         />
       </div>
@@ -225,9 +320,8 @@ export default function EditForm({ article }: { article: any }) {
               <button
                 type="button"
                 onClick={() => setActiveTab('edit')}
-                className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-bold transition-all ${
-                  activeTab === 'edit' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-900'
-                }`}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-bold transition-all ${activeTab === 'edit' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-900'
+                  }`}
               >
                 <Edit3 className="w-3.5 h-3.5" />
                 Tulis
@@ -235,9 +329,8 @@ export default function EditForm({ article }: { article: any }) {
               <button
                 type="button"
                 onClick={() => setActiveTab('preview')}
-                className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-bold transition-all ${
-                  activeTab === 'preview' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-900'
-                }`}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-bold transition-all ${activeTab === 'preview' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-900'
+                  }`}
               >
                 <Eye className="w-3.5 h-3.5" />
                 Pratinjau
@@ -247,11 +340,11 @@ export default function EditForm({ article }: { article: any }) {
         </div>
 
         {activeTab === 'edit' ? (
-          <textarea 
-            name="content" 
+          <textarea
+            name="content"
             value={content}
             onChange={(e) => setContent(e.target.value)}
-            required 
+            required
             rows={16}
             className="w-full p-4 border border-gray-300 rounded-xl font-mono text-sm focus:ring-2 focus:ring-gray-900 focus:border-gray-900 leading-relaxed"
           />
@@ -270,15 +363,15 @@ export default function EditForm({ article }: { article: any }) {
 
       {/* Tombol Aksi Bawah */}
       <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-6 border-t border-gray-200">
-        <button 
-          type="button" 
+        <button
+          type="button"
           onClick={() => router.push('/admin')}
           className="w-full sm:w-auto px-5 py-2.5 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 font-bold text-sm text-center transition-colors"
         >
           Batal
         </button>
-        <button 
-          type="submit" 
+        <button
+          type="submit"
           disabled={isPending}
           className="w-full sm:w-auto px-6 py-2.5 bg-gray-900 text-white rounded-xl hover:bg-black font-bold text-sm shadow-sm transition-all disabled:opacity-50"
         >

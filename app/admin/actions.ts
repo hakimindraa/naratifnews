@@ -15,18 +15,18 @@ export async function uploadMarkdownFile(formData: FormData) {
   try {
     const file = formData.get('file') as File;
     if (!file) return { error: 'Tidak ada file yang dipilih' };
-    
+
     if (file.size > 2 * 1024 * 1024) {
       return { error: 'Ukuran file maksimal 2 MB' };
     }
 
     const text = await file.text();
-    
+
     // Fitur: Bulk Upload
     // Kita memisahkan teks berdasarkan teks '---SPLIT---' jika ada. 
     // Jika tidak ada, array ini hanya berisi 1 elemen (1 artikel).
     const rawArticles = text.split(/^---SPLIT---$/m).map(t => t.trim()).filter(t => t.length > 0);
-    
+
     let successCount = 0;
     const errors: string[] = [];
 
@@ -34,7 +34,7 @@ export async function uploadMarkdownFile(formData: FormData) {
       try {
         // Parse frontmatter
         const { data, content } = matter(rawText);
-        
+
         // Validasi field wajib
         if (!data.title || !data.slug || !data.category || !data.cover) {
           errors.push(`Gagal: Artikel dengan slug '${data.slug || 'unknown'}' frontmatternya tidak lengkap.`);
@@ -46,7 +46,7 @@ export async function uploadMarkdownFile(formData: FormData) {
           continue;
         }
 
-        const categoryAllowed = ['Software', 'Hardware', 'AI', 'Infrastruktur', 'Gadget', 'Regional'];
+        const categoryAllowed = ['Software', 'Hardware', 'AI', 'Infrastruktur', 'Gadget', 'Regional', 'Nasional', 'Internasional', 'Sport'];
         const rawCategory = String(data.category || '').trim().toLowerCase();
         const categoryMap: Record<string, string> = {
           'ai': 'AI',
@@ -55,9 +55,12 @@ export async function uploadMarkdownFile(formData: FormData) {
           'infrastruktur': 'Infrastruktur',
           'gadget': 'Gadget',
           'regional': 'Regional',
+          'nasional': 'Nasional',
+          'internasional': 'Internasional',
+          'sport': 'Sport',
         };
         const catFormatted = categoryMap[rawCategory] || (data.category.charAt(0).toUpperCase() + data.category.slice(1));
-        
+
         if (!categoryAllowed.includes(catFormatted)) {
           errors.push(`Gagal: Kategori '${data.category}' pada '${data.title}' tidak valid.`);
           continue;
@@ -142,7 +145,7 @@ export async function uploadMarkdownFile(formData: FormData) {
             publishedAt: publishedAt,
           });
         }
-        
+
         successCount++;
       } catch (err: any) {
         errors.push(`Gagal memproses salah satu artikel: ${err.message}`);
@@ -150,7 +153,7 @@ export async function uploadMarkdownFile(formData: FormData) {
     } // end for loop
 
     revalidatePath('/', 'layout');
-    
+
     if (errors.length > 0) {
       if (successCount > 0) {
         return { success: true, message: `Berhasil mengunggah ${successCount} artikel. Tapi ada ${errors.length} error: ${errors[0]}` };
@@ -290,6 +293,7 @@ export async function updateArticle(id: number, formData: FormData) {
     const title = formData.get('title') as string;
     const slug = formData.get('slug') as string;
     const category = formData.get('category') as string;
+    const region = (formData.get('region') as string || '').trim();
     const author = (formData.get('author') as string || 'Redaksi').trim();
     const authorIdRaw = formData.get('authorId') as string | null;
     const authorId = authorIdRaw && !isNaN(Number(authorIdRaw)) ? Number(authorIdRaw) : null;
@@ -300,14 +304,32 @@ export async function updateArticle(id: number, formData: FormData) {
     const publishAtStr = formData.get('publishAt') as string;
     const content = formData.get('content') as string;
 
-    const tags = tagsStr 
+    let tags = tagsStr
       ? tagsStr.split(',').map(t => t.trim().replace(/^#/, '')).filter(t => t.length > 0)
       : [];
+
+    // Jika kategori Regional dan ada wilayah yang dipilih (bukan 'Umum'),
+    // sinkronkan nama wilayah ke dalam tags
+    if (category === 'Regional' && region && region !== 'Umum') {
+      const PROVINCES_TO_CLEAN = [
+        'Kepulauan Riau', 'Riau', 'DKI Jakarta', 'Jawa Barat', 'Jawa Tengah', 'DI Yogyakarta', 'Jawa Timur',
+        'Banten', 'Bali', 'Sumatera Utara', 'Sumatera Barat', 'Sumatera Selatan', 'Aceh', 'Lampung', 'Jambi',
+        'Bengkulu', 'Bangka Belitung', 'Kalimantan Barat', 'Kalimantan Tengah', 'Kalimantan Selatan',
+        'Kalimantan Timur', 'Kalimantan Utara', 'Sulawesi Selatan', 'Sulawesi Utara', 'Sulawesi Tengah',
+        'Sulawesi Tenggara', 'Gorontalo', 'Sulawesi Barat', 'Nusa Tenggara Barat', 'Nusa Tenggara Timur',
+        'Maluku', 'Maluku Utara', 'Papua', 'Papua Barat', 'Papua Selatan', 'Papua Tengah', 'Papua Pegunungan', 'Papua Barat Daya'
+      ];
+      // Hapus provinsi lain dari tags agar tidak terjadi tumpang tindih
+      tags = tags.filter(t => !PROVINCES_TO_CLEAN.some(p => p.toLowerCase() === t.toLowerCase()));
+      // Masukkan wilayah terpilih di awal tags
+      tags.unshift(region);
+      tags = Array.from(new Set(tags));
+    }
 
     // Ganti 'T' menjadi spasi dan tambahkan UTC+7 (WIB) agar tidak dianggap UTC oleh server Vercel
     const safePublishAtStr = publishAtStr ? publishAtStr.replace('T', ' ') + '+07:00' : '';
     const publishAt = safePublishAtStr ? new Date(safePublishAtStr) : null;
-    
+
     let status = 'draft';
     let publishedAt = null;
 
@@ -401,7 +423,7 @@ export async function createArticle(formData: FormData) {
     if (!coverUrl) return { error: 'Link cover gambar wajib diisi.' };
 
     // Format category
-    const categoryAllowed = ['Software', 'Hardware', 'AI', 'Infrastruktur', 'Gadget', 'Regional'];
+    const categoryAllowed = ['Software', 'Hardware', 'AI', 'Infrastruktur', 'Gadget', 'Regional', 'Nasional', 'Internasional', 'Sport'];
     const rawCategory = category.toLowerCase();
     const categoryMap: Record<string, string> = {
       'ai': 'AI',
@@ -410,8 +432,11 @@ export async function createArticle(formData: FormData) {
       'infrastruktur': 'Infrastruktur',
       'gadget': 'Gadget',
       'regional': 'Regional',
+      'nasional': 'Nasional',
+      'internasional': 'Internasional',
+      'sport': 'Sport',
     };
-    const catFormatted = categoryMap[rawCategory] || 'Software';
+    const catFormatted = categoryMap[rawCategory] || (category.charAt(0).toUpperCase() + category.slice(1));
 
     // Auto-generate slug jika kosong
     if (!slug) {
@@ -450,7 +475,7 @@ export async function createArticle(formData: FormData) {
       publishedAt = null;
     }
 
-    const tags = tagsStr 
+    const tags = tagsStr
       ? tagsStr.split(',').map(t => t.trim().replace(/^#/, '')).filter(t => t.length > 0)
       : [];
 

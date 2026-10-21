@@ -664,7 +664,10 @@ export default function GeneratorStudioPage() {
                   className="w-full bg-white rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs font-bold text-gray-800 outline-none cursor-pointer"
                 >
                   <option value="AI">AI</option>
+                  <option value="Nasional">Nasional</option>
+                  <option value="Internasional">Internasional</option>
                   <option value="Regional">Regional</option>
+                  <option value="Sport">Sport</option>
                   <option value="Software">Software</option>
                   <option value="Hardware">Hardware</option>
                   <option value="Gadget">Gadget</option>

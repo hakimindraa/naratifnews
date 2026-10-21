@@ -870,7 +870,7 @@ Ingat, balas HANYA dengan dokumen JSON yang valid sesuai format yang ditentukan.
     throw new Error('Respons AI tidak memiliki judul atau konten yang lengkap.');
   }
 
-  const validCategories = ['AI', 'Software', 'Hardware', 'Gadget', 'Infrastruktur', 'Regional'];
+  const validCategories = ['AI', 'Software', 'Hardware', 'Gadget', 'Infrastruktur', 'Regional', 'Nasional', 'Internasional', 'Sport'];
   let finalCategory = targetCategory;
   if (parsed.category && validCategories.includes(parsed.category)) {
     finalCategory = parsed.category;
@@ -983,7 +983,7 @@ ATURAN PENULISAN:
 3. Faktual & Akurat: Pertahankan semua fakta riil, angka, data teknis, kronologi peristiwa, nama perusahaan, serta nama narasumber dan kutipannya dari artikel sumber.
 4. Format Konten: Gunakan Markdown murni (Heading ##, ###, bullet points, penekanan bold, kutipan analitis >). JANGAN gunakan tag HTML mentah seperti <p>, <div>, <span>.
 5. Panjang konten: Target ${wordCountTarget}.
-6. Kategori artikel HARUS salah satu dari: ["AI", "Software", "Hardware", "Gadget", "Infrastruktur", "Regional"].
+6. Kategori artikel HARUS salah satu dari: ["AI", "Software", "Hardware", "Gadget", "Infrastruktur", "Regional", "Nasional", "Internasional", "Sport"].
 7. Atribusi Sumber Wajib: Pada bagian paling bawah artikel (baris terakhir), WAJIB sertakan garis pembatas (---) dan satu baris sumber ringkas:
    ---
    *Sumber: ${cleanDomain}.*
@@ -1083,7 +1083,7 @@ Ingat, balas HANYA dengan dokumen JSON yang valid sesuai format yang ditentukan.
     throw new Error('Respons AI tidak memiliki judul atau konten yang lengkap.');
   }
 
-  const validCategories = ['AI', 'Software', 'Hardware', 'Gadget', 'Infrastruktur', 'Regional'];
+  const validCategories = ['AI', 'Software', 'Hardware', 'Gadget', 'Infrastruktur', 'Regional', 'Nasional', 'Internasional', 'Sport'];
   let finalCategory = targetCategory;
   if (parsed.category && validCategories.includes(parsed.category)) {
     finalCategory = parsed.category;

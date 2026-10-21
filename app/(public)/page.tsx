@@ -7,6 +7,7 @@ import { id } from "date-fns/locale";
 import LatestNewsSection from "./LatestNewsSection";
 import DailyAssistanceWidget from "./DailyAssistanceWidget";
 import KabarNusantaraSection from "./KabarNusantaraSection";
+import ThematicSidebar from "./ThematicSidebar";
 
 export const instant = false;
 
@@ -92,6 +93,52 @@ export default async function Home() {
     category: a.category,
     publishedAt: a.publishedAt ? a.publishedAt.toISOString() : null,
   }));
+
+  // 8. Sorot Tematik: Nasional, Internasional, Sport untuk Sidebar Samping Berita Terbaru
+  let rawNasional: typeof publishedArticles = [];
+  let rawInternasional: typeof publishedArticles = [];
+  let rawSport: typeof publishedArticles = [];
+
+  try {
+    const [resNas, resInt, resSpo] = await Promise.all([
+      db
+        .select()
+        .from(articles)
+        .where(and(eq(articles.status, 'published'), eq(articles.category, 'Nasional')))
+        .orderBy(desc(articles.publishedAt))
+        .limit(4),
+      db
+        .select()
+        .from(articles)
+        .where(and(eq(articles.status, 'published'), eq(articles.category, 'Internasional')))
+        .orderBy(desc(articles.publishedAt))
+        .limit(4),
+      db
+        .select()
+        .from(articles)
+        .where(and(eq(articles.status, 'published'), eq(articles.category, 'Sport')))
+        .orderBy(desc(articles.publishedAt))
+        .limit(4),
+    ]);
+    rawNasional = resNas;
+    rawInternasional = resInt;
+    rawSport = resSpo;
+  } catch (err) {
+    console.warn("Gagal memuat berita tematik sidebar:", err);
+  }
+
+  const mapToThematicItem = (a: typeof publishedArticles[0]) => ({
+    id: a.id,
+    slug: a.slug,
+    title: a.title,
+    coverUrl: a.coverUrl,
+    category: a.category,
+    publishedAt: a.publishedAt ? a.publishedAt.toISOString() : null,
+  });
+
+  const nasionalArticles = rawNasional.map(mapToThematicItem);
+  const internasionalArticles = rawInternasional.map(mapToThematicItem);
+  const sportArticles = rawSport.map(mapToThematicItem);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -336,12 +383,26 @@ export default async function Home() {
       {/* Seksi Khusus: Kabar Nusantara (Pojok Daerah) */}
       <KabarNusantaraSection articles={regionalArticles} />
 
-      {/* Bagian Bawah: Feed Berita Terbaru dengan Load More */}
-      <LatestNewsSection
-        initialArticles={initialLatestArticles}
-        initialHasMore={hasMore}
-        initialOffset={11 + rawLatestArticles.length}
-      />
+      {/* Bagian Bawah (Opsi 1): Feed Berita Terbaru (Lebar 8) + Sidebar Tematik (Lebar 4) */}
+      <div className="mt-14 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-start">
+        {/* Kolom Kiri: Feed Berita Terbaru */}
+        <div className="lg:col-span-8 min-w-0">
+          <LatestNewsSection
+            initialArticles={initialLatestArticles}
+            initialHasMore={hasMore}
+            initialOffset={11 + rawLatestArticles.length}
+          />
+        </div>
+
+        {/* Kolom Kanan: Sidebar Tematik (Nasional, Internasional, Sport) */}
+        <div className="lg:col-span-4 min-w-0 lg:sticky lg:top-24">
+          <ThematicSidebar
+            nasionalArticles={nasionalArticles}
+            internasionalArticles={internasionalArticles}
+            sportArticles={sportArticles}
+          />
+        </div>
+      </div>
     </div>
   );
 }

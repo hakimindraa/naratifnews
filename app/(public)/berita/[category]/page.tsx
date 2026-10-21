@@ -24,6 +24,9 @@ export async function generateMetadata({
     'infrastruktur': 'Infrastruktur',
     'gadget': 'Gadget',
     'regional': 'Regional',
+    'nasional': 'Nasional',
+    'internasional': 'Internasional',
+    'sport': 'Sport',
   };
   const categoryName = categoryMap[rawCat] || (category.charAt(0).toUpperCase() + category.slice(1));
   const isRegional = rawCat === 'regional';
@@ -59,6 +62,9 @@ export default async function CategoryPage({
     'infrastruktur': 'Infrastruktur',
     'gadget': 'Gadget',
     'regional': 'Regional',
+    'nasional': 'Nasional',
+    'internasional': 'Internasional',
+    'sport': 'Sport',
   };
   const categoryName = categoryMap[rawCat] || (category.charAt(0).toUpperCase() + category.slice(1));
 
@@ -146,7 +152,7 @@ export default async function CategoryPage({
               <h3 className="text-xl font-bold font-heading text-gray-900">Populer Hari Ini</h3>
               <div className="ml-4 flex-grow h-px bg-gray-200"></div>
             </div>
-            
+
             <div className="flex flex-col gap-5">
               {popularArticles.length === 0 ? (
                 <p className="text-gray-500 text-sm">Belum ada berita populer.</p>

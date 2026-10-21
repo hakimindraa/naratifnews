@@ -104,7 +104,7 @@ export default function MarkdownGuideAccordion() {
                 category (Kategori Resmi)
               </span>
               <p className="text-[11px] text-gray-600 leading-relaxed">
-                Wajib salah satu dari: <strong className="text-gray-800">Software, Hardware, AI, Gadget, Infrastruktur, Regional</strong>.
+                Wajib salah satu dari: <strong className="text-gray-800">Nasional, Internasional, Regional, Sport, AI, Gadget, Software, Hardware, Infrastruktur</strong>.
               </p>
             </div>
 

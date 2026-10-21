@@ -39,8 +39,8 @@ const REGIONAL_KEYWORDS: Array<{ label: string; pattern: RegExp }> = [
   // Sumatera
   { label: 'Sumatera Utara', pattern: /\b(sumut|sumatera utara|medan|deliserdang)\b/i },
   { label: 'Sumatera Barat', pattern: /\b(sumbar|sumatera barat|padang|bukittinggi)\b/i },
-  { label: 'Riau', pattern: /\b(riau|pekanbaru|dumai)\b/i },
-  { label: 'Kepulauan Riau', pattern: /\b(kepri|batam|tanjungpinang)\b/i },
+  { label: 'Kepulauan Riau', pattern: /\b(kepri|kepulauan riau|batam|tanjungpinang|karimun|kundur|bintan|lingga|natuna|anambas)\b/i },
+  { label: 'Riau', pattern: /\b(riau|pekanbaru|dumai|siak|kampar|bengkalis|rohil|rohul|inhil|inhu|pelalawan|meranti)\b/i },
   { label: 'Sumatera Selatan', pattern: /\b(sumsel|sumatera selatan|palembang)\b/i },
   { label: 'Lampung', pattern: /\b(lampung|bandar lampung)\b/i },
   { label: 'Aceh', pattern: /\b(aceh|banda aceh|lhokseumawe)\b/i },

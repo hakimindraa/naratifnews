@@ -27,7 +27,7 @@ export async function getAutopilotScheduleInfo(): Promise<AutopilotScheduleInfo>
   const statusMode = settingsMap.get('autopilot_status') || 'draft';
   const cronjobApiKey = settingsMap.get('cronjob_api_key') || process.env.CRONJOB_API_KEY || '';
 
-  let allCategories = ['AI', 'Software', 'Hardware', 'Gadget', 'Infrastruktur', 'Regional'];
+  let allCategories = ['AI', 'Software', 'Hardware', 'Gadget', 'Infrastruktur', 'Regional', 'Nasional', 'Internasional', 'Sport'];
   try {
     const parsed = JSON.parse(settingsMap.get('autopilot_categories') || '[]');
     if (Array.isArray(parsed) && parsed.length > 0) {

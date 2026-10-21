@@ -23,7 +23,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { category, id: paramId, slug } = await params;
   const articleId = parseInt(paramId, 10);
-  
+
   if (isNaN(articleId)) {
     return { title: 'Not Found' };
   }
@@ -40,7 +40,7 @@ export async function generateMetadata({
 
   // Buat deskripsi singkat dari konten (hapus karakter markdown dasar dan ambil 160 karakter pertama)
   const plainTextContent = article.content.replace(/[#*`_\[\]()]/g, ' ').replace(/\s+/g, ' ').substring(0, 160).trim() + '...';
-  
+
   // URL lengkap artikel dari domain aktif
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.adafakta.web.id';
   const articleUrl = `${siteUrl}/berita/${category}/${articleId}/${slug}`;
@@ -81,9 +81,9 @@ export default async function ArticlePage({
   params: Promise<{ category: string; id: string; slug: string }>;
 }) {
   const { category, id: paramId, slug } = await params;
-  
+
   const articleId = parseInt(paramId, 10);
-  
+
   if (isNaN(articleId)) {
     notFound();
   }
@@ -195,8 +195,8 @@ export default async function ArticlePage({
     dateModified: article.updatedAt
       ? new Date(article.updatedAt).toISOString()
       : article.publishedAt
-      ? new Date(article.publishedAt).toISOString()
-      : new Date().toISOString(),
+        ? new Date(article.publishedAt).toISOString()
+        : new Date().toISOString(),
     author: [
       {
         '@type': 'Person',
@@ -267,7 +267,7 @@ export default async function ArticlePage({
                 </div>
               </div>
             </div>
-            
+
             <ShareButtons title={article.title} url={articleUrl} />
           </div>
 
@@ -347,7 +347,7 @@ export default async function ArticlePage({
                   } else if (sourceUrl) {
                     try {
                       sourceDomain = new URL(sourceUrl).hostname.replace(/^www\./, '');
-                    } catch {}
+                    } catch { }
                   }
 
                   return (
@@ -477,17 +477,17 @@ export default async function ArticlePage({
               </div>
             );
           })()}
-          
+
           {/* Tags */}
           {article.tags && article.tags.length > 0 && (
-             <div className="mt-10 pt-6 border-t border-gray-200 flex flex-wrap gap-2">
-               <span className="font-bold text-gray-700 mr-2">Tag:</span>
-               {article.tags.map(tag => (
-                 <a key={tag} href={`/cari?q=${tag}`} className="bg-gray-100 text-gray-600 px-3 py-1 text-sm rounded-full hover:bg-gray-200 transition-colors">
-                   #{tag}
-                 </a>
-               ))}
-             </div>
+            <div className="mt-10 pt-6 border-t border-gray-200 flex flex-wrap gap-2">
+              <span className="font-bold text-gray-700 mr-2">Tag:</span>
+              {article.tags.map(tag => (
+                <a key={tag} href={`/cari?q=${tag}`} className="bg-gray-100 text-gray-600 px-3 py-1 text-sm rounded-full hover:bg-gray-200 transition-colors">
+                  #{tag}
+                </a>
+              ))}
+            </div>
           )}
 
           {/* KOTAK TENTANG PENULIS (AUTHOR BOX) */}
@@ -582,7 +582,7 @@ export default async function ArticlePage({
                   <div className="flex items-center gap-2.5 min-w-0">
                     <div className="w-9 h-9 rounded-sm bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] text-white flex items-center justify-center shadow-sm shrink-0">
                       <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+                        <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" />
                       </svg>
                     </div>
                     <div className="text-left min-w-0">
@@ -602,7 +602,7 @@ export default async function ArticlePage({
               <h3 className="text-xl font-bold font-heading text-gray-900">Berita Populer</h3>
               <div className="ml-4 flex-grow h-px bg-gray-200"></div>
             </div>
-            
+
             <div className="flex flex-col gap-5">
               {popularArticles.length === 0 ? (
                 <p className="text-sm text-gray-500">Belum ada berita populer.</p>

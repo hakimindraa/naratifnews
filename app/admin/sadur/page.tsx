@@ -31,7 +31,7 @@ import {
 } from './actions';
 import { ScrapedSourceData } from '@/lib/url-scraper';
 
-const CATEGORIES = ['AI', 'Software', 'Hardware', 'Gadget', 'Infrastruktur', 'Regional'];
+const CATEGORIES = ['AI', 'Nasional', 'Internasional', 'Regional', 'Sport', 'Software', 'Hardware', 'Gadget', 'Infrastruktur'];
 
 const SAMPLE_URLS = [
   { label: 'The Verge', url: 'https://www.theverge.com' },

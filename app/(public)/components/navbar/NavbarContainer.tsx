@@ -21,12 +21,15 @@ interface NavbarContainerProps {
 
 const CATEGORIES = [
   { name: "Semua", slug: "", href: "/" },
+  { name: "Nasional", slug: "nasional", href: "/berita/nasional" },
+  { name: "Internasional", slug: "internasional", href: "/berita/internasional" },
+  { name: "Regional", slug: "regional", href: "/berita/regional" },
+  { name: "Sport", slug: "sport", href: "/berita/sport" },
+  { name: "AI", slug: "ai", href: "/berita/ai" },
+  { name: "Gadget", slug: "gadget", href: "/berita/gadget" },
   { name: "Software", slug: "software", href: "/berita/software" },
   { name: "Hardware", slug: "hardware", href: "/berita/hardware" },
-  { name: "AI", slug: "ai", href: "/berita/ai" },
   { name: "Infrastruktur", slug: "infrastruktur", href: "/berita/infrastruktur" },
-  { name: "Gadget", slug: "gadget", href: "/berita/gadget" },
-  { name: "Regional", slug: "regional", href: "/berita/regional" },
 ];
 
 export default function NavbarContainer({ breakingNews, trendingTags }: NavbarContainerProps) {

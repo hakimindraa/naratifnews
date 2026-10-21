@@ -246,6 +246,12 @@ export default function ArticleManagerClient({ initialArticles }: ArticleManager
   const getCategoryColor = (category: string) => {
     const cat = category.toLowerCase();
     switch (cat) {
+      case 'nasional':
+        return 'bg-red-100/90 text-red-800 border-red-200';
+      case 'internasional':
+        return 'bg-sky-100/90 text-sky-800 border-sky-200';
+      case 'sport':
+        return 'bg-amber-100/90 text-amber-800 border-amber-200';
       case 'regional':
         return 'bg-emerald-100/90 text-emerald-800 border-emerald-200';
       case 'ai':
@@ -407,11 +413,14 @@ export default function ArticleManagerClient({ initialArticles }: ArticleManager
               className="w-full bg-white rounded-xl border border-gray-200 px-3 py-2 text-xs sm:text-sm font-semibold text-gray-800 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20 outline-none transition-all shadow-2xs cursor-pointer"
             >
               <option value="all">Semua Kategori</option>
-              <option value="AI">AI</option>
+              <option value="Nasional">Nasional</option>
+              <option value="Internasional">Internasional</option>
               <option value="Regional">Regional</option>
+              <option value="Sport">Sport</option>
+              <option value="AI">AI</option>
+              <option value="Gadget">Gadget</option>
               <option value="Software">Software</option>
               <option value="Hardware">Hardware</option>
-              <option value="Gadget">Gadget</option>
               <option value="Infrastruktur">Infrastruktur</option>
             </select>
           </div>

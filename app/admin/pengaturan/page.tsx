@@ -46,7 +46,7 @@ import {
   AutopilotSettingsData,
 } from './actions';
 
-const ALL_CATEGORIES = ['AI', 'Software', 'Hardware', 'Gadget', 'Infrastruktur', 'Regional'];
+const ALL_CATEGORIES = ['AI', 'Nasional', 'Internasional', 'Regional', 'Sport', 'Software', 'Hardware', 'Gadget', 'Infrastruktur'];
 
 export default function PengaturanPage() {
   const [activeTab, setActiveTab] = useState<'gateway' | 'autopilot'>('autopilot');

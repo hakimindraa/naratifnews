@@ -106,12 +106,12 @@ export default function TulisForm() {
           <label className="block text-sm font-bold text-gray-900">
             Judul Artikel <span className="text-red-500">*</span>
           </label>
-          <input 
-            type="text" 
+          <input
+            type="text"
             value={title}
             onChange={handleTitleChange}
-            placeholder="Contoh: OpenAI Resmi Rilis Model Terbaru dengan Kemampuan..." 
-            required 
+            placeholder="Contoh: OpenAI Resmi Rilis Model Terbaru dengan Kemampuan..."
+            required
             className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-gray-900 text-sm sm:text-base font-medium"
           />
         </div>
@@ -120,12 +120,12 @@ export default function TulisForm() {
           <label className="block text-sm font-bold text-gray-900">
             Slug URL <span className="text-red-500">*</span>
           </label>
-          <input 
-            type="text" 
+          <input
+            type="text"
             value={slug}
             onChange={handleSlugChange}
-            placeholder="openai-resmi-rilis-model-terbaru" 
-            required 
+            placeholder="openai-resmi-rilis-model-terbaru"
+            required
             className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-gray-900 text-sm font-mono"
           />
           <p className="text-xs text-gray-500">
@@ -137,12 +137,12 @@ export default function TulisForm() {
           <label className="block text-sm font-bold text-gray-900">
             Kategori Berita <span className="text-red-500">*</span>
           </label>
-          <select 
+          <select
             value={category}
             onChange={(e) => setCategory(e.target.value)}
             className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-gray-900 text-sm bg-white font-medium"
           >
-            {['Software', 'Hardware', 'AI', 'Infrastruktur', 'Gadget', 'Regional'].map(cat => (
+            {['Nasional', 'Internasional', 'Regional', 'Sport', 'AI', 'Gadget', 'Software', 'Hardware', 'Infrastruktur'].map(cat => (
               <option key={cat} value={cat}>{cat}</option>
             ))}
           </select>
@@ -152,8 +152,8 @@ export default function TulisForm() {
           <label className="block text-sm font-bold text-gray-900">
             Waktu Tayang / Publikasi
           </label>
-          <input 
-            type="datetime-local" 
+          <input
+            type="datetime-local"
             value={publishAt}
             onChange={(e) => setPublishAt(e.target.value)}
             required
@@ -189,11 +189,11 @@ export default function TulisForm() {
         <label className="block text-sm font-bold text-gray-900">
           Keterangan Gambar Cover (Opsional)
         </label>
-        <input 
-          type="text" 
+        <input
+          type="text"
           value={coverCaption}
           onChange={(e) => setCoverCaption(e.target.value)}
-          placeholder="Contoh: Ilustrasi server AI dan kecerdasan buatan. (Dok. Unsplash)" 
+          placeholder="Contoh: Ilustrasi server AI dan kecerdasan buatan. (Dok. Unsplash)"
           className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-gray-900 text-sm"
         />
       </div>
@@ -206,7 +206,7 @@ export default function TulisForm() {
           </label>
           <span className="text-xs text-gray-400">Otomatis diambil jika dikosongkan</span>
         </div>
-        <textarea 
+        <textarea
           value={excerpt}
           onChange={(e) => setExcerpt(e.target.value)}
           rows={2}
@@ -220,11 +220,11 @@ export default function TulisForm() {
         <label className="block text-sm font-bold text-gray-900">
           Tags / Topik Terkait (Opsional)
         </label>
-        <input 
-          type="text" 
+        <input
+          type="text"
           value={tags}
           onChange={(e) => setTags(e.target.value)}
-          placeholder="AI, Software, Machine Learning (pisahkan dengan koma)" 
+          placeholder="AI, Software, Machine Learning (pisahkan dengan koma)"
           className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-gray-900 text-sm"
         />
       </div>
@@ -250,9 +250,8 @@ export default function TulisForm() {
               <button
                 type="button"
                 onClick={() => setActiveTab('edit')}
-                className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-bold transition-all ${
-                  activeTab === 'edit' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-900'
-                }`}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-bold transition-all ${activeTab === 'edit' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-900'
+                  }`}
               >
                 <Edit3 className="w-3.5 h-3.5" />
                 Tulis
@@ -260,9 +259,8 @@ export default function TulisForm() {
               <button
                 type="button"
                 onClick={() => setActiveTab('preview')}
-                className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-bold transition-all ${
-                  activeTab === 'preview' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-900'
-                }`}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-bold transition-all ${activeTab === 'preview' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-900'
+                  }`}
               >
                 <Eye className="w-3.5 h-3.5" />
                 Pratinjau
@@ -272,10 +270,10 @@ export default function TulisForm() {
         </div>
 
         {activeTab === 'edit' ? (
-          <textarea 
+          <textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
-            required 
+            required
             rows={14}
             placeholder={`Tulis isi berita dalam format Markdown di sini...\n\nContoh:\n## Sub-judul Pembahasan\nParagraf penjelasan berita...\n\n> **Baca Juga:** [Judul Artikel Lain](/berita/...)\n\n> Kutipan penting narasumber...\n\n- Poin pertama\n- Poin kedua`}
             className="w-full p-4 border border-gray-300 rounded-xl font-mono text-sm focus:ring-2 focus:ring-gray-900 focus:border-gray-900 leading-relaxed"
@@ -295,15 +293,15 @@ export default function TulisForm() {
 
       {/* Tombol Aksi Bawah */}
       <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-6 border-t border-gray-200">
-        <button 
-          type="button" 
+        <button
+          type="button"
           onClick={() => router.push('/admin')}
           className="w-full sm:w-auto px-5 py-2.5 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 font-bold text-sm text-center transition-colors"
         >
           Batal
         </button>
-        <button 
-          type="submit" 
+        <button
+          type="submit"
           disabled={isPending}
           className="w-full sm:w-auto px-6 py-2.5 bg-gray-900 text-white rounded-xl hover:bg-black font-bold text-sm shadow-sm transition-all disabled:opacity-50 flex items-center justify-center gap-2"
         >

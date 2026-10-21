@@ -46,11 +46,10 @@ export default function MainNavbar({ categories, onOpenDrawer }: MainNavbarProps
                 <Link
                   key={cat.name}
                   href={cat.href}
-                  className={`text-sm tracking-tight transition-all pb-1 border-b-2 ${
-                    isActive
+                  className={`text-sm tracking-tight transition-all pb-1 border-b-2 ${isActive
                       ? "text-red-600 font-bold border-red-600"
                       : "text-gray-700 hover:text-red-600 font-semibold border-transparent"
-                  }`}
+                    }`}
                 >
                   {cat.name}
                 </Link>

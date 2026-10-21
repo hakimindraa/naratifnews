@@ -55,15 +55,15 @@ export default function LatestNewsSection({
   }
 
   return (
-    <div className="mt-16">
+    <div>
       {/* Section Header */}
-      <div className="flex items-center mb-8">
-        <h3 className="text-2xl font-bold font-heading text-gray-900">Berita Terbaru</h3>
+      <div className="flex items-center mb-6">
+        <h3 className="text-xl sm:text-2xl font-bold font-heading text-gray-900">Berita Terbaru</h3>
         <div className="ml-4 flex-grow h-px bg-gray-200"></div>
       </div>
 
-      {/* Articles Grid (4 Columns) */}
-      <div className="grid grid-cols-2 gap-4 sm:gap-x-6 sm:gap-y-10 lg:grid-cols-4">
+      {/* Articles Grid (2 Columns dalam area 8-col) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-x-6 sm:gap-y-8">
         {articlesList.map((article) => (
           <div key={article.id} className="group cursor-pointer">
             <Link
