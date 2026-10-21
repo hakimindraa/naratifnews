@@ -69,7 +69,8 @@ export default function DraftPhotoModal({
           setIsSubmitting(false);
           return;
         }
-        formData.append('imageUrl', imageUrl.trim());
+        const cleanUrl = imageUrl.trim().replace(/https?:\/\/i\.ibb\.co\//g, 'https://i.ibb.co.com/');
+        formData.append('imageUrl', cleanUrl);
       }
 
       if (caption.trim()) {
@@ -208,7 +209,7 @@ export default function DraftPhotoModal({
                     setImageUrl(e.target.value);
                     setError(null);
                   }}
-                  placeholder="https://i.ibb.co/... atau URL gambar publik"
+                  placeholder="https://i.ibb.co.com/... atau URL gambar publik"
                   className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-gray-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none"
                 />
               </div>

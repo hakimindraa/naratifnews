@@ -172,14 +172,90 @@ Ringkasan Fakta: ${draft.summary || "-"}`;
       finalContent = `adafaktanews - ${finalContent.trimStart()}`;
     }
 
-    // 2. Pastikan akhiran selalu ada '*Sumber: [sumber]*'
+    const finalCategory = aiParsed.category || "Umum";
+    const finalTags = Array.isArray(aiParsed.tags) ? aiParsed.tags : [];
+
+    // Bersihkan penanda sumber sementara jika AI sudah menulisnya di dalam naskah
     const expectedSource = draft.source || "Media Partner";
+    finalContent = finalContent.replace(/\n*\*Sumber:.*?\*\s*$/i, "").trim();
+
+    // 2. Ambil 1-2 kandidat artikel terbaru dari database untuk Smart Internal Linking ("Baca Juga")
+    try {
+      let relatedArticles: Array<{ id: number; title: string; slug: string; category: string }> = [];
+
+      // Prioritas 1: Artikel dari kategori yang sama
+      const sameCatRows = (await sql`
+        SELECT id, title, slug, category
+        FROM articles
+        WHERE status = 'published' AND LOWER(category) = LOWER(${finalCategory})
+        ORDER BY id DESC
+        LIMIT 2;
+      `) as Array<{ id: number; title: string; slug: string; category: string }>;
+
+      relatedArticles = sameCatRows || [];
+
+      // Prioritas 2: Jika kurang dari 2, ambil artikel terbaru lintas kategori
+      if (relatedArticles.length < 2) {
+        const excludeIds = relatedArticles.map((a) => a.id);
+        const latestRows = (await sql`
+          SELECT id, title, slug, category
+          FROM articles
+          WHERE status = 'published'
+          ORDER BY id DESC
+          LIMIT 5;
+        `) as Array<{ id: number; title: string; slug: string; category: string }>;
+
+        for (const r of latestRows || []) {
+          if (!excludeIds.includes(r.id) && relatedArticles.length < 2) {
+            relatedArticles.push(r);
+          }
+        }
+      }
+
+      // Sisipkan format '> **Baca Juga:** [Judul](/berita/...)' di sela paragraf
+      if (relatedArticles.length > 0 && !/baca juga\s*:/i.test(finalContent)) {
+        const paragraphs = finalContent.split(/\n\s*\n/).filter((p) => p.trim().length > 0);
+
+        const buildLinkSnippet = (art: { id: number; title: string; slug: string; category: string }) => {
+          const catSlug = (art.category || 'umum').toLowerCase().replace(/\s+/g, '-');
+          return `> **Baca Juga:** [${art.title}](/berita/${catSlug}/${art.id}/${art.slug})`;
+        };
+
+        const snippet1 = buildLinkSnippet(relatedArticles[0]);
+        const snippet2 = relatedArticles.length > 1 ? buildLinkSnippet(relatedArticles[1]) : '';
+
+        if (paragraphs.length >= 5) {
+          // Artikel panjang: Sisipkan setelah paragraf 2 dan setelah paragraf 4
+          paragraphs.splice(2, 0, snippet1);
+          if (snippet2) {
+            paragraphs.splice(5, 0, snippet2);
+          }
+          finalContent = paragraphs.join('\n\n');
+        } else if (paragraphs.length >= 3) {
+          // Artikel sedang: Sisipkan setelah paragraf 1 dan paragraf 3
+          paragraphs.splice(1, 0, snippet1);
+          if (snippet2 && paragraphs.length >= 3) {
+            paragraphs.splice(3, 0, snippet2);
+          } else if (snippet2) {
+            paragraphs.push(snippet2);
+          }
+          finalContent = paragraphs.join('\n\n');
+        } else {
+          // Artikel pendek: Sisipkan di bagian akhir
+          finalContent = snippet2 
+            ? `${finalContent}\n\n${snippet1}\n\n${snippet2}` 
+            : `${finalContent}\n\n${snippet1}`;
+        }
+      }
+    } catch (err) {
+      console.warn("Gagal menyisipkan internal link Baca Juga:", err);
+    }
+
+    // 3. Pastikan baris akhir selalu memuat atribusi '*Sumber: [sumber]*'
     if (!finalContent.includes("*Sumber:")) {
       finalContent = `${finalContent.trimEnd()}\n\n*Sumber: ${expectedSource}*`;
     }
 
-    const finalCategory = aiParsed.category || "Umum";
-    const finalTags = Array.isArray(aiParsed.tags) ? aiParsed.tags : [];
     const nextStatus = draft.cover_url && draft.cover_url.trim().length > 0 ? 'ready_to_publish' : 'generated';
 
     // 3. Simpan hasil generate ke database

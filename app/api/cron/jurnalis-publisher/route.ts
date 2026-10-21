@@ -76,7 +76,8 @@ export async function GET(request: Request) {
       chosenCategory = draftToPublish.category;
     }
 
-    const coverUrl = draftToPublish.coverUrl!;
+    const rawCover = draftToPublish.coverUrl!;
+    const coverUrl = rawCover.replace(/https?:\/\/i\.ibb\.co\//g, 'https://i.ibb.co.com/');
     const coverCaption =
       draftToPublish.coverCaption || `Ilustrasi liputan: ${title} (Sumber: ${draftToPublish.source})`;
 
@@ -85,7 +86,7 @@ export async function GET(request: Request) {
       articleTags = Array.from(new Set([...articleTags, ...draftToPublish.tags]));
     }
 
-    // 4. Masukkan ke tabel articles utama (Status: published)
+    // 4. Masukkan ke tabel articles utama (Status: published, Penulis ID 3: Redaksi 2 / penulis 2)
     const [newArticle] = await db
       .insert(articles)
       .values({
@@ -94,7 +95,8 @@ export async function GET(request: Request) {
         excerpt,
         content,
         category: chosenCategory,
-        author: 'Redaksi Ada Fakta',
+        author: 'Redaksi 2',
+        authorId: 3,
         coverUrl,
         coverCaption,
         status: 'published',

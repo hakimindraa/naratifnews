@@ -137,8 +137,8 @@ export default function CoverImagePicker({
           type="url"
           name={name}
           value={coverUrl}
-          onChange={(e) => onCoverChange(e.target.value)}
-          placeholder="https://i.ibb.co/... atau link gambar web"
+          onChange={(e) => onCoverChange(e.target.value.replace(/https?:\/\/i\.ibb\.co\//g, 'https://i.ibb.co.com/'))}
+          placeholder="https://i.ibb.co.com/... atau link gambar web"
           required={required}
           className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-gray-900 text-sm font-mono text-gray-800 bg-white"
         />

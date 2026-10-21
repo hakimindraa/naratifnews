@@ -83,14 +83,22 @@ export async function uploadImageToImgbb(formData: FormData): Promise<ImgbbUploa
       return { error: msg };
     }
 
+    // Helper normalisasi agar selalu menggunakan domain mirror stabil .co.com
+    const normalizeImgbbUrl = (u?: string) => {
+      if (!u) return u;
+      return u.replace(/https?:\/\/i\.ibb\.co\//g, 'https://i.ibb.co.com/');
+    };
+
     // Mengambil direct link asli berakhiran ekstensi (.webp, .jpg, .png)
-    const directUrl = data.data.image?.url || data.data.url;
+    const directUrl = normalizeImgbbUrl(data.data.image?.url || data.data.url);
+    const thumbUrl = normalizeImgbbUrl(data.data.thumb?.url) || directUrl;
+    const displayUrl = normalizeImgbbUrl(data.data.display_url) || directUrl;
 
     return {
       success: true,
       url: directUrl,
-      thumbUrl: data.data.thumb?.url || directUrl,
-      displayUrl: data.data.display_url || directUrl,
+      thumbUrl,
+      displayUrl,
     };
   } catch (err: any) {
     console.error('[ImgBB Upload Error]:', err);

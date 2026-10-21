@@ -86,13 +86,14 @@ export async function convertDraftToArticleAction(draftId: number, targetCategor
       chosenCategory = draft.category;
     }
 
-    const coverUrl = draft.coverUrl || 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=1200&auto=format&fit=crop&q=80';
+    const rawCoverUrl = draft.coverUrl || 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=1200&auto=format&fit=crop&q=80';
+    const coverUrl = rawCoverUrl.replace(/https?:\/\/i\.ibb\.co\//g, 'https://i.ibb.co.com/');
     const coverCaption = draft.coverCaption || `Ilustrasi liputan berita: ${title}`;
     const tags = Array.isArray(draft.tags) && draft.tags.length > 0 
       ? draft.tags 
       : ['berita', 'intelijen-jurnalis', chosenCategory.toLowerCase()];
 
-    // Insert ke tabel articles AdaFakta
+    // Insert ke tabel articles AdaFakta (Penulis ID 3: Redaksi 2 / penulis 2)
     const [newArticle] = await db
       .insert(articles)
       .values({
@@ -101,7 +102,8 @@ export async function convertDraftToArticleAction(draftId: number, targetCategor
         excerpt,
         content,
         category: chosenCategory,
-        author: 'Redaksi AdaFakta',
+        author: 'Redaksi 2',
+        authorId: 3,
         coverUrl,
         coverCaption,
         status: 'draft',
@@ -173,6 +175,9 @@ export async function attachPhotoToDraftAction(draftId: number, formData: FormDa
     } else {
       return { success: false, error: 'Pilih file gambar atau masukkan URL gambar yang valid.' };
     }
+
+    // Normalisasi link gambar ke i.ibb.co.com
+    finalCoverUrl = finalCoverUrl.replace(/https?:\/\/i\.ibb\.co\//g, 'https://i.ibb.co.com/');
 
     // Jika draf sudah memiliki teks artikel ter-generate, otomatis aktifkan antrean 'ready_to_publish'
     const newStatus = draft.generatedArticle ? 'ready_to_publish' : draft.status;
@@ -276,13 +281,15 @@ export async function instantPublishDraftAction(draftId: number) {
     }
 
     const now = new Date();
+    const rawCover = draft.coverUrl || '';
+    const normalizedCoverUrl = rawCover.replace(/https?:\/\/i\.ibb\.co\//g, 'https://i.ibb.co.com/');
 
     let articleTags: string[] = ['berita', 'adafaktanews', chosenCategory.toLowerCase()];
     if (Array.isArray(draft.tags) && draft.tags.length > 0) {
       articleTags = Array.from(new Set([...articleTags, ...draft.tags]));
     }
 
-    // Insert ke tabel articles utama (Status: published)
+    // Insert ke tabel articles utama (Status: published, Penulis ID 3: Redaksi 2 / penulis 2)
     const [newArticle] = await db
       .insert(articles)
       .values({
@@ -291,8 +298,9 @@ export async function instantPublishDraftAction(draftId: number) {
         excerpt,
         content,
         category: chosenCategory,
-        author: 'Redaksi Ada Fakta',
-        coverUrl: draft.coverUrl,
+        author: 'Redaksi 2',
+        authorId: 3,
+        coverUrl: normalizedCoverUrl,
         coverCaption: draft.coverCaption || `Ilustrasi liputan: ${title}`,
         status: 'published',
         publishedAt: now,
