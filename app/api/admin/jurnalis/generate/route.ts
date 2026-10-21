@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { sql } from "@/db";
+import { getAISettings } from "@/app/admin/pengaturan/actions";
 
 export const maxDuration = 60;
 
@@ -76,19 +77,24 @@ export async function POST(req: Request) {
 
     const draft = rows[0];
 
-    // 2. Konfigurasi kredensial AI (9Router / OpenAI-compatible)
-    const baseUrl =
-      process.env.NINEROUTER_BASE_URL ||
-      process.env.LOCAL_9ROUTER_BASE_URL ||
-      "http://node7.botkeep.cloud:40022/v1";
-    const apiKey =
-      process.env.NINEROUTER_API_KEY ||
-      process.env.LOCAL_9ROUTER_KEY ||
-      "sk-d6bddb272e797ddb-oj08b1-36238240";
-    const model =
-      process.env.NINEROUTER_MODEL ||
-      process.env.LOCAL_9ROUTER_MODEL ||
-      "ag/claude-opus-4-6-thinking";
+    // 2. Ambil konfigurasi model AI dinamis dari database (Pengaturan AI)
+    const aiSettings = await getAISettings();
+    const provider = aiSettings.defaultProvider || '9router';
+
+    let baseUrl = (aiSettings.baseUrl || process.env.NINEROUTER_BASE_URL || process.env.LOCAL_9ROUTER_BASE_URL || "http://node7.botkeep.cloud:40022/v1").trim().replace(/\/+$/, "");
+    let apiKey = (aiSettings.apiKey || process.env.NINEROUTER_API_KEY || process.env.LOCAL_9ROUTER_KEY || "sk-d6bddb272e797ddb-oj08b1-36238240").trim();
+    let model = (aiSettings.model || process.env.NINEROUTER_MODEL || process.env.LOCAL_9ROUTER_MODEL || "radox/deepseek-v4-flash-0731").trim();
+
+    // Jika provider default adalah Gemini atau Groq dan kunci API env tersedia
+    if (provider === 'gemini' && process.env.GEMINI_API_KEY && (model.toLowerCase().includes('gemini') || !aiSettings.model)) {
+      baseUrl = (process.env.GEMINI_BASE_URL || 'https://generativelanguage.googleapis.com/v1beta/openai').replace(/\/+$/, '');
+      apiKey = process.env.GEMINI_API_KEY;
+      model = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+    } else if (provider === 'groq' && process.env.GROQ_API_KEY && (model.toLowerCase().includes('groq') || model.toLowerCase().includes('gpt-oss'))) {
+      baseUrl = (process.env.GROQ_BASE_URL || 'https://api.groq.com/openai/v1').replace(/\/+$/, '');
+      apiKey = process.env.GROQ_API_KEY;
+      model = process.env.GROQ_MODEL || 'openai/gpt-oss-120b';
+    }
 
     const promptSystem = `Kamu adalah jurnalis dan editor berita senior di media "AdaFakta" (adafakta.web.id). 
 Tugasmu adalah menulis artikel berita utuh berbahasa Indonesia yang objektif, faktual, mendalam, dan mematuhi kaidah 5W+1H (What, Who, Where, When, Why, How).
@@ -138,7 +144,7 @@ Ringkasan Fakta: ${draft.summary || "-"}`;
 
     if (!aiRes.ok) {
       const errText = await aiRes.text();
-      throw new Error(`AI Gateway error (${aiRes.status}): ${errText}`);
+      throw new Error(`AI Gateway error (${aiRes.status}) [Model: ${model}]: ${errText}`);
     }
 
     const rawText = await aiRes.text();
