@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import {
   sendTelegramMessage,
+  sendTelegramPhoto,
   editTelegramMessage,
   deleteTelegramMessage,
   deleteTelegramMessages,
@@ -232,15 +233,15 @@ async function runArticleGeneration({
       : '⚡ Google Gemini 2.5 Flash';
 
   // FASE 1: Memulai & Riset Fakta (30% Progres)
-  const fase1Text = `⏳ <b>PROSES LIPUTAN AI BERJALAN</b>
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  const fase1Text = `⏳ <b>PROSES LIPUTAN SEDANG BERJALAN...</b>
+
 💡 <b>Topik:</b> <i>"${topic}"</i>
 
-┌── 📋 <b>Parameter Liputan</b>
-│ 📂 Kategori : <b>${category || 'AI'}${cleanRegion ? ` (${cleanRegion})` : ''}</b>
-│ 🎯 Target   : <b>${statusLabel}</b>
-│ 🤖 Engine   : <b>${providerLabel}</b>
-└──
+<blockquote>
+📂 Kategori : <b>${category || 'AI'}${cleanRegion ? ` (${cleanRegion})` : ''}</b>
+🎯 Target   : <b>${statusLabel}</b>
+🤖 Engine   : <b>${providerLabel}</b>
+</blockquote>
 
 <b>Tahapan Eksekusi:</b>
 🔄 <b>[1/3] ${enableWebSearch ? (isRegional ? `Melacak berita daerah ${cleanRegion || 'lokal'}...` : 'Melacak fakta Google News terkini...') : 'Menyiapkan basis pengetahuan AI...'}</b>
@@ -248,7 +249,7 @@ async function runArticleGeneration({
 ⏳ [3/3] Validasi arsip & simpan database
 
 <code>[▰▰▰▱▱▱▱▱▱▱] 30% • Riset Fakta</code>
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 ⏱️ <i>Sedang mengumpulkan referensi berita dan fakta lokal...</i>`;
 
   let activeMessageId = messageId;
@@ -284,30 +285,31 @@ async function runArticleGeneration({
         const sourceItems = researchSources.slice(0, 2).map((s, idx) => {
           const cleanTitle = s.title.replace(/<[^>]*>/g, '').trim();
           const shortTitle = cleanTitle.length > 60 ? `${cleanTitle.slice(0, 57)}...` : cleanTitle;
-          const timeTag = s.timeAgo ? `⏱️ ${s.timeAgo}` : '⏱️ Terkini';
-          const linkPart = s.url ? ` • <a href="${s.url}">Link Berita ↗</a>` : '';
-          return `│ ${idx + 1}. <b>${s.source}</b> (${timeTag})\n│    <i>"${shortTitle}"</i>${linkPart}`;
+          const timeTag = s.timeAgo ? ` (${s.timeAgo})` : '';
+          const linkPart = s.url ? ` • <a href="${s.url}">Buka ↗</a>` : '';
+          return `• <b>${s.source}</b>${timeTag}: <i>"${shortTitle}"</i>${linkPart}`;
         }).join('\n');
 
-        sourcesPreviewBox = `\n┌── 🔍 <b>Temuan Riset Google News (${researchSources.length} Berita)</b>\n${sourceItems}\n└──\n`;
+        sourcesPreviewBox = `\n<blockquote>\n🔍 <b>Temuan Riset Google News (${researchSources.length} Berita):</b>\n${sourceItems}\n</blockquote>\n`;
       }
 
-      const fase2Text = `⏳ <b>PROSES LIPUTAN AI BERJALAN</b>
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      const fase2Text = `⏳ <b>PROSES LIPUTAN SEDANG BERJALAN...</b>
+
 💡 <b>Topik:</b> <i>"${topic}"</i>
 
-┌── 📋 <b>Parameter Liputan</b>
-│ 📂 Kategori : <b>${category || 'AI'}${cleanRegion ? ` (${cleanRegion})` : ''}</b>
-│ 🎯 Target   : <b>${statusLabel}</b>
-│ 🤖 Engine   : <b>${providerLabel}</b>
-└──${sourcesPreviewBox}
+<blockquote>
+📂 Kategori : <b>${category || 'AI'}${cleanRegion ? ` (${cleanRegion})` : ''}</b>
+🎯 Target   : <b>${statusLabel}</b>
+🤖 Engine   : <b>${providerLabel}</b>
+</blockquote>
+${sourcesPreviewBox}
 <b>Tahapan Eksekusi:</b>
 ✅ <b>Riset fakta berita berhasil didapatkan</b>
 🔄 <b>[2/3] AI sedang meracik naskah jurnalistik...</b>
 ⏳ [3/3] Validasi arsip & simpan database
 
 <code>[▰▰▰▰▰▰▰▱▱▱] 70% • Penulisan Naskah</code>
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 ⏱️ <i>Menyusun struktur naskah, sudut pandang berita, dan kutipan...</i>`;
       await editTelegramMessage(chatId, activeMessageId, fase2Text).catch(() => {});
     }
@@ -325,15 +327,15 @@ async function runArticleGeneration({
 
     // 4. FASE 3: Finalisasi Database (90% Progres)
     if (activeMessageId) {
-      const fase3Text = `⏳ <b>PROSES LIPUTAN AI BERJALAN</b>
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      const fase3Text = `⏳ <b>PROSES LIPUTAN SEDANG BERJALAN...</b>
+
 💡 <b>Topik:</b> <i>"${topic}"</i>
 
-┌── 📋 <b>Parameter Liputan</b>
-│ 📂 Kategori : <b>${category || 'AI'}${cleanRegion ? ` (${cleanRegion})` : ''}</b>
-│ 🎯 Target   : <b>${statusLabel}</b>
-│ 🤖 Engine   : <b>${providerLabel}</b>
-└──
+<blockquote>
+📂 Kategori : <b>${category || 'AI'}${cleanRegion ? ` (${cleanRegion})` : ''}</b>
+🎯 Target   : <b>${statusLabel}</b>
+🤖 Engine   : <b>${providerLabel}</b>
+</blockquote>
 
 <b>Tahapan Eksekusi:</b>
 ✅ <b>Riset fakta berita selesai</b>
@@ -341,7 +343,7 @@ async function runArticleGeneration({
 🔄 <b>[3/3] Memeriksa kemiripan arsip & menyimpan...</b>
 
 <code>[▰▰▰▰▰▰▰▰▰▱] 90% • Finalisasi Database</code>
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 ⏱️ <i>Menyimpan naskah ke database Neon DB...</i>`;
       await editTelegramMessage(chatId, activeMessageId, fase3Text).catch(() => {});
     }
@@ -384,9 +386,9 @@ async function runArticleGeneration({
     const similarityInfo = await findSimilarArticles(newArticle.title, newArticle.excerpt || undefined, 0.55);
     const similarityNote =
       similarityInfo.hasSimilar && similarityInfo.matchedArticle
-        ? `\n⚠️ <b>Catatan Kemiripan Arsip:</b>\n<code>Mirip ~${Math.round(
+        ? `\n<blockquote>⚠️ <b>Catatan Kemiripan Arsip:</b>\nMirip ~${Math.round(
             similarityInfo.highestScore * 100
-          )}% dengan: "${similarityInfo.matchedArticle.title}"</code>\n`
+          )}% dengan: <i>"${similarityInfo.matchedArticle.title}"</i></blockquote>\n`
         : '';
 
     // Siapkan daftar sumber berita rujukan dengan tautan aktif untuk pesan sukses
@@ -395,14 +397,14 @@ async function runArticleGeneration({
       : researchSources;
 
     const sourcesSection = finalSources && finalSources.length > 0
-      ? `\n┌── 🌐 <b>Sumber Berita Rujukan (${finalSources.length})</b>\n${finalSources.slice(0, 3).map((s) => {
+      ? `\n<blockquote>\n🔍 <b>Sumber Berita Rujukan (${finalSources.length}):</b>\n${finalSources.slice(0, 3).map((s) => {
           const cleanTitle = s.title.replace(/<[^>]*>/g, '').trim();
           const shortTitle = cleanTitle.length > 45 ? `${cleanTitle.slice(0, 42)}...` : cleanTitle;
           const timeTag = s.timeAgo ? ` (${s.timeAgo})` : '';
           return s.url
-            ? `│ • <b>${s.source}</b>${timeTag}: <a href="${s.url}">${shortTitle} ↗</a>`
-            : `│ • <b>${s.source}</b>${timeTag}: <i>${shortTitle}</i>`;
-        }).join('\n')}\n└──`
+            ? `• <b>${s.source}</b>${timeTag}: <a href="${s.url}">${shortTitle} ↗</a>`
+            : `• <b>${s.source}</b>${timeTag}: <i>${shortTitle}</i>`;
+        }).join('\n')}\n</blockquote>\n`
       : '';
 
     // Revalidasi cache web
@@ -414,50 +416,77 @@ async function runArticleGeneration({
 
     if (isPublish) {
       const successText = `🎉 <b>BERITA BERHASIL DITERBITKAN!</b>
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 📰 <b>${newArticle.title}</b>
 
-┌── 📋 <b>Detail Publikasi</b>
-│ 📂 Kategori : <b>${newArticle.category}${cleanRegion ? ` (${cleanRegion})` : ''}</b>
-│ 🌐 Riset    : <b>${enableWebSearch ? (isRegional ? 'Google News Daerah (100% ID)' : 'Google News Global Aktif') : 'Murni Analisis AI'}</b>
-│ ⏱️ Durasi   : <b>${(durationMs / 1000).toFixed(1)}s</b> (via <i>${draftArticle.modelUsed || providerLabel}</i>)
-│ 🏷️ Tag      : ${tagsFormatted || '<code>#berita</code>'}
-└──${sourcesSection}${similarityNote}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-✅ <i>Artikel telah terbit di portal Ada Fakta. Anda dapat menambahkan foto sampul lewat Web Admin.</i>`;
+Naskah liputan telah berhasil diriset, disusun, dan diterbitkan langsung ke portal Ada Fakta.
+
+<blockquote>
+📂 Kategori : <b>${newArticle.category}${cleanRegion ? ` (${cleanRegion})` : ''}</b>
+🌐 Riset    : <b>${enableWebSearch ? (isRegional ? 'Google News Daerah (100% ID)' : 'Google News Global Aktif') : 'Murni Analisis AI'}</b>
+⏱️ Durasi   : <b>${(durationMs / 1000).toFixed(1)}s</b> (via <i>${draftArticle.modelUsed || providerLabel}</i>)
+🏷️ Topik    : ${tagsFormatted || '<code>#berita</code>'}
+</blockquote>
+
+⚡ <b>SOROTAN PUBLIKASI:</b>
+✅ Naskah jurnalistik resmi tayang dan aktif di portal
+✅ Referensi fakta aktual Google News telah disematkan
+✅ Siap dibagikan dan dibaca oleh publik
+${sourcesSection}${similarityNote}
+<i>💡 Sentuh tombol di bawah untuk membaca di website atau mengedit artikel:</i>`;
 
       await updateOrSendMessage(chatId, activeMessageId, successText, {
         inlineKeyboard: [
-          [{ text: '📖 Baca di Website', url: articleUrl }],
-          [{ text: '✏️ Tambah Sampul di Web', url: editUrl }],
+          [{ text: '📖 Baca di Website Publik ↗', url: articleUrl }],
           [
-            { text: '✍️ Tulis Berita Baru', callback_data: 'btn:menu' },
+            { text: '✏️ Edit di Admin ↗', url: editUrl },
+            { text: '✍️ Liput Berita Baru', callback_data: 'btn:menu' },
+          ],
+          [
+            { text: '📁 Arsip Redaksi', callback_data: 'art:hub' },
             { text: '🏠 Menu Utama', callback_data: 'btn:start' },
           ],
         ],
       });
     } else {
-      const draftSuccessText = `📝 <b>BERITA BERHASIL DISIMPAN KE DRAF!</b>
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      const snippet = newArticle.excerpt
+        ? (newArticle.excerpt.length > 180 ? newArticle.excerpt.slice(0, 177) + '...' : newArticle.excerpt)
+        : 'Naskah draf tersimpan rapi.';
+
+      const draftSuccessText = `📝 <b>DRAF SIAP DITINJAU</b>
+
 📰 <b>${newArticle.title}</b>
 
-┌── 📋 <b>Detail Publikasi</b>
-│ 📂 Kategori : <b>${newArticle.category}${cleanRegion ? ` (${cleanRegion})` : ''}</b>
-│ 🌐 Riset    : <b>${enableWebSearch ? (isRegional ? 'Google News Daerah (100% ID)' : 'Google News Global Aktif') : 'Murni Analisis AI'}</b>
-│ ⏱️ Durasi   : <b>${(durationMs / 1000).toFixed(1)}s</b> (via <i>${draftArticle.modelUsed || providerLabel}</i>)
-│ 🏷️ Tag      : ${tagsFormatted || '<code>#draf</code>'}
-└──${sourcesSection}${similarityNote}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📌 <i>Artikel siap ditinjau di Dasbor Redaksi sebelum diterbitkan. Silakan tambahkan foto sampul lewat editor web:</i>`;
+Draf liputan telah berhasil diriset, disusun, dan disimpan ke antrean draf redaksi.
+
+<blockquote>
+📂 Kategori : <b>${newArticle.category}${cleanRegion ? ` (${cleanRegion})` : ''}</b>
+🌐 Riset    : <b>${enableWebSearch ? (isRegional ? 'Google News Daerah (100% ID)' : 'Google News Global Aktif') : 'Murni Analisis AI'}</b>
+⏱️ Durasi   : <b>${(durationMs / 1000).toFixed(1)}s</b> (via <i>${draftArticle.modelUsed || providerLabel}</i>)
+🏷️ Topik    : ${tagsFormatted || '<code>#draf</code>'}
+📊 Status   : <b>Draft (Belum Terbit)</b>
+</blockquote>
+
+💡 <b>RANGKUMAN LIPUTAN:</b>
+<i>"${snippet}"</i>
+${sourcesSection}${similarityNote}
+<blockquote>
+🖼️ <b>STATUS COVER IMAGE:</b>
+⚠️ Belum memiliki foto sampul.
+<i>Kirimkan foto langsung ke chat ini untuk otomatis dijadikan foto sampul artikel ini.</i>
+</blockquote>`;
 
       await updateOrSendMessage(chatId, activeMessageId, draftSuccessText, {
         inlineKeyboard: [
-          [{ text: '✏️ Buka Editor & Tambah Sampul', url: editUrl }],
+          [{ text: '🚀 Terbitkan Sekarang', callback_data: `pub:${newArticle.id}` }],
           [
-            { text: '⚙️ Dasbor Admin Web', url: `${siteUrl}/admin` },
+            { text: '✏️ Buka Editor Web ↗', url: editUrl },
+            { text: '✍️ Liput Berita Baru', callback_data: 'btn:menu' },
+          ],
+          [
+            { text: '📁 Arsip Draf', callback_data: 'art:list:draft:1' },
             { text: '🏠 Menu Utama', callback_data: 'btn:start' },
           ],
-          [{ text: '✍️ Buat Berita Baru', callback_data: 'btn:menu' }],
         ],
       });
     }
@@ -1661,14 +1690,15 @@ async function sendArticleHubMessage(
   }
 
   const hubText = `📁 <b>PUSAT KELOLA ARTIKEL & ARSIP</b>
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Kelola draf naskah, jadwalkan waktu rilis, atau ganti foto sampul:
 
-┌── 📊 <b>Status Arsip Berita</b>
-│ 📝 <b>Draf Review</b>  : <b>${draftCount} artikel</b>
-│ ⏳ <b>Terjadwal</b>    : <b>${scheduledCount} artikel</b>
-│ 🟢 <b>Sudah Terbit</b> : <b>${publishedCount} artikel</b>
-└──
+Kelola draf naskah, jadwalkan waktu rilis, atau pasang foto sampul portal Ada Fakta:
+
+<blockquote>
+📊 <b>STATUS ARSIP REDAKSI:</b>
+📝 <b>Draf Review</b>  : <b>${draftCount} artikel</b>
+⏳ <b>Terjadwal</b>    : <b>${scheduledCount} artikel</b>
+🟢 <b>Sudah Terbit</b> : <b>${publishedCount} artikel</b>
+</blockquote>
 
 👇 <i>Pilih salah satu arsip di bawah untuk mulai mengelola:</i>`;
 
@@ -1681,7 +1711,7 @@ Kelola draf naskah, jadwalkan waktu rilis, atau ganti foto sampul:
       { text: '✍️ Tulis Berita Baru', callback_data: 'btn:manual' },
     ],
     [
-      { text: '⚙️ Dasbor Admin Web', url: `${siteUrl}/admin` },
+      { text: '⚙️ Dasbor Admin Web ↗', url: `${siteUrl}/admin` },
       { text: '🏠 Menu Utama', callback_data: 'btn:start' },
     ],
     [{ text: '❌ Tutup Layar', callback_data: 'btn:close' }],
@@ -1839,23 +1869,24 @@ async function sendArticleDetailMessage(
 
   let scheduleLine = '';
   if (article.status === 'scheduled') {
-    scheduleLine = `│ ⏰ Jadwal Tayang: <b>${formatWibDateTime(article.publishAt)}</b>\n`;
+    scheduleLine = `⏰ Jadwal   : <b>${formatWibDateTime(article.publishAt)}</b>\n`;
   } else if (article.status === 'published') {
-    scheduleLine = `│ 🚀 Tanggal Rilis: <b>${formatWibDateTime(article.publishedAt || article.publishAt)}</b>\n`;
+    scheduleLine = `🚀 Rilis    : <b>${formatWibDateTime(article.publishedAt || article.publishAt)}</b>\n`;
   }
 
   const detailText = `📰 <b>DETAIL ARTIKEL #${article.id}</b>
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 📌 <b>${article.title}</b>
 
-┌── 📋 <b>Informasi Berita</b>
-│ 📂 Kategori : <b>${article.category}</b>
-│ ✍️ Penulis  : <b>${article.author}</b>
-│ 🚦 Status   : ${statusLabel}
-${scheduleLine}│ 📷 Sampul   : ${article.coverUrl ? '🟢 <b>Terpasang (ImgBB)</b>' : '❌ <i>Belum Ada Foto</i>'}
-│ 📊 Panjang  : <b>${wordCount} kata</b>
-│ 🏷️ Tagar    : ${article.tags && article.tags.length > 0 ? article.tags.map((t: string) => `#${t}`).join(', ') : '-'}
-└──
+<blockquote>
+📋 <b>INFORMASI BERITA:</b>
+📂 Kategori : <b>${article.category}</b>
+✍️ Penulis  : <b>${article.author}</b>
+🚦 Status   : ${statusLabel}
+${scheduleLine}📷 Sampul   : ${article.coverUrl ? '🟢 <b>Terpasang (ImgBB)</b>' : '❌ <i>Belum Ada Foto</i>'}
+📊 Panjang  : <b>${wordCount} kata</b>
+🏷️ Tagar    : ${article.tags && article.tags.length > 0 ? article.tags.map((t: string) => `#${t}`).join(', ') : '-'}
+</blockquote>
 
 👇 <i>Pilih aksi yang ingin Anda lakukan pada artikel ini:</i>`;
 
@@ -1865,7 +1896,7 @@ ${scheduleLine}│ 📷 Sampul   : ${article.coverUrl ? '🟢 <b>Terpasang (ImgB
         text: article.coverUrl ? '🖼️ Ganti Foto Sampul' : '📷 Pasang Foto Sampul',
         callback_data: `art:photo:${article.id}:${status}:${page}`,
       },
-      { text: '⏰ Atur Jadwal (Schedule)', callback_data: `art:sched_menu:${article.id}:${status}:${page}` },
+      { text: '⏰ Atur Jadwal Tayang', callback_data: `art:sched_menu:${article.id}:${status}:${page}` },
     ],
   ];
 
@@ -1876,13 +1907,13 @@ ${scheduleLine}│ 📷 Sampul   : ${article.coverUrl ? '🟢 <b>Terpasang (ImgB
   } else {
     inlineKeyboard.push([
       { text: '🟡 Ubah Kembali ke Draf', callback_data: `art:to_draft:${article.id}:${status}:${page}` },
-      { text: '📖 Baca di Website', url: articleUrl },
+      { text: '📖 Baca di Website ↗', url: articleUrl },
     ]);
   }
 
   inlineKeyboard.push([
     { text: '✏️ Revisi Naskah via AI', callback_data: `art:revisi_prompt:${article.id}:${status}:${page}` },
-    { text: '🌐 Buka di Web Admin', url: editUrl },
+    { text: '🌐 Buka di Web Admin ↗', url: editUrl },
   ]);
 
   inlineKeyboard.push([
@@ -2061,18 +2092,19 @@ async function handlePublishNow(
   const articleUrl = `${currentSiteUrl}/berita/${catSlug}/${updatedArticle?.id}/${updatedArticle?.slug}`;
 
   const successText = `🚀 <b>ARTIKEL BERHASIL DITERBITKAN!</b>
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 📰 <b>"${updatedArticle?.title || 'Artikel'}"</b>
 
-┌── 📋 <b>Status Baru</b>
-│ 🚦 Status : 🟢 <b>Tayang Publik (Published)</b>
-│ 🚀 Waktu  : <b>${formatWibDateTime(now)}</b>
-└──
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+<blockquote>
+📋 <b>STATUS PUBLIKASI:</b>
+🚦 Status : 🟢 <b>Tayang Publik (Published)</b>
+🚀 Waktu  : <b>${formatWibDateTime(now)}</b>
+</blockquote>
+
 ✅ <i>Artikel sudah tayang di web dan sinyal Google Indexing API telah dikirim!</i>`;
 
   const inlineKeyboard = [
-    [{ text: '📖 Baca di Website', url: articleUrl }],
+    [{ text: '📖 Baca di Website Publik ↗', url: articleUrl }],
     [{ text: '🔍 Buka Detail di Bot', callback_data: `art:view:${articleId}:published:1` }],
     [{ text: '📁 Kembali ke Daftar', callback_data: `art:list:${status}:${page}` }],
     [{ text: '🏠 Menu Utama', callback_data: 'btn:start' }],
@@ -2130,15 +2162,16 @@ async function handleDeleteConfirm(
   } catch {}
 
   const warnText = `⚠️ <b>KONFIRMASI HAPUS ARTIKEL</b>
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 Apakah Anda yakin ingin menghapus permanen artikel berikut:
 
 📰 <b>"${article?.title || `Artikel #${articleId}`}"</b>
 
-┌── ⚠️ <b>Peringatan</b>
-│ • Data artikel dan naskah akan dihapus permanen dari database.
-│ • Tindakan ini tidak dapat dibatalkan.
-└──`;
+<blockquote>
+⚠️ <b>PERINGATAN REDAKSI:</b>
+• Data artikel dan naskah akan dihapus permanen dari database.
+• Tindakan ini tidak dapat dibatalkan.
+</blockquote>`;
 
   const inlineKeyboard = [
     [{ text: '🗑️ Ya, Hapus Sekarang', callback_data: `art:del_exec:${articleId}:${status}:${page}` }],
@@ -2199,36 +2232,36 @@ async function sendWelcomeMessage(
   let autopilotBox = '';
   try {
     const auto = await getAutopilotScheduleInfo();
-    autopilotBox = `\n\n┌── 🤖 <b>Autopilot Redaksi AI</b>\n│ Status : ${auto.isEnabled ? '🟢 <b>Aktif</b>' : '🔴 <b>Nonaktif</b>'}\n│ Jadwal : <b>${auto.nextRunLabel}</b>\n│ Hitung Mundur : ⏳ <b>${auto.countdown}</b>\n└──`;
+    autopilotBox = `\n🤖 <b>Autopilot AI</b> : ${auto.isEnabled ? '🟢 <b>Aktif</b>' : '🔴 <b>Nonaktif</b>'}\n⏰ <b>Rilis Berikutnya</b> : <b>${auto.nextRunLabel}</b> (⏳ ${auto.countdown})`;
   } catch {}
 
-  const welcomeText = `✨━━━━━━━━━━━━━━━━━━━━━━━━━━━━✨
-Halo <b>${firstName}</b> 👋
-Selamat datang di <b>Ada Fakta Redaksi Bot</b>
-✨━━━━━━━━━━━━━━━━━━━━━━━━━━━━✨
+  const welcomeText = `🏛️ <b>KONSOL REDAKSI ADA FAKTA</b>
+Halo <b>${firstName}</b> 👋 Selamat datang di asisten editorial pintar Ada Fakta.
 
-┌── 👤 <b>Profil Editor</b>
-│ 📛 Nama: <b>${firstName}</b>
-│ 🆔 ID: <code>${userId}</code>
-│ 🏷️ Akses: 🛡️ <b>Redaksi Inti</b>
-└──
+<blockquote>
+👤 <b>PROFIL EDITOR:</b>
+📛 Nama  : <b>${firstName}</b>
+🆔 Akun  : <code>${userId}</code>
+🛡️ Akses : <b>Redaksi Inti</b>
+</blockquote>
 
-┌── 📊 <b>Status Portal Ada Fakta</b>
-│ 📁 Total Arsip : <b>${total} artikel</b>
-│ 🚀 Tayang Web  : <b>${published} artikel</b>
-│ 📝 Draf Review : <b>${draft} artikel</b>
-└──${autopilotBox}
+<blockquote>
+📊 <b>STATUS PORTAL REDAKSI:</b>
+📁 Total Arsip : <b>${total} artikel</b>
+🚀 Tayang Web  : <b>${published} artikel</b>
+📝 Draf Review : <b>${draft} artikel</b>${autopilotBox}
+</blockquote>
 
-👇 <i>Pilih aksi cepat di bawah untuk mulai bekerja:</i>`;
+👇 <i>Pilih aksi cepat di bawah untuk mulai memproduksi atau mengelola berita:</i>`;
 
   const inlineKeyboard = [
     [
-      { text: '📁 Kelola Draf & Arsip', callback_data: 'art:hub' },
-      { text: '📰 Jurnalis AI', callback_data: 'btn:jurnalis' },
+      { text: '🤖 Buat Berita AI', callback_data: 'btn:menu' },
+      { text: '📁 Kelola Arsip & Draf', callback_data: 'art:hub' },
     ],
     [
+      { text: '📰 Antrean Jurnalis AI', callback_data: 'btn:jurnalis' },
       { text: '✍️ Tulis Berita Manual', callback_data: 'btn:manual' },
-      { text: '🤖 Buat Berita AI', callback_data: 'btn:menu' },
     ],
     [
       { text: '🤖 Jadwal Autopilot', callback_data: 'btn:autopilot' },
@@ -2239,13 +2272,10 @@ Selamat datang di <b>Ada Fakta Redaksi Bot</b>
       { text: '🔗 Sadur Berita', callback_data: 'btn:sadur_help' },
     ],
     [
-      { text: '🤖 Konsol Bot Jurnalis ↗', url: 'https://bottelejurnalis.vercel.app/' },
-      { text: '⚙️ Dasbor Admin', url: `${siteUrl}/admin` },
+      { text: '⚙️ Dasbor Admin Web ↗', url: `${siteUrl}/admin` },
+      { text: '🌐 Buka Website ↗', url: siteUrl },
     ],
-    [
-      { text: '🌐 Buka Website', url: siteUrl },
-      { text: '❌ Tutup Layar', callback_data: 'btn:close' },
-    ],
+    [{ text: '❌ Tutup Layar', callback_data: 'btn:close' }],
   ];
 
   // Pastikan menu command bot di Telegram selalu sinkron
@@ -2264,32 +2294,33 @@ async function sendStatsMessage(chatId: number | string, messageId: number | und
   let autopilotBox = '';
   try {
     const auto = await getAutopilotScheduleInfo();
-    autopilotBox = `\n\n┌── 🤖 <b>Jadwal Autopublish AI</b>\n│ Status : ${auto.isEnabled ? '🟢 <b>Aktif</b>' : '🔴 <b>Nonaktif</b>'}\n│ Berikutnya : <b>${auto.nextRunLabel}</b>\n│ Hitung Mundur : ⏳ <b>${auto.countdown}</b> (Kategori: <b>${auto.nextCategory}</b>)\n└──`;
+    autopilotBox = `\n🤖 <b>Autopilot</b> : ${auto.isEnabled ? '🟢 <b>Aktif</b>' : '🔴 <b>Nonaktif</b>'}\n⏰ <b>Berikutnya</b> : <b>${auto.nextRunLabel}</b> (⏳ ${auto.countdown})`;
   } catch {}
 
   const statsText = `📊 <b>STATISTIK PORTAL ADA FAKTA</b>
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Laporan performa publikasi & infrastruktur server
+Laporan performa publikasi & infrastruktur server portal
 
-┌── 📰 <b>Status Publikasi Berita</b>
-│ 📁 Total Arsip : <b>${total} artikel</b>
-│ 🚀 Tayang Web  : <b>${published}</b>
-│ ⏳ Terjadwal   : <b>${scheduled}</b>
-│ 📝 Draf Review : <b>${draft}</b>
-└──${autopilotBox}
+<blockquote>
+📰 <b>STATUS PUBLIKASI BERITA:</b>
+📁 Total Arsip : <b>${total} artikel</b>
+🚀 Tayang Web  : <b>${published} artikel</b>
+⏳ Terjadwal   : <b>${scheduled} artikel</b>
+📝 Draf Review : <b>${draft} artikel</b>${autopilotBox}
+</blockquote>
 
-┌── ⚡ <b>Infrastruktur Redaksi</b>
-│ 💾 Database  : 🟢 <code>Neon PostgreSQL (Normal)</code>
-│ 🤖 AI Engine : 🟢 <code>Gemini 2.5 Flash & Groq (Siap)</code>
-└──
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🌐 <a href="${siteUrl}/admin">Buka Dasbor Redaksi Lengkap</a>`;
+<blockquote>
+⚡ <b>INFRASTRUKTUR REDAKSI:</b>
+💾 Database  : 🟢 <code>Neon PostgreSQL (Normal)</code>
+🤖 AI Engine : 🟢 <code>Gemini 3.8 Flash & Groq (Siap)</code>
+</blockquote>
+
+🌐 <a href="${siteUrl}/admin">Buka Dasbor Redaksi Lengkap ↗</a>`;
 
   await updateOrSendMessage(chatId, messageId, statsText, {
     inlineKeyboard: [
       [
         { text: '🤖 Status Autopilot', callback_data: 'btn:autopilot' },
-        { text: '✍️ Buat Berita', callback_data: 'btn:menu' },
+        { text: '✍️ Buat Berita AI', callback_data: 'btn:menu' },
       ],
       [
         { text: '🏠 Menu Utama', callback_data: 'btn:start' },
@@ -2346,28 +2377,29 @@ async function sendJurnalisStatusMessage(
       const titleRaw = nextDraft.generatedTitle || nextDraft.title;
       const titleClean = titleRaw.length > 70 ? titleRaw.slice(0, 67) + '...' : titleRaw;
 
-      nextQueueBox = `\n\n┌── 🔜 <b>Siap Terbit Berikutnya</b>\n│ 📌 <b>${titleClean}</b>\n│ 📅 Jadwal : <b>${publishTimeStr}</b>\n│ 🏷️ Kategori : <b>${nextDraft.category || 'Nasional'}</b> (Redaksi 2)\n└──`;
+      nextQueueBox = `\n\n<blockquote>\n🔜 <b>SIAP TERBIT BERIKUTNYA:</b>\n📌 <b>${titleClean}</b>\n📅 Jadwal : <b>${publishTimeStr}</b>\n🏷️ Kategori : <b>${nextDraft.category || 'Nasional'}</b>\n</blockquote>`;
     }
 
-    const jurnalisText = `✨━━━━━━━━━━━━━━━━━━━━━━━━━━━━✨
-📰 <b>PUSAT INTELIJEN & ANTREAN JURNALIS AI</b>
-✨━━━━━━━━━━━━━━━━━━━━━━━━━━━━✨
+    const jurnalisText = `📰 <b>PUSAT INTELIJEN & ANTREAN JURNALIS AI</b>
+Panel produksi otomatis artikel dan kurasi fakta berita harian
 
-┌── 📊 <b>Status Usulan & Antrean</b>
-│ 📡 Total Usulan Bot   : <b>${total} berita</b>
-│ 📝 Draf Naskah        : <b>${rawDrafts} draf</b>
-│ 🖼️ Butuh Foto Cover   : <b>${needPhoto} draf</b>
-│ ⏰ Antrean Terjadwal  : <b>${readyCount} draf</b> (Interval 2 Jam)
-│ ✅ Sudah Tayang       : <b>${published} berita</b>
-└──${nextQueueBox}
+<blockquote>
+📊 <b>STATUS USULAN & ANTREAN:</b>
+📡 Total Usulan Bot   : <b>${total} berita</b>
+📝 Draf Naskah        : <b>${rawDrafts} draf</b>
+🖼️ Butuh Foto Cover   : <b>${needPhoto} draf</b>
+⏰ Antrean Terjadwal  : <b>${readyCount} draf</b> (Interval 2 Jam)
+✅ Sudah Tayang       : <b>${published} berita</b>
+</blockquote>${nextQueueBox}
 
-┌── ⚙️ <b>Konfigurasi Otomasi Sistem</b>
-│ ⏱️ Interval Publikasi : <b>Per 2 Jam Sekali (Auto-Slot)</b>
-│ 🧠 Model AI Aktif     : <code>${activeModel}</code>
-│ ✍️ Penulis Default    : <b>Redaksi 2 (ID: 3)</b>
-│ 🖼️ CDN Gambar        : <code>i.ibb.co.com (ImgBB Mirror)</code>
-│ 🔗 Internal Link      : <b>1-2 Tautan 'Baca Juga' per artikel</b>
-└──
+<blockquote>
+⚙️ <b>KONFIGURASI OTOMASI SISTEM:</b>
+⏱️ Interval Publikasi : <b>Per 2 Jam Sekali (Auto-Slot)</b>
+🧠 Model AI Aktif     : <code>${activeModel}</code>
+✍️ Penulis Default    : <b>Redaksi Ada Fakta</b>
+🖼️ CDN Gambar        : <code>i.ibb.co.com (ImgBB Mirror)</code>
+🔗 Internal Link      : <b>1-2 Tautan 'Baca Juga' per artikel</b>
+</blockquote>
 
 👇 <i>Pilih aksi di bawah untuk mengelola:</i>`;
 
@@ -2601,26 +2633,27 @@ async function handleGenerateJurnalisDraft(
   });
 
   const successText = `✅ <b>NASKAH BERITA BERHASIL DISUSUN!</b>
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 📰 <b>${data.generatedTitle}</b>
 
-┌── 📋 <b>Detail Hasil Generate</b>
-│ 📂 Kategori  : <b>${data.category}</b>
-│ ✍️ Penulis   : <b>Redaksi 2 (ID: 3)</b>
-│ 🏷️ Tags      : <code>${(data.tags || []).join(', ')}</code>
-│ 🔗 Rekomendasi: <b>Tautan "Baca Juga" disematkan</b>
-└──
+<blockquote>
+📂 Kategori   : <b>${data.category}</b>
+✍️ Penulis    : <b>Redaksi Ada Fakta</b>
+🏷️ Tags       : <code>${(data.tags || []).join(', ')}</code>
+🔗 Rekomendasi: <b>Tautan "Baca Juga" disematkan</b>
+</blockquote>
 
-┌── 📖 <b>Cuplikan Paragraf Lead</b>
-│ <i>"${snippet}"</i>
-└──
+<blockquote>
+📖 <b>CUPLIKAN LEAD:</b>
+<i>"${snippet}"</i>
+</blockquote>
 
 📷 <b>LANGKAH TERAKHIR: PASANG FOTO SAMPUL</b>
 Kirimkan foto sampul berita ini sekarang langsung dari <b>Galeri HP Anda</b> di obrolan Telegram ini!
 <i>(Foto otomatis diunggah ke CDN ImgBB dan draf resmi masuk antrean tayang per 2 jam)</i>`;
 
   const inlineKeyboard = [
-    [{ text: '📷 Buka Meja Jurnalis Web', url: `${siteUrl}/admin/jurnalis` }],
+    [{ text: '📷 Buka Meja Jurnalis Web ↗', url: `${siteUrl}/admin/jurnalis` }],
     [
       { text: '📋 Lihat Usulan Lain', callback_data: 'jurnalis:usulan:1' },
       { text: '🏠 Menu Utama', callback_data: 'btn:start' },
@@ -2698,27 +2731,28 @@ async function sendAutopilotMessage(
       : '📝 Simpan Draf (Review)';
 
   const autopilotText = `🤖 <b>STATUS & JADWAL AUTOPILOT REDAKSI</b>
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Pusat kendali autopublish berita otomatis AI Ada Fakta
 
-┌── ⚙️ <b>Konfigurasi Sistem</b>
-│ • Status Sistem : ${statusBadge}
-│ • Target Mode   : <b>${modeBadge}</b>
-│ • AI Engine     : ⚡ <b>${scheduleInfo.provider.toUpperCase()}</b>
-│ • Kategori Giliran : 📂 <b>${scheduleInfo.nextCategory}</b>
-└──
+<blockquote>
+⚙️ <b>KONFIGURASI SISTEM:</b>
+• Status Sistem   : ${statusBadge}
+• Target Mode     : <b>${modeBadge}</b>
+• AI Engine       : ⚡ <b>${scheduleInfo.provider.toUpperCase()}</b>
+• Kategori Giliran: 📂 <b>${scheduleInfo.nextCategory}</b>
+</blockquote>
 
-┌── ⏰ <b>Jadwal Publikasi Berikutnya</b>
-│ • Waktu Eksekusi : <b>${scheduleInfo.nextRunLabel}</b>
-│ • Hitung Mundur  : ⏳ <b>${scheduleInfo.countdown}</b>
-│ • Siklus Rutin   : <code>07:00 • 13:00 • 19:00 WIB</code>
-└──
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+<blockquote>
+⏰ <b>JADWAL PUBLIKASI BERIKUTNYA:</b>
+• Waktu Eksekusi  : <b>${scheduleInfo.nextRunLabel}</b>
+• Hitung Mundur   : ⏳ <b>${scheduleInfo.countdown}</b>
+• Siklus Rutin    : <code>07:00 • 13:00 • 19:00 WIB</code>
+</blockquote>
+
 💡 <i>Artikel diriset otomatis dari Google News Indonesia terkini dan dianalisis sesuai kaidah jurnalistik Ada Fakta.</i>`;
 
   const inlineKeyboard = [
     [
-      { text: '⚙️ Dasbor Cron Web', url: `${siteUrl}/admin/cron` },
+      { text: '⚙️ Dasbor Cron Web ↗', url: `${siteUrl}/admin/cron` },
       { text: '📊 Cek Statistik', callback_data: 'btn:stats' },
     ],
     [
@@ -2793,21 +2827,21 @@ export async function POST(req: NextRequest) {
               const artCat = art?.category || 'Nasional';
               const artUrl = res.articleUrl || `${siteUrl}/berita/${artCat.toLowerCase()}/${res.articleId || art?.id}/${res.slug || art?.slug}`;
               const successText = `🚀 <b>BERITA RESMI BERHASIL TAYANG!</b>
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 📰 <b>${artTitle}</b>
 
-┌── 📋 <b>Detail Penerbitan (Bypass Cron)</b>
-│ 📂 Kategori  : <b>${artCat}</b>
-│ ✍️ Penulis   : <b>Redaksi 2 (ID: 3)</b>
-│ 🖼️ Foto CDN  : <code>i.ibb.co.com (ImgBB Mirror)</code>
-│ 🔍 Indexing  : 🟢 <b>Terkirim ke Google & Bing</b>
-└──
+<blockquote>
+📂 Kategori  : <b>${artCat}</b>
+✍️ Penulis   : <b>Redaksi Ada Fakta</b>
+🖼️ Foto CDN  : <code>i.ibb.co.com (ImgBB Mirror)</code>
+🔍 Indexing  : 🟢 <b>Terkirim ke Google & Bing</b>
+</blockquote>
 
-🌐 <a href="${artUrl}">Baca Berita Live di Website</a>`;
+🌐 <a href="${artUrl}">Baca Berita Live di Website ↗</a>`;
 
               await updateOrSendMessage(chatId, messageId, successText, {
                 inlineKeyboard: [
-                  [{ text: '🌐 Baca di Website', url: artUrl }],
+                  [{ text: '📖 Baca di Website Publik ↗', url: artUrl }],
                   [
                     { text: '📰 Status Jurnalis AI', callback_data: 'btn:jurnalis' },
                     { text: '🏠 Menu Utama', callback_data: 'btn:start' },
@@ -3730,15 +3764,16 @@ Format    : <b>${lengthLabel}</b>
             : 'Segera (Siap Cron)';
 
           const successText = `🎉 <b>FOTO BERHASIL DIPASANG & BERITA TERJADWAL!</b>
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 📰 <b>${userWizardState.title || 'Draf Jurnalis AI'}</b>
 
-┌── 📋 <b>Informasi Antrean Publikasi</b>
-│ 🚦 Status      : ⏰ <b>Siap Tayang (Terjadwal)</b>
-│ 📅 Jam Tayang  : <b>${publishTimeStr}</b> (Interval 2 Jam)
-│ 🖼️ Foto Sampul : <code>${attachRes.coverUrl}</code>
-│ ✍️ Penulis     : <b>Redaksi 2 (ID: 3)</b>
-└──
+<blockquote>
+📋 <b>INFORMASI ANTREAN PUBLIKASI:</b>
+🚦 Status      : ⏰ <b>Siap Tayang (Terjadwal)</b>
+📅 Jam Tayang  : <b>${publishTimeStr}</b> (Interval 2 Jam)
+🖼️ Foto Sampul : <code>${attachRes.coverUrl}</code>
+✍️ Penulis     : <b>Redaksi Ada Fakta</b>
+</blockquote>
 
 👇 <i>Berita akan otomatis tayang saat jam tiba. Atau gunakan aksi kilat di bawah:</i>`;
 
@@ -3749,9 +3784,9 @@ Format    : <b>${lengthLabel}</b>
             {
               inlineKeyboard: [
                 [{ text: '🚀 Bypass Terbitkan Sekarang', callback_data: `jurnalis:publish:${targetDraftId}` }],
-                [{ text: '📅 Tab Terjadwal Dasbor', url: `${siteUrl}/admin?tab=scheduled` }],
+                [{ text: '📅 Tab Terjadwal Dasbor ↗', url: `${siteUrl}/admin?tab=scheduled` }],
                 [
-                  { text: '📰 Meja Jurnalis AI', url: `${siteUrl}/admin/jurnalis` },
+                  { text: '📰 Meja Jurnalis AI ↗', url: `${siteUrl}/admin/jurnalis` },
                   { text: '🏠 Menu Utama', callback_data: 'btn:start' },
                 ],
               ],

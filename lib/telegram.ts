@@ -265,4 +265,62 @@ export async function getTelegramFileUrl(fileId: string): Promise<string | null>
   return null;
 }
 
+export interface SendPhotoOptions {
+  parseMode?: 'HTML' | 'Markdown' | 'MarkdownV2';
+  inlineKeyboard?: InlineKeyboardButton[][];
+  hasSpoiler?: boolean;
+}
+
+/**
+ * Mengirim foto/banner resmi ke Telegram dengan format caption kaya (HTML/Blockquote)
+ */
+export async function sendTelegramPhoto(
+  chatId: number | string,
+  photo: string,
+  caption?: string,
+  options: SendPhotoOptions = {}
+): Promise<{ success: boolean; data?: any; error?: string }> {
+  const token = getTelegramToken();
+  if (!token) {
+    return { success: false, error: 'TELEGRAM_BOT_TOKEN belum disetel.' };
+  }
+
+  try {
+    const payload: any = {
+      chat_id: chatId,
+      photo: photo,
+      parse_mode: options.parseMode || 'HTML',
+      has_spoiler: options.hasSpoiler ?? false,
+    };
+
+    if (caption) {
+      payload.caption = caption;
+    }
+
+    if (options.inlineKeyboard && options.inlineKeyboard.length > 0) {
+      payload.reply_markup = {
+        inline_keyboard: options.inlineKeyboard,
+      };
+    }
+
+    const res = await fetch(`https://api.telegram.org/bot${token}/sendPhoto`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await res.json();
+    if (!data.ok) {
+      console.error('Telegram sendPhoto error:', data);
+      return { success: false, error: data.description || 'Gagal mengirim foto Telegram.' };
+    }
+
+    return { success: true, data };
+  } catch (err: any) {
+    console.error('Telegram sendPhoto API error:', err);
+    return { success: false, error: err.message || 'Kesalahan jaringan saat mengirim foto Telegram.' };
+  }
+}
+
+
 
