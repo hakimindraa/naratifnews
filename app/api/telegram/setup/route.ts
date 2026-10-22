@@ -3,6 +3,7 @@ import { setTelegramWebhook, getTelegramWebhookInfo, setTelegramCommands } from 
 
 export const BOT_COMMANDS = [
   { command: 'start', description: '🚀 Buka Menu Utama Redaksi' },
+  { command: 'jurnalis', description: '📰 Status & Antrean Jurnalis AI' },
   { command: 'artikel', description: '📁 Kelola Draf, Jadwal & Arsip' },
   { command: 'draft', description: '📝 Lihat & Jadwalkan Draf' },
   { command: 'manual', description: '✍️ Tulis Berita Manual (Non-AI)' },

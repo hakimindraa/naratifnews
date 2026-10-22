@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useEffect } from 'react';
 import Link from 'next/link';
 import {
   FileText,
@@ -55,10 +55,24 @@ export interface ArticleItem {
 
 interface ArticleManagerClientProps {
   initialArticles: ArticleItem[];
+  initialTab?: 'all' | 'draft' | 'scheduled' | 'published';
 }
 
-export default function ArticleManagerClient({ initialArticles }: ArticleManagerClientProps) {
-  const [activeTab, setActiveTab] = useState<'all' | 'draft' | 'scheduled' | 'published'>('all');
+export default function ArticleManagerClient({
+  initialArticles,
+  initialTab = 'all',
+}: ArticleManagerClientProps) {
+  const [activeTab, setActiveTab] = useState<'all' | 'draft' | 'scheduled' | 'published'>(initialTab);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get('tab');
+      if (tabParam === 'scheduled' || tabParam === 'draft' || tabParam === 'published') {
+        setActiveTab(tabParam as any);
+      }
+    }
+  }, []);
   const [activeSource, setActiveSource] = useState<string>('all');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');

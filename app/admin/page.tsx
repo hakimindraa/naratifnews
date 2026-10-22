@@ -20,7 +20,17 @@ import { desc, eq, and, isNotNull } from 'drizzle-orm';
 
 export const instant = false;
 
-export default async function AdminDashboard() {
+export default async function AdminDashboard(props: {
+  searchParams?: Promise<{ tab?: string }>;
+}) {
+  const resolvedSearchParams = props.searchParams ? await props.searchParams : undefined;
+  const initialTab =
+    resolvedSearchParams?.tab === 'scheduled' ||
+    resolvedSearchParams?.tab === 'draft' ||
+    resolvedSearchParams?.tab === 'published'
+      ? resolvedSearchParams.tab
+      : 'all';
+
   const [dbArticles, logs, jurnalisQueued, allJurnalisDrafts] = await Promise.all([
     db.select().from(articles).orderBy(desc(articles.createdAt)),
     db.select({ articleId: aiGenerationLogs.articleId, prompt: aiGenerationLogs.prompt }).from(aiGenerationLogs),
@@ -424,7 +434,7 @@ export default async function AdminDashboard() {
       <MarkdownGuideAccordion />
 
       {/* 5. INTERACTIVE ARTICLE MANAGER (KARTU STATUS, SEARCH, FILTER, TOGGLE VIEW, & QUICK PUBLISH) */}
-      <ArticleManagerClient initialArticles={articlesData} />
+      <ArticleManagerClient initialArticles={articlesData} initialTab={initialTab as any} />
     </div>
   );
 }

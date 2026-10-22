@@ -18,13 +18,19 @@ import {
 import { scrapeArticleFromUrl } from '@/lib/url-scraper';
 import { findSimilarArticles, checkSourceUrlHistory } from '@/lib/duplicate-detector';
 import { db } from '@/db';
-import { articles, aiGenerationLogs, authors, systemSettings } from '@/db/schema';
+import { articles, aiGenerationLogs, authors, systemSettings, jurnalisDrafts } from '@/db/schema';
 import { revalidatePath } from 'next/cache';
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, asc, and, isNotNull } from 'drizzle-orm';
 import { BOT_COMMANDS } from '../setup/route';
 import { getAutopilotScheduleInfo } from '@/lib/autopilot-schedule';
 import { uploadImageToImgbb } from '@/app/admin/media-actions';
 import { notifySearchEngines } from '@/lib/indexing';
+import {
+  instantPublishDraftAction,
+  generateJurnalisDraftAction,
+  attachPhotoUrlToDraftAction,
+  deleteDraftAction,
+} from '@/app/admin/jurnalis/actions';
 
 export const maxDuration = 60; // Timeout 60 detik untuk operasi AI
 
@@ -1671,13 +1677,14 @@ Kelola draf naskah, jadwalkan waktu rilis, atau ganti foto sampul:
     [{ text: `⏳ Berita Terjadwal (${scheduledCount})`, callback_data: 'art:list:scheduled:1' }],
     [{ text: `🟢 Berita Sudah Terbit (${publishedCount})`, callback_data: 'art:list:published:1' }],
     [
+      { text: '📰 Antrean Jurnalis AI', callback_data: 'btn:jurnalis' },
       { text: '✍️ Tulis Berita Baru', callback_data: 'btn:manual' },
-      { text: '⚙️ Dasbor Admin Web', url: `${siteUrl}/admin` },
     ],
     [
+      { text: '⚙️ Dasbor Admin Web', url: `${siteUrl}/admin` },
       { text: '🏠 Menu Utama', callback_data: 'btn:start' },
-      { text: '❌ Tutup Layar', callback_data: 'btn:close' },
     ],
+    [{ text: '❌ Tutup Layar', callback_data: 'btn:close' }],
   ];
 
   await updateOrSendMessage(chatId, messageId, hubText, { inlineKeyboard });
@@ -2216,7 +2223,8 @@ Selamat datang di <b>Ada Fakta Redaksi Bot</b>
 
   const inlineKeyboard = [
     [
-      { text: '📁 Kelola Draf, Jadwal & Arsip', callback_data: 'art:hub' },
+      { text: '📁 Kelola Draf & Arsip', callback_data: 'art:hub' },
+      { text: '📰 Jurnalis AI', callback_data: 'btn:jurnalis' },
     ],
     [
       { text: '✍️ Tulis Berita Manual', callback_data: 'btn:manual' },
@@ -2231,10 +2239,13 @@ Selamat datang di <b>Ada Fakta Redaksi Bot</b>
       { text: '🔗 Sadur Berita', callback_data: 'btn:sadur_help' },
     ],
     [
-      { text: '🌐 Buka Website', url: siteUrl },
+      { text: '🤖 Konsol Bot Jurnalis ↗', url: 'https://bottelejurnalis.vercel.app/' },
       { text: '⚙️ Dasbor Admin', url: `${siteUrl}/admin` },
     ],
-    [{ text: '❌ Tutup Layar', callback_data: 'btn:close' }],
+    [
+      { text: '🌐 Buka Website', url: siteUrl },
+      { text: '❌ Tutup Layar', callback_data: 'btn:close' },
+    ],
   ];
 
   // Pastikan menu command bot di Telegram selalu sinkron
@@ -2284,6 +2295,378 @@ Laporan performa publikasi & infrastruktur server
         { text: '🏠 Menu Utama', callback_data: 'btn:start' },
         { text: '❌ Tutup Layar', callback_data: 'btn:close' },
       ],
+    ],
+  });
+}
+
+async function sendJurnalisStatusMessage(
+  chatId: number | string,
+  messageId: number | undefined,
+  siteUrl: string = 'https://www.adafakta.web.id'
+) {
+  try {
+    const allDrafts = await db.select().from(jurnalisDrafts);
+    const total = allDrafts.length;
+    const rawDrafts = allDrafts.filter((d) => d.status === 'draft').length;
+    const needPhoto = allDrafts.filter((d) => d.status === 'generated' && !d.coverUrl).length;
+    const readyQueue = allDrafts.filter((d) => d.status === 'ready_to_publish' && d.coverUrl);
+    const readyCount = readyQueue.length;
+    const published = allDrafts.filter((d) => d.status === 'published').length;
+
+    // Ambil draf terdepan di antrean siap tayang
+    const [nextDraft] = await db
+      .select()
+      .from(jurnalisDrafts)
+      .where(and(eq(jurnalisDrafts.status, 'ready_to_publish'), isNotNull(jurnalisDrafts.coverUrl)))
+      .orderBy(asc(jurnalisDrafts.publishAt), asc(jurnalisDrafts.createdAt))
+      .limit(1);
+
+    // Ambil model AI yang sedang aktif di database
+    let activeModel = 'radox/deepseek-v4-flash-0731';
+    try {
+      const settings = await db.select().from(systemSettings);
+      const customModel = settings.find((s) => s.key === 'ai_custom_model')?.value;
+      const gatewayModel = settings.find((s) => s.key === 'ai_gateway_model')?.value;
+      if (customModel && customModel.trim()) activeModel = customModel.trim();
+      else if (gatewayModel && gatewayModel.trim()) activeModel = gatewayModel.trim();
+    } catch {}
+
+    let nextQueueBox = '';
+    if (nextDraft) {
+      const publishTimeStr = nextDraft.publishAt
+        ? new Date(nextDraft.publishAt).toLocaleString('id-ID', {
+            day: 'numeric',
+            month: 'short',
+            hour: '2-digit',
+            minute: '2-digit',
+            timeZone: 'Asia/Jakarta',
+          }) + ' WIB'
+        : 'Segera (Siap Cron)';
+
+      const titleRaw = nextDraft.generatedTitle || nextDraft.title;
+      const titleClean = titleRaw.length > 70 ? titleRaw.slice(0, 67) + '...' : titleRaw;
+
+      nextQueueBox = `\n\n┌── 🔜 <b>Siap Terbit Berikutnya</b>\n│ 📌 <b>${titleClean}</b>\n│ 📅 Jadwal : <b>${publishTimeStr}</b>\n│ 🏷️ Kategori : <b>${nextDraft.category || 'Nasional'}</b> (Redaksi 2)\n└──`;
+    }
+
+    const jurnalisText = `✨━━━━━━━━━━━━━━━━━━━━━━━━━━━━✨
+📰 <b>PUSAT INTELIJEN & ANTREAN JURNALIS AI</b>
+✨━━━━━━━━━━━━━━━━━━━━━━━━━━━━✨
+
+┌── 📊 <b>Status Usulan & Antrean</b>
+│ 📡 Total Usulan Bot   : <b>${total} berita</b>
+│ 📝 Draf Naskah        : <b>${rawDrafts} draf</b>
+│ 🖼️ Butuh Foto Cover   : <b>${needPhoto} draf</b>
+│ ⏰ Antrean Terjadwal  : <b>${readyCount} draf</b> (Interval 2 Jam)
+│ ✅ Sudah Tayang       : <b>${published} berita</b>
+└──${nextQueueBox}
+
+┌── ⚙️ <b>Konfigurasi Otomasi Sistem</b>
+│ ⏱️ Interval Publikasi : <b>Per 2 Jam Sekali (Auto-Slot)</b>
+│ 🧠 Model AI Aktif     : <code>${activeModel}</code>
+│ ✍️ Penulis Default    : <b>Redaksi 2 (ID: 3)</b>
+│ 🖼️ CDN Gambar        : <code>i.ibb.co.com (ImgBB Mirror)</code>
+│ 🔗 Internal Link      : <b>1-2 Tautan 'Baca Juga' per artikel</b>
+└──
+
+👇 <i>Pilih aksi di bawah untuk mengelola:</i>`;
+
+    const inlineKeyboard: any[] = [];
+    if (nextDraft) {
+      inlineKeyboard.push([
+        { text: '🚀 Bypass Terbitkan Sekarang', callback_data: `jurnalis:publish:${nextDraft.id}` },
+      ]);
+    }
+    inlineKeyboard.push([
+      { text: `📋 Usulan Berita Bot (${rawDrafts})`, callback_data: 'jurnalis:usulan:1' },
+      { text: `🖼️ Butuh Foto (${needPhoto})`, callback_data: 'jurnalis:need_photo:1' },
+    ]);
+    inlineKeyboard.push([
+      { text: '📰 Meja Jurnalis AI', url: `${siteUrl}/admin/jurnalis` },
+      { text: '📅 Tab Terjadwal Dasbor', url: `${siteUrl}/admin?tab=scheduled` },
+    ]);
+    inlineKeyboard.push([
+      { text: '🤖 Konsol Bot Jurnalis ↗', url: 'https://bottelejurnalis.vercel.app/' },
+      { text: '🔄 Segarkan Status', callback_data: 'jurnalis:refresh' },
+    ]);
+    inlineKeyboard.push([
+      { text: '🏠 Menu Utama', callback_data: 'btn:start' },
+      { text: '❌ Tutup Layar', callback_data: 'btn:close' },
+    ]);
+
+    await updateOrSendMessage(chatId, messageId, jurnalisText, { inlineKeyboard });
+  } catch (err: any) {
+    console.error('Gagal menampilkan status jurnalis AI telegram:', err);
+    await updateOrSendMessage(
+      chatId,
+      messageId,
+      `⚠️ <b>Gagal Memuat Status Jurnalis AI:</b> ${err?.message || 'Gangguan database'}`
+    );
+  }
+}
+
+async function sendJurnalisUsulanListMessage(
+  chatId: number | string,
+  messageId: number | undefined,
+  page: number = 1,
+  siteUrl: string = 'https://www.adafakta.web.id'
+) {
+  const safePage = Math.max(1, page);
+  const pageSize = 4;
+
+  const allUsulan = await db
+    .select()
+    .from(jurnalisDrafts)
+    .where(eq(jurnalisDrafts.status, 'draft'))
+    .orderBy(desc(jurnalisDrafts.createdAt));
+
+  const total = allUsulan.length;
+  const totalPages = Math.ceil(total / pageSize) || 1;
+  const startIndex = (safePage - 1) * pageSize;
+  const currentItems = allUsulan.slice(startIndex, startIndex + pageSize);
+
+  let listContent = '';
+  const inlineKeyboard: any[] = [];
+
+  if (currentItems.length === 0) {
+    listContent = `\n<i>Tidak ada usulan berita mentah saat ini. Semua usulan bot scraping sudah di-generate menjadi naskah atau belum ada berita baru dari bot intelijen.</i>\n`;
+  } else {
+    currentItems.forEach((d, idx) => {
+      const num = startIndex + idx + 1;
+      const cleanTitle = d.title.length > 70 ? d.title.slice(0, 67) + '...' : d.title;
+      listContent += `\n${num}️⃣ <b>${cleanTitle}</b>\n   📡 Sumber: <i>${d.source || 'Media Partner'}</i> • 📂 ${d.category || 'Nasional'}\n`;
+      if (d.originalUrl) {
+        listContent += `   🔗 <a href="${d.originalUrl}">Lihat Berita Asli</a>\n`;
+      }
+
+      inlineKeyboard.push([
+        { text: `🤖 #${num} Generate Naskah AI`, callback_data: `jurnalis:gen:${d.id}` },
+        { text: `🗑️ Hapus`, callback_data: `jurnalis:del_confirm:${d.id}` },
+      ]);
+    });
+  }
+
+  const navRow: any[] = [];
+  if (safePage > 1) {
+    navRow.push({ text: '◀️ Sebelumnya', callback_data: `jurnalis:usulan:${safePage - 1}` });
+  }
+  if (totalPages > 1) {
+    navRow.push({ text: `• ${safePage}/${totalPages} •`, callback_data: `jurnalis:usulan:${safePage}` });
+  }
+  if (safePage < totalPages) {
+    navRow.push({ text: 'Berikutnya ▶️', callback_data: `jurnalis:usulan:${safePage + 1}` });
+  }
+  if (navRow.length > 0) {
+    inlineKeyboard.push(navRow);
+  }
+
+  inlineKeyboard.push([
+    { text: '🔙 Kembali ke Jurnalis AI', callback_data: 'btn:jurnalis' },
+    { text: '🏠 Menu Utama', callback_data: 'btn:start' },
+  ]);
+
+  const text = `📋 <b>DAFTAR USULAN BERITA BOT (MENTAH)</b>
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Total Usulan Bot: <b>${total} berita</b> (Halaman ${safePage}/${totalPages})
+${listContent}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+💡 <i>Klik tombol <b>Generate Naskah AI</b> untuk menyusun artikel 5W+1H, rekomendasi "Baca Juga", dan mempersiapkan foto sampul.</i>`;
+
+  await updateOrSendMessage(chatId, messageId, text, { inlineKeyboard });
+}
+
+async function sendJurnalisNeedPhotoListMessage(
+  chatId: number | string,
+  messageId: number | undefined,
+  page: number = 1,
+  siteUrl: string = 'https://www.adafakta.web.id'
+) {
+  const safePage = Math.max(1, page);
+  const pageSize = 4;
+
+  const needPhotoItems = await db
+    .select()
+    .from(jurnalisDrafts)
+    .where(eq(jurnalisDrafts.status, 'generated'))
+    .orderBy(desc(jurnalisDrafts.createdAt));
+
+  const filtered = needPhotoItems.filter((d) => !d.coverUrl);
+  const total = filtered.length;
+  const totalPages = Math.ceil(total / pageSize) || 1;
+  const startIndex = (safePage - 1) * pageSize;
+  const currentItems = filtered.slice(startIndex, startIndex + pageSize);
+
+  let listContent = '';
+  const inlineKeyboard: any[] = [];
+
+  if (currentItems.length === 0) {
+    listContent = `\n<i>Tidak ada draf yang butuh foto cover. Semua draf yang di-generate sudah memiliki foto sampul dan telah masuk antrean terjadwal!</i>\n`;
+  } else {
+    currentItems.forEach((d, idx) => {
+      const num = startIndex + idx + 1;
+      const titleRaw = d.generatedTitle || d.title;
+      const cleanTitle = titleRaw.length > 70 ? titleRaw.slice(0, 67) + '...' : titleRaw;
+      listContent += `\n${num}️⃣ <b>${cleanTitle}</b>\n   📂 Kategori: <b>${d.category || 'Nasional'}</b> • ✍️ Naskah AI Siap\n`;
+
+      inlineKeyboard.push([
+        { text: `📷 #${num} Kirim Foto Sampul`, callback_data: `jurnalis:req_photo:${d.id}` },
+        { text: `🗑️ Hapus`, callback_data: `jurnalis:del_confirm:${d.id}` },
+      ]);
+    });
+  }
+
+  const navRow: any[] = [];
+  if (safePage > 1) {
+    navRow.push({ text: '◀️ Sebelumnya', callback_data: `jurnalis:need_photo:${safePage - 1}` });
+  }
+  if (totalPages > 1) {
+    navRow.push({ text: `• ${safePage}/${totalPages} •`, callback_data: `jurnalis:need_photo:${safePage}` });
+  }
+  if (safePage < totalPages) {
+    navRow.push({ text: 'Berikutnya ▶️', callback_data: `jurnalis:need_photo:${safePage + 1}` });
+  }
+  if (navRow.length > 0) {
+    inlineKeyboard.push(navRow);
+  }
+
+  inlineKeyboard.push([
+    { text: '🔙 Kembali ke Jurnalis AI', callback_data: 'btn:jurnalis' },
+    { text: '🏠 Menu Utama', callback_data: 'btn:start' },
+  ]);
+
+  const text = `🖼️ <b>DRAF BUTUH FOTO COVER (JURNALIS AI)</b>
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Naskah artikel sudah selesai disusun oleh AI. Begitu diberi foto sampul, draf otomatis dijadwalkan terbit (interval 2 jam).
+Total: <b>${total} draf</b> (Halaman ${safePage}/${totalPages})
+${listContent}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+💡 <i>Klik tombol <b>Kirim Foto Sampul</b> lalu kirimkan file foto langsung dari Galeri HP Anda di chat ini.</i>`;
+
+  await updateOrSendMessage(chatId, messageId, text, { inlineKeyboard });
+}
+
+async function handleGenerateJurnalisDraft(
+  chatId: number | string,
+  messageId: number | undefined,
+  draftId: number,
+  siteUrl: string = 'https://www.adafakta.web.id'
+) {
+  const [draft] = await db.select().from(jurnalisDrafts).where(eq(jurnalisDrafts.id, draftId)).limit(1);
+  if (!draft) {
+    await updateOrSendMessage(chatId, messageId, `⚠️ <b>Draf #${draftId} tidak ditemukan.</b>`, {
+      inlineKeyboard: [[{ text: '🔙 Kembali ke Usulan', callback_data: 'jurnalis:usulan:1' }]],
+    });
+    return;
+  }
+
+  const titlePreview = draft.title.length > 60 ? draft.title.slice(0, 57) + '...' : draft.title;
+  await updateOrSendMessage(
+    chatId,
+    messageId,
+    `⏳ <b>SEDANG MENYUSUN NASKAH BERITA AI...</b>
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📰 <b>${titlePreview}</b>
+📡 Sumber: <i>${draft.source || 'Media Partner'}</i>
+
+🤖 AI sedang menyusun naskah 5W+1H, menyematkan rekomendasi internal "Baca Juga", dan merapikan format liputan...
+<i>Mohon tunggu sekitar 15-30 detik...</i>`
+  );
+
+  const res = await generateJurnalisDraftAction(draftId);
+  if (!res.success || !res.data) {
+    await updateOrSendMessage(
+      chatId,
+      messageId,
+      `❌ <b>Gagal Menyusun Naskah AI:</b>\n${res.error || 'Terjadi kesalahan sistem.'}\n\n<i>${(res as any).details || ''}</i>`,
+      {
+        inlineKeyboard: [
+          [{ text: '🔄 Coba Lagi', callback_data: `jurnalis:gen:${draftId}` }],
+          [{ text: '🔙 Kembali ke Usulan', callback_data: 'jurnalis:usulan:1' }],
+        ],
+      }
+    );
+    return;
+  }
+
+  const data = res.data;
+  const paragraphs = (data.generatedArticle || '').split(/\n\s*\n/).filter((p: string) => p.trim().length > 0);
+  const snippet = paragraphs[0] ? paragraphs[0].slice(0, 200) + '...' : '';
+
+  await setTgUserState(chatId, {
+    step: 'waiting_jurnalis_cover',
+    draftId,
+    title: data.generatedTitle,
+    category: data.category,
+    createdAt: Date.now(),
+  });
+
+  const successText = `✅ <b>NASKAH BERITA BERHASIL DISUSUN!</b>
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📰 <b>${data.generatedTitle}</b>
+
+┌── 📋 <b>Detail Hasil Generate</b>
+│ 📂 Kategori  : <b>${data.category}</b>
+│ ✍️ Penulis   : <b>Redaksi 2 (ID: 3)</b>
+│ 🏷️ Tags      : <code>${(data.tags || []).join(', ')}</code>
+│ 🔗 Rekomendasi: <b>Tautan "Baca Juga" disematkan</b>
+└──
+
+┌── 📖 <b>Cuplikan Paragraf Lead</b>
+│ <i>"${snippet}"</i>
+└──
+
+📷 <b>LANGKAH TERAKHIR: PASANG FOTO SAMPUL</b>
+Kirimkan foto sampul berita ini sekarang langsung dari <b>Galeri HP Anda</b> di obrolan Telegram ini!
+<i>(Foto otomatis diunggah ke CDN ImgBB dan draf resmi masuk antrean tayang per 2 jam)</i>`;
+
+  const inlineKeyboard = [
+    [{ text: '📷 Buka Meja Jurnalis Web', url: `${siteUrl}/admin/jurnalis` }],
+    [
+      { text: '📋 Lihat Usulan Lain', callback_data: 'jurnalis:usulan:1' },
+      { text: '🏠 Menu Utama', callback_data: 'btn:start' },
+    ],
+  ];
+
+  await updateOrSendMessage(chatId, messageId, successText, { inlineKeyboard });
+}
+
+async function handleRequestJurnalisPhoto(
+  chatId: number | string,
+  messageId: number | undefined,
+  draftId: number,
+  siteUrl: string = 'https://www.adafakta.web.id'
+) {
+  const [draft] = await db.select().from(jurnalisDrafts).where(eq(jurnalisDrafts.id, draftId)).limit(1);
+  if (!draft) {
+    await updateOrSendMessage(chatId, messageId, `⚠️ Draf #${draftId} tidak ditemukan.`);
+    return;
+  }
+
+  await setTgUserState(chatId, {
+    step: 'waiting_jurnalis_cover',
+    draftId,
+    title: draft.generatedTitle || draft.title,
+    category: draft.category || 'Nasional',
+    createdAt: Date.now(),
+  });
+
+  const titleRaw = draft.generatedTitle || draft.title;
+  const promptPhotoText = `📷 <b>KIRIM FOTO SAMPUL DARI GALERI HP</b>
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📰 <b>${titleRaw}</b>
+📂 Kategori: <b>${draft.category || 'Nasional'}</b>
+
+👇 <b>Cara Mengirimkan Foto:</b>
+1. Klik icon klip lampiran (📎) di Telegram
+2. Pilih file foto dari <b>Galeri HP Anda</b>
+3. Kirimkan langsung ke chat ini
+
+<i>Foto otomatis diunggah ke CDN ImgBB dan draf langsung terjadwal per 2 jam ke depan!</i>`;
+
+  await updateOrSendMessage(chatId, messageId, promptPhotoText, {
+    inlineKeyboard: [
+      [{ text: '❌ Batalkan', callback_data: 'jurnalis:need_photo:1' }],
+      [{ text: '🏠 Menu Utama', callback_data: 'btn:start' }],
     ],
   });
 }
@@ -2389,6 +2772,126 @@ export async function POST(req: NextRequest) {
       // Tombol Kembali ke Menu Utama
       if (data === 'btn:start') {
         await sendWelcomeMessage(chatId, messageId, firstName, userId, siteUrl);
+        return NextResponse.json({ ok: true });
+      }
+
+      // Tombol Jurnalis AI & Refresh
+      if (data === 'btn:jurnalis' || data === 'jurnalis:status' || data === 'jurnalis:refresh') {
+        await sendJurnalisStatusMessage(chatId, messageId, siteUrl);
+        return NextResponse.json({ ok: true });
+      }
+
+      // Tombol Bypass Publikasi Jurnalis
+      if (data.startsWith('jurnalis:publish:')) {
+        const draftId = parseInt(data.replace('jurnalis:publish:', ''), 10);
+        if (!isNaN(draftId)) {
+          try {
+            const res = await instantPublishDraftAction(draftId);
+            if (res.success) {
+              const art = res.newArticle;
+              const artTitle = art?.title || 'Berita Jurnalis AI';
+              const artCat = art?.category || 'Nasional';
+              const artUrl = res.articleUrl || `${siteUrl}/berita/${artCat.toLowerCase()}/${res.articleId || art?.id}/${res.slug || art?.slug}`;
+              const successText = `🚀 <b>BERITA RESMI BERHASIL TAYANG!</b>
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📰 <b>${artTitle}</b>
+
+┌── 📋 <b>Detail Penerbitan (Bypass Cron)</b>
+│ 📂 Kategori  : <b>${artCat}</b>
+│ ✍️ Penulis   : <b>Redaksi 2 (ID: 3)</b>
+│ 🖼️ Foto CDN  : <code>i.ibb.co.com (ImgBB Mirror)</code>
+│ 🔍 Indexing  : 🟢 <b>Terkirim ke Google & Bing</b>
+└──
+
+🌐 <a href="${artUrl}">Baca Berita Live di Website</a>`;
+
+              await updateOrSendMessage(chatId, messageId, successText, {
+                inlineKeyboard: [
+                  [{ text: '🌐 Baca di Website', url: artUrl }],
+                  [
+                    { text: '📰 Status Jurnalis AI', callback_data: 'btn:jurnalis' },
+                    { text: '🏠 Menu Utama', callback_data: 'btn:start' },
+                  ],
+                ],
+              });
+            } else {
+              await updateOrSendMessage(
+                chatId,
+                messageId,
+                `⚠️ <b>Gagal Menerbitkan:</b> ${res.error || 'Terjadi kesalahan sistem.'}`,
+                {
+                  inlineKeyboard: [
+                    [{ text: '🔄 Kembali ke Jurnalis AI', callback_data: 'btn:jurnalis' }],
+                    [{ text: '🏠 Menu Utama', callback_data: 'btn:start' }],
+                  ],
+                }
+              );
+            }
+          } catch (err: any) {
+            await updateOrSendMessage(
+              chatId,
+              messageId,
+              `⚠️ <b>Terjadi Kesalahan:</b> ${err?.message || 'Gangguan koneksi database.'}`
+            );
+          }
+        }
+        return NextResponse.json({ ok: true });
+      }
+
+      // Navigasi Usulan Berita Bot Jurnalis
+      if (data.startsWith('jurnalis:usulan:')) {
+        const page = parseInt(data.replace('jurnalis:usulan:', ''), 10) || 1;
+        await sendJurnalisUsulanListMessage(chatId, messageId, page, siteUrl);
+        return NextResponse.json({ ok: true });
+      }
+
+      // Navigasi Draf Butuh Foto Cover
+      if (data.startsWith('jurnalis:need_photo:')) {
+        const page = parseInt(data.replace('jurnalis:need_photo:', ''), 10) || 1;
+        await sendJurnalisNeedPhotoListMessage(chatId, messageId, page, siteUrl);
+        return NextResponse.json({ ok: true });
+      }
+
+      // Trigger Generate Naskah AI dari Telegram
+      if (data.startsWith('jurnalis:gen:')) {
+        const draftId = parseInt(data.replace('jurnalis:gen:', ''), 10);
+        if (!isNaN(draftId)) {
+          await handleGenerateJurnalisDraft(chatId, messageId, draftId, siteUrl);
+        }
+        return NextResponse.json({ ok: true });
+      }
+
+      // Minta Kirim Foto Cover untuk Draf Tertentu
+      if (data.startsWith('jurnalis:req_photo:')) {
+        const draftId = parseInt(data.replace('jurnalis:req_photo:', ''), 10);
+        if (!isNaN(draftId)) {
+          await handleRequestJurnalisPhoto(chatId, messageId, draftId, siteUrl);
+        }
+        return NextResponse.json({ ok: true });
+      }
+
+      // Konfirmasi Hapus Usulan / Draf Jurnalis
+      if (data.startsWith('jurnalis:del_confirm:')) {
+        const draftId = parseInt(data.replace('jurnalis:del_confirm:', ''), 10);
+        await updateOrSendMessage(
+          chatId,
+          messageId,
+          `⚠️ <b>KONFIRMASI HAPUS DRAF JURNALIS</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nApakah Anda yakin ingin menghapus usulan draf #${draftId}?\nTindakan ini tidak dapat dibatalkan.`,
+          {
+            inlineKeyboard: [
+              [{ text: '🗑️ Ya, Hapus Sekarang', callback_data: `jurnalis:del:${draftId}` }],
+              [{ text: '❌ Batalkan', callback_data: 'jurnalis:usulan:1' }],
+            ],
+          }
+        );
+        return NextResponse.json({ ok: true });
+      }
+
+      // Eksekusi Hapus Usulan / Draf Jurnalis
+      if (data.startsWith('jurnalis:del:')) {
+        const draftId = parseInt(data.replace('jurnalis:del:', ''), 10);
+        await deleteDraftAction(draftId);
+        await sendJurnalisUsulanListMessage(chatId, messageId, 1, siteUrl);
         return NextResponse.json({ ok: true });
       }
 
@@ -2984,6 +3487,20 @@ Format    : <b>${lengthLabel}</b>
       return NextResponse.json({ ok: true });
     }
 
+    // COMMAND: /jurnalis
+    if (rawText === '/jurnalis' || rawText.startsWith('/jurnalis ')) {
+      await clearTgUserState(chatId);
+      const subCmd = rawText.replace('/jurnalis', '').trim().toLowerCase();
+      if (subCmd === 'usulan' || subCmd === 'list') {
+        await sendJurnalisUsulanListMessage(chatId, undefined, 1, siteUrl);
+      } else if (subCmd === 'foto' || subCmd === 'draft') {
+        await sendJurnalisNeedPhotoListMessage(chatId, undefined, 1, siteUrl);
+      } else {
+        await sendJurnalisStatusMessage(chatId, undefined, siteUrl);
+      }
+      return NextResponse.json({ ok: true });
+    }
+
     // Perintah pembatalan naskah manual
     if (rawText === '/batal' || rawText === '/cancel') {
       await clearTgUserState(chatId);
@@ -3147,6 +3664,96 @@ Format    : <b>${lengthLabel}</b>
               inlineKeyboard: [
                 [{ text: '🔍 Buka Detail Artikel', callback_data: `art:view:${userWizardState.articleId}:${userWizardState.status || 'draft'}:${userWizardState.page || 1}` }],
                 [{ text: '📁 Kembali ke Daftar', callback_data: `art:list:${userWizardState.status || 'draft'}:${userWizardState.page || 1}` }],
+              ],
+            }
+          );
+          return NextResponse.json({ ok: true });
+        } else if (userWizardState.step === 'waiting_jurnalis_cover') {
+          const targetDraftId = userWizardState.draftId;
+          if (!hasPhoto && (!rawText || !rawText.startsWith('http'))) {
+            await sendTelegramMessage(
+              chatId,
+              `⚠️ <b>Silakan Kirim Foto Sampul</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nKirimkan file gambar langsung dari <b>Galeri HP Anda</b> atau tempelkan URL gambar ImgBB:`,
+              {
+                inlineKeyboard: [
+                  [{ text: '❌ Batalkan', callback_data: 'btn:jurnalis' }],
+                ],
+              }
+            );
+            return NextResponse.json({ ok: true });
+          }
+
+          const waitMsg = await sendTelegramMessage(
+            chatId,
+            `⏳ <b>MENGUNGGAH FOTO SAMPUL KE CDN...</b>\nMohon tunggu, foto sedang dikompres dan dikaitkan ke antrean jadwal rilis...`
+          );
+
+          let finalUrl = '';
+          if (hasPhoto && photoFileId) {
+            try {
+              const tgFileUrl = await getTelegramFileUrl(photoFileId);
+              if (tgFileUrl) {
+                const fd = new FormData();
+                fd.append('imageUrl', tgFileUrl);
+                fd.append('name', `jurnalis-cover-${targetDraftId}-${Date.now()}`);
+                const upRes = await uploadImageToImgbb(fd);
+                finalUrl = (upRes.success && upRes.url) ? upRes.url : tgFileUrl;
+              }
+            } catch (err) {
+              console.error('Error uploading jurnalis cover from telegram:', err);
+            }
+          } else if (rawText && rawText.startsWith('http')) {
+            finalUrl = rawText.trim();
+          }
+
+          if (!finalUrl) {
+            await updateOrSendMessage(chatId, waitMsg.data?.result?.message_id, `❌ <b>Gagal memproses foto. Silakan coba kirim ulang foto dari Galeri HP Anda.</b>`);
+            return NextResponse.json({ ok: true });
+          }
+
+          const attachRes = await attachPhotoUrlToDraftAction(targetDraftId, finalUrl);
+          await clearTgUserState(chatId);
+
+          if (!attachRes.success) {
+            await updateOrSendMessage(chatId, waitMsg.data?.result?.message_id, `⚠️ <b>Gagal Menyimpan Foto:</b> ${attachRes.error}`);
+            return NextResponse.json({ ok: true });
+          }
+
+          const publishTimeStr = attachRes.publishAt
+            ? new Date(attachRes.publishAt).toLocaleString('id-ID', {
+                day: 'numeric',
+                month: 'short',
+                hour: '2-digit',
+                minute: '2-digit',
+                timeZone: 'Asia/Jakarta',
+              }) + ' WIB'
+            : 'Segera (Siap Cron)';
+
+          const successText = `🎉 <b>FOTO BERHASIL DIPASANG & BERITA TERJADWAL!</b>
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📰 <b>${userWizardState.title || 'Draf Jurnalis AI'}</b>
+
+┌── 📋 <b>Informasi Antrean Publikasi</b>
+│ 🚦 Status      : ⏰ <b>Siap Tayang (Terjadwal)</b>
+│ 📅 Jam Tayang  : <b>${publishTimeStr}</b> (Interval 2 Jam)
+│ 🖼️ Foto Sampul : <code>${attachRes.coverUrl}</code>
+│ ✍️ Penulis     : <b>Redaksi 2 (ID: 3)</b>
+└──
+
+👇 <i>Berita akan otomatis tayang saat jam tiba. Atau gunakan aksi kilat di bawah:</i>`;
+
+          await updateOrSendMessage(
+            chatId,
+            waitMsg.data?.result?.message_id,
+            successText,
+            {
+              inlineKeyboard: [
+                [{ text: '🚀 Bypass Terbitkan Sekarang', callback_data: `jurnalis:publish:${targetDraftId}` }],
+                [{ text: '📅 Tab Terjadwal Dasbor', url: `${siteUrl}/admin?tab=scheduled` }],
+                [
+                  { text: '📰 Meja Jurnalis AI', url: `${siteUrl}/admin/jurnalis` },
+                  { text: '🏠 Menu Utama', callback_data: 'btn:start' },
+                ],
               ],
             }
           );
@@ -3608,6 +4215,7 @@ Pusat kendali otomatisasi berita AI Ada Fakta
 └──
 
 ┌── 🧹 <b>Alat & Sistem</b>
+│ • <code>/jurnalis</code> — Status, usulan, generate & upload foto Jurnalis AI
 │ • <code>/autopilot</code> — Jadwal & hitung mundur autopublish
 │ • <code>/jadwal</code> — Alias cek slot penerbitan AI
 │ • <code>/stats</code> — Cek statistik artikel & status server

@@ -7,6 +7,7 @@ import { revalidatePath } from 'next/cache';
 import { uploadImageToImgbb } from '../media-actions';
 import { notifySearchEngines } from '@/lib/indexing';
 import { sendTelegramMessage } from '@/lib/telegram';
+import { getAISettings } from '@/app/admin/pengaturan/actions';
 
 function generateSlug(text: string): string {
   const base = text
@@ -462,10 +463,349 @@ export async function instantPublishDraftAction(draftId: number) {
       articleId: newArticle.id,
       slug: newArticle.slug,
       articleUrl,
+      newArticle,
       message: 'Berita berhasil diterbitkan dan langsung tayang di portal!',
     };
   } catch (err: any) {
     console.error('Gagal menerbitkan draf:', err);
     return { success: false, error: err?.message || 'Gagal menerbitkan draf' };
+  }
+}
+
+function parseAIResponseContent(rawBody: string): string {
+  const trimmed = rawBody.trim();
+
+  if (trimmed.startsWith('data:') || trimmed.includes('\ndata:') || trimmed.includes('\r\ndata:')) {
+    let accumulated = '';
+    const lines = trimmed.split(/\r?\n/);
+    for (const line of lines) {
+      const lineTrimmed = line.trim();
+      if (!lineTrimmed.startsWith('data:')) continue;
+      const dataPayload = lineTrimmed.slice(5).trim();
+      if (!dataPayload || dataPayload === '[DONE]') continue;
+      try {
+        const parsed = JSON.parse(dataPayload);
+        const piece =
+          parsed?.choices?.[0]?.delta?.content ??
+          parsed?.choices?.[0]?.message?.content ??
+          parsed?.choices?.[0]?.text ??
+          '';
+        accumulated += piece;
+      } catch {}
+    }
+    if (accumulated.trim()) return accumulated.trim();
+  }
+
+  try {
+    const json = JSON.parse(trimmed);
+    return json?.choices?.[0]?.message?.content ?? trimmed;
+  } catch {
+    return trimmed;
+  }
+}
+
+function cleanJsonOutput(text: string): string {
+  let cleaned = text.trim();
+  if (cleaned.startsWith('```')) {
+    cleaned = cleaned.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, "");
+  }
+  return cleaned.trim();
+}
+
+/**
+ * Eksekusi penyusunan naskah utuh berita AI untuk 1 draf jurnalis.
+ * Memakai konfigurasi model AI dinamis, menyisipkan 1-2 link 'Baca Juga', dan mencantumkan sumber rujukan.
+ */
+export async function generateJurnalisDraftAction(draftId: number) {
+  try {
+    if (!draftId) {
+      return { success: false, error: 'draftId diperlukan' };
+    }
+
+    const rows = (await sql`
+      SELECT id, title, source, original_url, summary, cover_url
+      FROM jurnalis_drafts
+      WHERE id = ${draftId}
+      LIMIT 1;
+    `) as Array<{
+      id: number;
+      title: string;
+      source: string;
+      original_url: string;
+      summary: string | null;
+      cover_url: string | null;
+    }>;
+
+    if (!rows || rows.length === 0) {
+      return { success: false, error: 'Draf berita tidak ditemukan' };
+    }
+
+    const draft = rows[0];
+
+    // Ambil konfigurasi model AI dinamis dari database (Pengaturan AI)
+    const aiSettings = await getAISettings();
+    const provider = aiSettings.defaultProvider || '9router';
+
+    let baseUrl = (aiSettings.baseUrl || process.env.NINEROUTER_BASE_URL || process.env.LOCAL_9ROUTER_BASE_URL || 'http://node7.botkeep.cloud:40022/v1').trim().replace(/\/+$/, '');
+    let apiKey = (aiSettings.apiKey || process.env.NINEROUTER_API_KEY || process.env.LOCAL_9ROUTER_KEY || 'sk-d6bddb272e797ddb-oj08b1-36238240').trim();
+    let model = (aiSettings.model || process.env.NINEROUTER_MODEL || process.env.LOCAL_9ROUTER_MODEL || 'radox/deepseek-v4-flash-0731').trim();
+
+    if (provider === 'gemini' && process.env.GEMINI_API_KEY && (model.toLowerCase().includes('gemini') || !aiSettings.model)) {
+      baseUrl = (process.env.GEMINI_BASE_URL || 'https://generativelanguage.googleapis.com/v1beta/openai').replace(/\/+$/, '');
+      apiKey = process.env.GEMINI_API_KEY;
+      model = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+    } else if (provider === 'groq' && process.env.GROQ_API_KEY && (model.toLowerCase().includes('groq') || model.toLowerCase().includes('gpt-oss'))) {
+      baseUrl = (process.env.GROQ_BASE_URL || 'https://api.groq.com/openai/v1').replace(/\/+$/, '');
+      apiKey = process.env.GROQ_API_KEY;
+      model = process.env.GROQ_MODEL || 'openai/gpt-oss-120b';
+    }
+
+    const promptSystem = `Kamu adalah jurnalis dan editor berita senior di media "AdaFakta" (adafakta.web.id). 
+Tugasmu adalah menulis artikel berita utuh berbahasa Indonesia yang objektif, faktual, mendalam, dan mematuhi kaidah 5W+1H (What, Who, Where, When, Why, How).
+
+Pedoman penulisan:
+1. Buat judul berita yang lugas, menarik, dan informatif (tanpa clickbait murahan).
+2. Kalimat pertama pada paragraf pembuka WAJIB diawali langsung dengan teks "adafaktanews - " (huruf kecil semua diikuti tanda hubung dan spasi), contoh: "adafaktanews - [inti peristiwa terhangat...]".
+3. Tulis isi berita sebanyak 350 sampai 500 kata yang terdiri dari:
+   - Paragraf Lead (diawali adafaktanews - ).
+   - Paragraf Penjelasan & Konteks (latar belakang kejadian).
+   - Dampak atau implikasi peristiwa bagi masyarakat/sektor terkait.
+   - Paragraf Penutup yang merangkum status terkini.
+4. Di baris paling akhir naskah berita, sertakan satu baris atribusi rujukan dengan tulisan miring: "*Sumber: ${draft.source}*".
+5. Jangan mengarang fakta fiktif di luar konteks berita sumber.
+6. Format output HANYA dalam bentuk JSON valid persis seperti ini tanpa komentar tambahan:
+{
+  "title": "Judul Berita Baru",
+  "content": "Isi lengkap artikel berita...",
+  "category": "Kategori yang cocok (WAJIB SALAH SATU: Nasional, Internasional, Regional, Sport, AI, Gadget, Software, Hardware, Infrastruktur)",
+  "tags": ["tag1", "tag2", "tag3"]
+}`;
+
+    const promptUser = `Tolong tuliskan artikel berita lengkap berdasarkan fakta intelijen berikut:
+Judul Sumber: ${draft.title}
+Sumber Media Asli: ${draft.source}
+Tautan Asli: ${draft.original_url}
+Ringkasan Fakta: ${draft.summary || '-'}`;
+
+    const endpoint = `${baseUrl}/chat/completions`;
+
+    const aiRes = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        stream: false,
+        messages: [
+          { role: 'system', content: promptSystem },
+          { role: 'user', content: promptUser },
+        ],
+        temperature: 0.7,
+      }),
+    });
+
+    if (!aiRes.ok) {
+      const errText = await aiRes.text();
+      throw new Error(`AI Gateway error (${aiRes.status}) [Model: ${model}]: ${errText}`);
+    }
+
+    const rawText = await aiRes.text();
+    const rawContent = parseAIResponseContent(rawText);
+    const cleanedJson = cleanJsonOutput(rawContent);
+
+    let aiParsed: {
+      title?: string;
+      content?: string;
+      category?: string;
+      tags?: string[];
+    } = {};
+
+    try {
+      aiParsed = JSON.parse(cleanedJson);
+    } catch {
+      aiParsed = {
+        title: draft.title,
+        content: cleanedJson,
+        category: 'Umum',
+        tags: [],
+      };
+    }
+
+    const finalTitle = aiParsed.title || draft.title;
+    let finalContent = (aiParsed.content || '').trim();
+
+    // Pastikan awalan selalu 'adafaktanews - '
+    if (!finalContent.toLowerCase().startsWith('adafaktanews -')) {
+      finalContent = finalContent.replace(/^adafaktanews\s*[-–—]?\s*/i, '');
+      finalContent = `adafaktanews - ${finalContent.trimStart()}`;
+    }
+
+    const finalCategory = aiParsed.category || 'Umum';
+    const finalTags = Array.isArray(aiParsed.tags) ? aiParsed.tags : [];
+
+    // Bersihkan penanda sumber sementara jika AI sudah menulisnya di dalam naskah
+    const expectedSource = draft.source || 'Media Partner';
+    finalContent = finalContent.replace(/\n*\*Sumber:.*?\*\s*$/i, '').trim();
+
+    // Sisipkan Smart Internal Linking ("Baca Juga")
+    try {
+      let relatedArticles: Array<{ id: number; title: string; slug: string; category: string }> = [];
+
+      const sameCatRows = (await sql`
+        SELECT id, title, slug, category
+        FROM articles
+        WHERE status = 'published' AND LOWER(category) = LOWER(${finalCategory})
+        ORDER BY id DESC
+        LIMIT 2;
+      `) as Array<{ id: number; title: string; slug: string; category: string }>;
+
+      relatedArticles = sameCatRows || [];
+
+      if (relatedArticles.length < 2) {
+        const excludeIds = relatedArticles.map((a) => a.id);
+        const latestRows = (await sql`
+          SELECT id, title, slug, category
+          FROM articles
+          WHERE status = 'published'
+          ORDER BY id DESC
+          LIMIT 5;
+        `) as Array<{ id: number; title: string; slug: string; category: string }>;
+
+        for (const r of latestRows || []) {
+          if (!excludeIds.includes(r.id) && relatedArticles.length < 2) {
+            relatedArticles.push(r);
+          }
+        }
+      }
+
+      if (relatedArticles.length > 0 && !/baca juga\s*:/i.test(finalContent)) {
+        const paragraphs = finalContent.split(/\n\s*\n/).filter((p) => p.trim().length > 0);
+
+        const buildLinkSnippet = (art: { id: number; title: string; slug: string; category: string }) => {
+          const catSlug = (art.category || 'umum').toLowerCase().replace(/\s+/g, '-');
+          return `> **Baca Juga:** [${art.title}](/berita/${catSlug}/${art.id}/${art.slug})`;
+        };
+
+        const snippet1 = buildLinkSnippet(relatedArticles[0]);
+        const snippet2 = relatedArticles.length > 1 ? buildLinkSnippet(relatedArticles[1]) : '';
+
+        if (paragraphs.length >= 5) {
+          paragraphs.splice(2, 0, snippet1);
+          if (snippet2) {
+            paragraphs.splice(5, 0, snippet2);
+          }
+          finalContent = paragraphs.join('\n\n');
+        } else if (paragraphs.length >= 3) {
+          paragraphs.splice(1, 0, snippet1);
+          if (snippet2 && paragraphs.length >= 3) {
+            paragraphs.splice(3, 0, snippet2);
+          } else if (snippet2) {
+            paragraphs.push(snippet2);
+          }
+          finalContent = paragraphs.join('\n\n');
+        } else {
+          finalContent = snippet2 
+            ? `${finalContent}\n\n${snippet1}\n\n${snippet2}` 
+            : `${finalContent}\n\n${snippet1}`;
+        }
+      }
+    } catch (err) {
+      console.warn('Gagal menyisipkan internal link Baca Juga:', err);
+    }
+
+    // Pastikan baris akhir selalu memuat atribusi '*Sumber: [sumber]*'
+    if (!finalContent.includes('*Sumber:')) {
+      finalContent = `${finalContent.trimEnd()}\n\n*Sumber: ${expectedSource}*`;
+    }
+
+    const nextStatus = draft.cover_url && draft.cover_url.trim().length > 0 ? 'ready_to_publish' : 'generated';
+
+    // Simpan hasil generate ke database
+    await sql`
+      UPDATE jurnalis_drafts
+      SET 
+        generated_title = ${finalTitle},
+        generated_article = ${finalContent},
+        category = ${finalCategory},
+        tags = ${finalTags},
+        status = ${nextStatus}
+      WHERE id = ${draftId};
+    `;
+
+    revalidatePath('/admin/jurnalis');
+    revalidatePath('/admin');
+
+    return {
+      success: true,
+      data: {
+        draftId,
+        generatedTitle: finalTitle,
+        generatedArticle: finalContent,
+        category: finalCategory,
+        tags: finalTags,
+        status: nextStatus,
+        coverUrl: draft.cover_url,
+      },
+    };
+  } catch (error: any) {
+    console.error('Gagal generate artikel jurnalis action:', error);
+    return {
+      success: false,
+      error: 'Gagal memproses AI',
+      details: String(error?.message || error),
+    };
+  }
+}
+
+/**
+ * Pasang URL foto cover langsung ke draf jurnalis (dari Telegram atau input manual)
+ * Jika naskah sudah siap (generated), draf otomatis berstatus 'ready_to_publish' dan dijadwalkan per 2 jam ke depan.
+ */
+export async function attachPhotoUrlToDraftAction(draftId: number, photoUrl: string, caption?: string) {
+  try {
+    const draft = await db.query.jurnalisDrafts.findFirst({
+      where: eq(jurnalisDrafts.id, draftId),
+    });
+
+    if (!draft) {
+      return { success: false, error: 'Draf jurnalis tidak ditemukan' };
+    }
+
+    const normalizedCoverUrl = photoUrl.replace(/https?:\/\/i\.ibb\.co\//g, 'https://i.ibb.co.com/');
+    const newStatus = draft.generatedArticle ? 'ready_to_publish' : draft.status;
+
+    let targetPublishAt: Date | null = null;
+    if (newStatus === 'ready_to_publish') {
+      const slotRes = await getNextSuggestedPublishTimeAction();
+      targetPublishAt = new Date(slotRes.iso);
+    }
+
+    await db
+      .update(jurnalisDrafts)
+      .set({
+        coverUrl: normalizedCoverUrl,
+        coverCaption: caption || draft.coverCaption || `Ilustrasi: ${draft.generatedTitle || draft.title}`,
+        publishAt: targetPublishAt || draft.publishAt,
+        status: newStatus,
+      })
+      .where(eq(jurnalisDrafts.id, draftId));
+
+    revalidatePath('/admin/jurnalis');
+    revalidatePath('/admin');
+
+    return {
+      success: true,
+      coverUrl: normalizedCoverUrl,
+      status: newStatus,
+      publishAt: targetPublishAt ? targetPublishAt.toISOString() : null,
+      message: newStatus === 'ready_to_publish' 
+        ? 'Foto terpasang & draf resmi masuk antrean publikasi terjadwal!' 
+        : 'Foto berhasil disimpan.',
+    };
+  } catch (err: any) {
+    console.error('Gagal memasang URL foto draf:', err);
+    return { success: false, error: err?.message || 'Gagal memasang foto' };
   }
 }
