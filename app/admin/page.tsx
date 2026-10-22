@@ -153,11 +153,11 @@ export default async function AdminDashboard(props: {
           </p>
         </div>
 
-        {/* Action Buttons: Tulis Berita, AI Studio, Sadur & Upload Bulk */}
-        <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
+        {/* Action Buttons: Tulis Berita, AI Studio, Sadur & Upload Bulk (Grid 2 Kolom di Mobile, Flex di Desktop) */}
+        <div className="grid grid-cols-2 gap-2 w-full lg:flex lg:w-auto lg:items-center lg:gap-2.5">
           <Link
             href="/admin/tulis"
-            className="inline-flex items-center justify-center gap-1.5 bg-gray-900 hover:bg-black text-white px-3.5 py-2.5 rounded-xl font-bold shadow-xs text-xs sm:text-sm transition-all"
+            className="inline-flex items-center justify-center gap-1.5 bg-gray-900 hover:bg-black text-white px-3 sm:px-3.5 py-2.5 rounded-xl font-bold shadow-xs text-xs sm:text-sm transition-all"
           >
             <PenSquare className="w-4 h-4 shrink-0" />
             <span>Tulis Berita</span>
@@ -165,7 +165,7 @@ export default async function AdminDashboard(props: {
 
           <Link
             href="/admin/generator"
-            className="inline-flex items-center justify-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-2.5 rounded-xl font-bold shadow-xs text-xs sm:text-sm transition-all"
+            className="inline-flex items-center justify-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white px-3 sm:px-3.5 py-2.5 rounded-xl font-bold shadow-xs text-xs sm:text-sm transition-all"
           >
             <Sparkles className="w-4 h-4 shrink-0 text-indigo-200" />
             <span>AI Studio</span>
@@ -173,7 +173,7 @@ export default async function AdminDashboard(props: {
 
           <Link
             href="/admin/sadur"
-            className="inline-flex items-center justify-center gap-1.5 bg-cyan-600 hover:bg-cyan-700 text-white px-3.5 py-2.5 rounded-xl font-bold shadow-xs text-xs sm:text-sm transition-all"
+            className="inline-flex items-center justify-center gap-1.5 bg-cyan-600 hover:bg-cyan-700 text-white px-3 sm:px-3.5 py-2.5 rounded-xl font-bold shadow-xs text-xs sm:text-sm transition-all"
           >
             <Link2 className="w-4 h-4 shrink-0 text-cyan-200" />
             <span>Sadur URL</span>
@@ -186,213 +186,235 @@ export default async function AdminDashboard(props: {
       {/* HIGHLIGHT WIDGET: PORTAL BOT JURNALIS TELEGRAM */}
       <BotJurnalisWidget />
 
-      {/* 2. KARTU BARIS 1: STATUS PUBLIKASI UTAMA */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
+      {/* 2. KARTU BARIS 1: STATUS PUBLIKASI UTAMA (2 Kolom di Mobile, 4 Kolom di Desktop) */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
         {/* Total Artikel */}
-        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-gray-200 shadow-xs flex items-center justify-between">
-          <div>
-            <div className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">
+        <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-gray-200 shadow-xs flex flex-col justify-between h-full min-h-[96px] sm:min-h-[104px]">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-gray-500">
               Total Artikel
+            </span>
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gray-100 text-gray-800 flex items-center justify-center shrink-0">
+              <FileText className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
-            <div className="text-2xl sm:text-3xl font-black font-heading text-gray-900">
+          </div>
+          <div className="mt-1">
+            <div className="text-2xl sm:text-3xl font-black font-heading text-gray-900 leading-tight">
               {totalArticles}
             </div>
-            <div className="text-[11px] text-gray-400 mt-0.5">Semua arsip berita</div>
-          </div>
-          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gray-100 text-gray-800 flex items-center justify-center shrink-0">
-            <FileText className="w-5 h-5 sm:w-6 sm:h-6" />
+            <div className="text-[10px] sm:text-[11px] text-gray-400 mt-0.5 truncate">Semua arsip berita</div>
           </div>
         </div>
 
         {/* Sudah Terbit */}
-        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-gray-200 shadow-xs flex items-center justify-between">
-          <div>
-            <div className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-emerald-600 mb-1">
+        <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-gray-200 shadow-xs flex flex-col justify-between h-full min-h-[96px] sm:min-h-[104px]">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-emerald-600">
               Sudah Terbit
+            </span>
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+              <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
-            <div className="text-2xl sm:text-3xl font-black font-heading text-emerald-700">
+          </div>
+          <div className="mt-1">
+            <div className="text-2xl sm:text-3xl font-black font-heading text-emerald-700 leading-tight">
               {publishedArticles}
             </div>
-            <div className="text-[11px] text-emerald-600/80 mt-0.5">Tayang di website</div>
-          </div>
-          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-            <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6" />
+            <div className="text-[10px] sm:text-[11px] text-emerald-600/80 mt-0.5 truncate">Tayang di website</div>
           </div>
         </div>
 
         {/* Draf Siap Review */}
-        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-gray-200 shadow-xs flex items-center justify-between">
-          <div>
-            <div className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-amber-600 mb-1 flex items-center gap-1.5">
+        <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-gray-200 shadow-xs flex flex-col justify-between h-full min-h-[96px] sm:min-h-[104px]">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-amber-600 flex items-center gap-1.5">
               <span>Draf Review</span>
               {draftArticles > 0 && (
                 <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
               )}
+            </span>
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+              <PenSquare className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
-            <div className="text-2xl sm:text-3xl font-black font-heading text-amber-700">
+          </div>
+          <div className="mt-1">
+            <div className="text-2xl sm:text-3xl font-black font-heading text-amber-700 leading-tight">
               {draftArticles}
             </div>
-            <div className="text-[11px] text-amber-600/80 mt-0.5">Menunggu pemeriksaan</div>
-          </div>
-          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
-            <PenSquare className="w-5 h-5 sm:w-6 sm:h-6" />
+            <div className="text-[10px] sm:text-[11px] text-amber-600/80 mt-0.5 truncate">Menunggu periksa</div>
           </div>
         </div>
 
         {/* Terjadwal */}
-        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-gray-200 shadow-xs flex items-center justify-between">
-          <div>
-            <div className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-blue-600 mb-1">
+        <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-gray-200 shadow-xs flex flex-col justify-between h-full min-h-[96px] sm:min-h-[104px]">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-blue-600">
               Terjadwal
+            </span>
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+              <Clock className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
-            <div className="text-2xl sm:text-3xl font-black font-heading text-blue-700">
+          </div>
+          <div className="mt-1">
+            <div className="text-2xl sm:text-3xl font-black font-heading text-blue-700 leading-tight">
               {scheduledArticles}
             </div>
-            <div className="text-[11px] text-blue-600/80 mt-0.5">Menunggu jam tayang</div>
-          </div>
-          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-            <Clock className="w-5 h-5 sm:w-6 sm:h-6" />
+            <div className="text-[10px] sm:text-[11px] text-blue-600/80 mt-0.5 truncate">Menunggu tayang</div>
           </div>
         </div>
       </div>
 
       {/* 3. KARTU BARIS 2: RINCIAN DRAF HASIL GENERATE AI & PRODUKSI BERITA */}
       <div>
-        <div className="flex items-center justify-between mb-3 px-1">
+        <div className="flex items-center justify-between mb-2.5 sm:mb-3 px-1">
           <div className="flex items-center gap-2">
             <span className="text-xs font-extrabold uppercase tracking-wider text-gray-700">
-              Produksi & Draf Berdasarkan Sumber AI
+              Produksi & Draf Sumber AI
             </span>
             <span className="text-[10px] font-bold bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full">
               Realtime Neon DB
             </span>
           </div>
-          <span className="text-[11px] text-gray-400">
-            Menampilkan jumlah draf yang perlu ditinjau
+          <span className="text-[10px] sm:text-[11px] text-gray-400 hidden sm:inline">
+            Jumlah draf yang perlu ditinjau
           </span>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
-          {/* 1. AI Studio Generator */}
-          <Link
-            href="/admin/generator"
-            className="group bg-gradient-to-br from-indigo-50/70 to-white p-4 sm:p-4.5 rounded-2xl border border-indigo-100 hover:border-indigo-300 hover:shadow-md transition-all"
-          >
-            <div className="flex items-center justify-between">
-              <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                <Sparkles className="w-4 h-4" />
-              </div>
-              <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-indigo-100/80 text-indigo-800">
-                AI Studio
-              </span>
-            </div>
-            <div className="mt-3">
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-xl sm:text-2xl font-black font-heading text-indigo-950">
-                  {studioDrafts}
-                </span>
-                <span className="text-xs font-semibold text-indigo-700">Draf</span>
-                <span className="text-[11px] text-gray-400">/ {studioTotal} total</span>
-              </div>
-              <p className="text-[11px] text-gray-500 mt-0.5 line-clamp-1">
-                Dari riset topik AI Studio
-              </p>
-            </div>
-            <div className="mt-2.5 pt-2 border-t border-indigo-100/60 flex items-center justify-between text-[11px] font-bold text-indigo-600 group-hover:text-indigo-800">
-              <span>Buka AI Studio</span>
-              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
-            </div>
-          </Link>
-
-          {/* 2. Sadur Berita URL */}
-          <Link
-            href="/admin/sadur"
-            className="group bg-gradient-to-br from-cyan-50/70 to-white p-4 sm:p-4.5 rounded-2xl border border-cyan-100 hover:border-cyan-300 hover:shadow-md transition-all"
-          >
-            <div className="flex items-center justify-between">
-              <div className="w-8 h-8 rounded-lg bg-cyan-600 text-white flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                <Link2 className="w-4 h-4" />
-              </div>
-              <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-cyan-100/80 text-cyan-800">
-                Sadur URL
-              </span>
-            </div>
-            <div className="mt-3">
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-xl sm:text-2xl font-black font-heading text-cyan-950">
-                  {sadurDrafts}
-                </span>
-                <span className="text-xs font-semibold text-cyan-700">Draf</span>
-                <span className="text-[11px] text-gray-400">/ {sadurTotal} total</span>
-              </div>
-              <p className="text-[11px] text-gray-500 mt-0.5 line-clamp-1">
-                Dari saduran tautan luar
-              </p>
-            </div>
-            <div className="mt-2.5 pt-2 border-t border-cyan-100/60 flex items-center justify-between text-[11px] font-bold text-cyan-700 group-hover:text-cyan-900">
-              <span>Buka Sadur URL</span>
-              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
-            </div>
-          </Link>
-
-          {/* 3. Autopilot AI */}
-          <Link
-            href="/admin/cron"
-            className="group bg-gradient-to-br from-amber-50/70 to-white p-4 sm:p-4.5 rounded-2xl border border-amber-100 hover:border-amber-300 hover:shadow-md transition-all"
-          >
-            <div className="flex items-center justify-between">
-              <div className="w-8 h-8 rounded-lg bg-amber-500 text-white flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                <Bot className="w-4 h-4" />
-              </div>
-              <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-amber-100/80 text-amber-800">
-                Autopilot
-              </span>
-            </div>
-            <div className="mt-3">
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-xl sm:text-2xl font-black font-heading text-amber-950">
-                  {autopilotDrafts}
-                </span>
-                <span className="text-xs font-semibold text-amber-700">Draf</span>
-                <span className="text-[11px] text-gray-400">/ {autopilotTotal} total</span>
-              </div>
-              <p className="text-[11px] text-gray-500 mt-0.5 line-clamp-1">
-                Dari jadwal cron otomatis
-              </p>
-            </div>
-            <div className="mt-2.5 pt-2 border-t border-amber-100/60 flex items-center justify-between text-[11px] font-bold text-amber-700 group-hover:text-amber-900">
-              <span>Atur Autopilot</span>
-              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
-            </div>
-          </Link>
-
-          {/* 4. Jurnalis AI (Bot Intelijen & Antrean Terjadwal) */}
+        {/* Susunan 2 Kolom di Mobile: Jurnalis AI (Hero Card col-span-2) + 4 Kartu Grid 2x2. Desktop tetap 5 kolom berjejer. */}
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-2.5 sm:gap-4">
+          {/* 1. Jurnalis AI (Hero Card di Mobile selebar 2 kolom, Desktop 1 kolom sejajar) */}
           <Link
             href="/admin/jurnalis"
-            className="group bg-gradient-to-br from-purple-50/70 to-white p-4 sm:p-4.5 rounded-2xl border border-purple-100 hover:border-purple-300 hover:shadow-md transition-all"
+            className="group col-span-2 lg:col-span-1 bg-gradient-to-br from-purple-50 via-purple-50/40 to-white p-3.5 sm:p-4 rounded-2xl border border-purple-200 hover:border-purple-300 hover:shadow-md transition-all flex flex-col justify-between"
           >
-            <div className="flex items-center justify-between">
-              <div className="w-8 h-8 rounded-lg bg-purple-600 text-white flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                <Bot className="w-4 h-4" />
-              </div>
-              <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-purple-100/80 text-purple-800">
-                Jurnalis AI
-              </span>
-            </div>
-            <div className="mt-3">
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-xl sm:text-2xl font-black font-heading text-purple-950">
-                  {jurnalisQueueCount}
+            <div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-purple-600 text-white flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                    <Bot className="w-4 h-4" />
+                  </div>
+                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-purple-100 text-purple-900 border border-purple-200">
+                    Jurnalis AI
+                  </span>
+                </div>
+                <span className="text-[10px] font-bold text-purple-700 bg-purple-100/70 px-2 py-0.5 rounded-md lg:hidden">
+                  Antrean Aktif
                 </span>
-                <span className="text-xs font-semibold text-purple-700">Terjadwal</span>
-                <span className="text-[11px] text-gray-400">/ {jurnalisTotalCount} usulan</span>
               </div>
-              <p className="text-[11px] text-gray-500 mt-0.5 line-clamp-1">
-                Antrean berkala per 2 jam
-              </p>
+              <div className="mt-2.5 sm:mt-3">
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-xl sm:text-2xl font-black font-heading text-purple-950">
+                    {jurnalisQueueCount}
+                  </span>
+                  <span className="text-xs font-semibold text-purple-700">Terjadwal</span>
+                  <span className="text-[10px] sm:text-[11px] text-gray-400">/ {jurnalisTotalCount} usulan</span>
+                </div>
+                <p className="text-[10px] sm:text-[11px] text-gray-500 mt-0.5 line-clamp-1">
+                  Antrean berkala per 2 jam
+                </p>
+              </div>
             </div>
-            <div className="mt-2.5 pt-2 border-t border-purple-100/60 flex items-center justify-between text-[11px] font-bold text-purple-700 group-hover:text-purple-900">
+            <div className="mt-2 pt-2 border-t border-purple-100/80 flex items-center justify-between text-[11px] font-bold text-purple-700 group-hover:text-purple-900">
               <span>Buka Jurnalis AI</span>
+              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+            </div>
+          </Link>
+
+          {/* 2. AI Studio Generator */}
+          <Link
+            href="/admin/generator"
+            className="group col-span-1 bg-gradient-to-br from-indigo-50/70 to-white p-3.5 sm:p-4 rounded-2xl border border-indigo-100 hover:border-indigo-300 hover:shadow-md transition-all flex flex-col justify-between h-full"
+          >
+            <div>
+              <div className="flex items-center justify-between">
+                <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                  <Sparkles className="w-4 h-4" />
+                </div>
+                <span className="text-[10px] font-extrabold px-1.5 sm:px-2 py-0.5 rounded-md bg-indigo-100/80 text-indigo-800">
+                  AI Studio
+                </span>
+              </div>
+              <div className="mt-2.5 sm:mt-3">
+                <div className="flex items-baseline gap-1">
+                  <span className="text-lg sm:text-2xl font-black font-heading text-indigo-950">
+                    {studioDrafts}
+                  </span>
+                  <span className="text-xs font-semibold text-indigo-700">Draf</span>
+                  <span className="text-[10px] sm:text-[11px] text-gray-400">/{studioTotal}</span>
+                </div>
+                <p className="text-[10px] sm:text-[11px] text-gray-500 mt-0.5 line-clamp-1">
+                  Riset topik AI Studio
+                </p>
+              </div>
+            </div>
+            <div className="mt-2 pt-2 border-t border-indigo-100/60 flex items-center justify-between text-[11px] font-bold text-indigo-600 group-hover:text-indigo-800">
+              <span>Buka Studio</span>
+              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+            </div>
+          </Link>
+
+          {/* 3. Sadur Berita URL */}
+          <Link
+            href="/admin/sadur"
+            className="group col-span-1 bg-gradient-to-br from-cyan-50/70 to-white p-3.5 sm:p-4 rounded-2xl border border-cyan-100 hover:border-cyan-300 hover:shadow-md transition-all flex flex-col justify-between h-full"
+          >
+            <div>
+              <div className="flex items-center justify-between">
+                <div className="w-8 h-8 rounded-lg bg-cyan-600 text-white flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                  <Link2 className="w-4 h-4" />
+                </div>
+                <span className="text-[10px] font-extrabold px-1.5 sm:px-2 py-0.5 rounded-md bg-cyan-100/80 text-cyan-800">
+                  Sadur URL
+                </span>
+              </div>
+              <div className="mt-2.5 sm:mt-3">
+                <div className="flex items-baseline gap-1">
+                  <span className="text-lg sm:text-2xl font-black font-heading text-cyan-950">
+                    {sadurDrafts}
+                  </span>
+                  <span className="text-xs font-semibold text-cyan-700">Draf</span>
+                  <span className="text-[10px] sm:text-[11px] text-gray-400">/{sadurTotal}</span>
+                </div>
+                <p className="text-[10px] sm:text-[11px] text-gray-500 mt-0.5 line-clamp-1">
+                  Saduran tautan luar
+                </p>
+              </div>
+            </div>
+            <div className="mt-2 pt-2 border-t border-cyan-100/60 flex items-center justify-between text-[11px] font-bold text-cyan-700 group-hover:text-cyan-900">
+              <span>Buka Sadur</span>
+              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+            </div>
+          </Link>
+
+          {/* 4. Autopilot AI */}
+          <Link
+            href="/admin/cron"
+            className="group col-span-1 bg-gradient-to-br from-amber-50/70 to-white p-3.5 sm:p-4 rounded-2xl border border-amber-100 hover:border-amber-300 hover:shadow-md transition-all flex flex-col justify-between h-full"
+          >
+            <div>
+              <div className="flex items-center justify-between">
+                <div className="w-8 h-8 rounded-lg bg-amber-500 text-white flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                  <Bot className="w-4 h-4" />
+                </div>
+                <span className="text-[10px] font-extrabold px-1.5 sm:px-2 py-0.5 rounded-md bg-amber-100/80 text-amber-800">
+                  Autopilot
+                </span>
+              </div>
+              <div className="mt-2.5 sm:mt-3">
+                <div className="flex items-baseline gap-1">
+                  <span className="text-lg sm:text-2xl font-black font-heading text-amber-950">
+                    {autopilotDrafts}
+                  </span>
+                  <span className="text-xs font-semibold text-amber-700">Draf</span>
+                  <span className="text-[10px] sm:text-[11px] text-gray-400">/{autopilotTotal}</span>
+                </div>
+                <p className="text-[10px] sm:text-[11px] text-gray-500 mt-0.5 line-clamp-1">
+                  Jadwal cron otomatis
+                </p>
+              </div>
+            </div>
+            <div className="mt-2 pt-2 border-t border-amber-100/60 flex items-center justify-between text-[11px] font-bold text-amber-700 group-hover:text-amber-900">
+              <span>Autopilot</span>
               <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
             </div>
           </Link>
@@ -400,30 +422,32 @@ export default async function AdminDashboard(props: {
           {/* 5. Manual & File .MD */}
           <Link
             href="/admin/tulis"
-            className="group bg-gradient-to-br from-gray-50/80 to-white p-4 sm:p-4.5 rounded-2xl border border-gray-200 hover:border-gray-300 hover:shadow-md transition-all"
+            className="group col-span-1 bg-gradient-to-br from-gray-50/80 to-white p-3.5 sm:p-4 rounded-2xl border border-gray-200 hover:border-gray-300 hover:shadow-md transition-all flex flex-col justify-between h-full"
           >
-            <div className="flex items-center justify-between">
-              <div className="w-8 h-8 rounded-lg bg-gray-900 text-white flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                <PenSquare className="w-4 h-4" />
-              </div>
-              <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-gray-200/80 text-gray-800">
-                Manual / .MD
-              </span>
-            </div>
-            <div className="mt-3">
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-xl sm:text-2xl font-black font-heading text-gray-900">
-                  {manualDrafts}
+            <div>
+              <div className="flex items-center justify-between">
+                <div className="w-8 h-8 rounded-lg bg-gray-900 text-white flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                  <PenSquare className="w-4 h-4" />
+                </div>
+                <span className="text-[10px] font-extrabold px-1.5 sm:px-2 py-0.5 rounded-md bg-gray-200/80 text-gray-800">
+                  Manual / .MD
                 </span>
-                <span className="text-xs font-semibold text-gray-700">Draf</span>
-                <span className="text-[11px] text-gray-400">/ {manualTotal} total</span>
               </div>
-              <p className="text-[11px] text-gray-500 mt-0.5 line-clamp-1">
-                Tulis langsung atau upload .md
-              </p>
+              <div className="mt-2.5 sm:mt-3">
+                <div className="flex items-baseline gap-1">
+                  <span className="text-lg sm:text-2xl font-black font-heading text-gray-900">
+                    {manualDrafts}
+                  </span>
+                  <span className="text-xs font-semibold text-gray-700">Draf</span>
+                  <span className="text-[10px] sm:text-[11px] text-gray-400">/{manualTotal}</span>
+                </div>
+                <p className="text-[10px] sm:text-[11px] text-gray-500 mt-0.5 line-clamp-1">
+                  Tulis atau upload .md
+                </p>
+              </div>
             </div>
-            <div className="mt-2.5 pt-2 border-t border-gray-100 flex items-center justify-between text-[11px] font-bold text-gray-800 group-hover:text-black">
-              <span>Tulis Berita Baru</span>
+            <div className="mt-2 pt-2 border-t border-gray-100 flex items-center justify-between text-[11px] font-bold text-gray-800 group-hover:text-black">
+              <span>Tulis Berita</span>
               <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
             </div>
           </Link>

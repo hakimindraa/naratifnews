@@ -243,44 +243,44 @@ export default function ArticleManagerClient({
     switch (source) {
       case 'studio':
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200/80">
-            <Sparkles className="w-3 h-3 text-indigo-500" />
-            <span>AI Studio</span>
+          <span className="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-md text-[10px] sm:text-[11px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200/80">
+            <Sparkles className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-indigo-500 shrink-0" />
+            <span className="truncate">AI Studio</span>
           </span>
         );
       case 'sadur':
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-cyan-50 text-cyan-800 border border-cyan-200/80">
-            <Link2 className="w-3 h-3 text-cyan-600" />
-            <span>Sadur URL</span>
+          <span className="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-md text-[10px] sm:text-[11px] font-bold bg-cyan-50 text-cyan-800 border border-cyan-200/80">
+            <Link2 className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-cyan-600 shrink-0" />
+            <span className="truncate">Sadur</span>
           </span>
         );
       case 'autopilot':
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-200/80">
-            <Bot className="w-3 h-3 text-amber-600" />
-            <span>Autopilot</span>
+          <span className="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-md text-[10px] sm:text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-200/80">
+            <Bot className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-amber-600 shrink-0" />
+            <span className="truncate">Autopilot</span>
           </span>
         );
       case 'telegram':
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-sky-50 text-sky-800 border border-sky-200/80">
-            <Smartphone className="w-3 h-3 text-sky-600" />
-            <span>Telegram</span>
+          <span className="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-md text-[10px] sm:text-[11px] font-bold bg-sky-50 text-sky-800 border border-sky-200/80">
+            <Smartphone className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-sky-600 shrink-0" />
+            <span className="truncate">Telegram</span>
           </span>
         );
       case 'jurnalis':
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-purple-50 text-purple-800 border border-purple-200/80">
-            <Bot className="w-3 h-3 text-purple-600" />
-            <span>Jurnalis AI</span>
+          <span className="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-md text-[10px] sm:text-[11px] font-bold bg-purple-50 text-purple-800 border border-purple-200/80">
+            <Bot className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-purple-600 shrink-0" />
+            <span className="truncate">Jurnalis</span>
           </span>
         );
       default:
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-gray-100 text-gray-700 border border-gray-200">
-            <PenSquare className="w-3 h-3 text-gray-500" />
-            <span>Manual / .MD</span>
+          <span className="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-md text-[10px] sm:text-[11px] font-bold bg-gray-100 text-gray-700 border border-gray-200">
+            <PenSquare className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-gray-500 shrink-0" />
+            <span className="truncate">Manual</span>
           </span>
         );
     }
@@ -331,20 +331,21 @@ export default function ArticleManagerClient({
   return (
     <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
       {/* 1. TABS KARTU STATUS (Draf, Terbit, Terjadwal) */}
-      <div className="p-4 sm:p-5 border-b border-gray-100 bg-gray-50/50">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          {/* Status Tabs */}
-          <div className="flex flex-wrap items-center gap-2">
+      <div className="p-3.5 sm:p-5 border-b border-gray-100 bg-gray-50/50">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 sm:gap-4">
+          {/* Status Tabs: Grid 2 Kolom di Mobile, Flex di Desktop */}
+          <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 w-full lg:w-auto">
+            {/* Tab 1: Semua */}
             <button
               type="button"
               onClick={() => setActiveTab('all')}
-              className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+              className={`flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                 activeTab === 'all'
                   ? 'bg-gray-900 text-white shadow-sm ring-1 ring-gray-900'
                   : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
               }`}
             >
-              <span>Semua Artikel</span>
+              <span>Semua</span>
               <span className={`text-[11px] px-2 py-0.5 rounded-full font-bold ${
                 activeTab === 'all' ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-700'
               }`}>
@@ -352,17 +353,18 @@ export default function ArticleManagerClient({
               </span>
             </button>
 
+            {/* Tab 2: Draf Review */}
             <button
               type="button"
               onClick={() => setActiveTab('draft')}
-              className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+              className={`flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                 activeTab === 'draft'
                   ? 'bg-amber-600 text-white shadow-sm ring-1 ring-amber-600'
                   : 'bg-white text-amber-800 hover:bg-amber-50 border border-amber-300'
               }`}
             >
-              <span className="flex items-center gap-1.5">
-                <span className={`w-2 h-2 rounded-full ${countDraft > 0 ? 'bg-amber-400 animate-pulse' : 'bg-amber-300'}`} />
+              <span className="flex items-center gap-1.5 truncate">
+                <span className={`w-2 h-2 rounded-full shrink-0 ${countDraft > 0 ? 'bg-amber-400 animate-pulse' : 'bg-amber-300'}`} />
                 <span>Draf Review</span>
               </span>
               <span className={`text-[11px] px-2 py-0.5 rounded-full font-bold ${
@@ -372,17 +374,20 @@ export default function ArticleManagerClient({
               </span>
             </button>
 
+            {/* Tab 3: Sudah Terbit */}
             <button
               type="button"
               onClick={() => setActiveTab('published')}
-              className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+              className={`flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                 activeTab === 'published'
                   ? 'bg-emerald-600 text-white shadow-sm ring-1 ring-emerald-600'
                   : 'bg-white text-emerald-800 hover:bg-emerald-50 border border-emerald-300'
               }`}
             >
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              <span>Sudah Terbit</span>
+              <span className="flex items-center gap-1.5 truncate">
+                <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                <span>Terbit</span>
+              </span>
               <span className={`text-[11px] px-2 py-0.5 rounded-full font-bold ${
                 activeTab === 'published' ? 'bg-white/25 text-white' : 'bg-emerald-100 text-emerald-900'
               }`}>
@@ -390,17 +395,20 @@ export default function ArticleManagerClient({
               </span>
             </button>
 
+            {/* Tab 4: Terjadwal */}
             <button
               type="button"
               onClick={() => setActiveTab('scheduled')}
-              className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+              className={`flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                 activeTab === 'scheduled'
                   ? 'bg-blue-600 text-white shadow-sm ring-1 ring-blue-600'
                   : 'bg-white text-blue-800 hover:bg-blue-50 border border-blue-300'
               }`}
             >
-              <Clock className="w-3.5 h-3.5" />
-              <span>Terjadwal</span>
+              <span className="flex items-center gap-1.5 truncate">
+                <Clock className="w-3.5 h-3.5 shrink-0" />
+                <span>Terjadwal</span>
+              </span>
               <span className={`text-[11px] px-2 py-0.5 rounded-full font-bold ${
                 activeTab === 'scheduled' ? 'bg-white/25 text-white' : 'bg-blue-100 text-blue-900'
               }`}>
@@ -410,50 +418,53 @@ export default function ArticleManagerClient({
           </div>
 
           {/* View Mode Toggle (Tabel / Grid) */}
-          <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-gray-200 self-start sm:self-auto shrink-0">
-            <button
-              type="button"
-              onClick={() => setViewMode('list')}
-              title="Tampilan Tabel Rapi"
-              className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
-                viewMode === 'list' ? 'bg-gray-900 text-white shadow-2xs' : 'text-gray-500 hover:text-gray-900'
-              }`}
-            >
-              <List className="w-4 h-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('grid')}
-              title="Tampilan Kartu Visual"
-              className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
-                viewMode === 'grid' ? 'bg-gray-900 text-white shadow-2xs' : 'text-gray-500 hover:text-gray-900'
-              }`}
-            >
-              <LayoutGrid className="w-4 h-4" />
-            </button>
+          <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0">
+            <span className="text-[11px] font-semibold text-gray-400 sm:hidden">Tampilan:</span>
+            <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-gray-200">
+              <button
+                type="button"
+                onClick={() => setViewMode('list')}
+                title="Tampilan Tabel Rapi"
+                className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                  viewMode === 'list' ? 'bg-gray-900 text-white shadow-2xs' : 'text-gray-500 hover:text-gray-900'
+                }`}
+              >
+                <List className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('grid')}
+                title="Tampilan Kartu Visual 2 Kolom"
+                className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                  viewMode === 'grid' ? 'bg-gray-900 text-white shadow-2xs' : 'text-gray-500 hover:text-gray-900'
+                }`}
+              >
+                <LayoutGrid className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* 2. FILTER SEARCH & DROPDOWNS BAR */}
-        <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 mt-4 pt-3 border-t border-gray-200/80">
-          {/* Search Input */}
-          <div className="sm:col-span-5 relative">
-            <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+        {/* 2. FILTER SEARCH & DROPDOWNS BAR: 2 Kolom di Layar HP */}
+        <div className="grid grid-cols-2 sm:grid-cols-12 gap-2 sm:gap-3 mt-3 pt-3 border-t border-gray-200/80">
+          {/* Search Input: Melebar Penuh 2 Kolom di Mobile */}
+          <div className="col-span-2 sm:col-span-5 relative">
+            <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Cari judul berita, cuplikan, atau tags..."
-              className="w-full bg-white rounded-xl border border-gray-200 pl-9 pr-3.5 py-2 text-xs sm:text-sm text-gray-900 placeholder:text-gray-400 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20 outline-none transition-all shadow-2xs"
+              placeholder="Cari judul berita, tags..."
+              className="w-full bg-white rounded-xl border border-gray-200 pl-8.5 pr-3 py-2 text-xs sm:text-sm text-gray-900 placeholder:text-gray-400 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20 outline-none transition-all shadow-2xs"
             />
           </div>
 
-          {/* Category Dropdown */}
-          <div className="sm:col-span-3">
+          {/* Category Dropdown: Kolom 1 di Mobile */}
+          <div className="col-span-1 sm:col-span-3">
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="w-full bg-white rounded-xl border border-gray-200 px-3 py-2 text-xs sm:text-sm font-semibold text-gray-800 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20 outline-none transition-all shadow-2xs cursor-pointer"
+              className="w-full bg-white rounded-xl border border-gray-200 px-2 sm:px-3 py-2 text-xs sm:text-sm font-semibold text-gray-800 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20 outline-none transition-all shadow-2xs cursor-pointer truncate"
             >
               <option value="all">Semua Kategori</option>
               <option value="Nasional">Nasional</option>
@@ -468,20 +479,20 @@ export default function ArticleManagerClient({
             </select>
           </div>
 
-          {/* Source Dropdown */}
-          <div className="sm:col-span-4">
+          {/* Source Dropdown: Kolom 2 di Mobile */}
+          <div className="col-span-1 sm:col-span-4">
             <select
               value={activeSource}
               onChange={(e) => setActiveSource(e.target.value)}
-              className="w-full bg-white rounded-xl border border-gray-200 px-3 py-2 text-xs sm:text-sm font-semibold text-gray-800 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20 outline-none transition-all shadow-2xs cursor-pointer"
+              className="w-full bg-white rounded-xl border border-gray-200 px-2 sm:px-3 py-2 text-xs sm:text-sm font-semibold text-gray-800 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20 outline-none transition-all shadow-2xs cursor-pointer truncate"
             >
-              <option value="all">Semua Asal Sumber</option>
-              <option value="studio">🤖 AI Studio Generator</option>
-              <option value="sadur">🔗 Sadur Berita URL</option>
-              <option value="autopilot">⚡ Autopilot AI Cron</option>
-              <option value="telegram">📱 Telegram Bot AI</option>
-              <option value="jurnalis">🤖 Jurnalis AI (Antrean)</option>
-              <option value="manual">✍️ Manual & File .MD</option>
+              <option value="all">Semua Sumber</option>
+              <option value="studio">🤖 AI Studio</option>
+              <option value="sadur">🔗 Sadur URL</option>
+              <option value="autopilot">⚡ Autopilot AI</option>
+              <option value="telegram">📱 Telegram AI</option>
+              <option value="jurnalis">🤖 Jurnalis AI</option>
+              <option value="manual">✍️ Manual / .MD</option>
             </select>
           </div>
         </div>
@@ -765,9 +776,9 @@ export default function ArticleManagerClient({
         </div>
       ) : (
         /* ========================================================
-           MODE 2: GRID KARTU VISUAL (MODERN CARD VIEW)
+           MODE 2: GRID KARTU VISUAL (2 Kolom di Mobile, 3 Kolom di Desktop)
            ======================================================== */
-        <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="p-2.5 sm:p-6 grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4">
           {filteredArticles.map((article) => {
             const isDraft = article.status === 'draft';
             const isPublished = article.status === 'published';
@@ -778,24 +789,24 @@ export default function ArticleManagerClient({
             return (
               <div
                 key={article.isJurnalisQueue ? `jurnalis-${article.jurnalisDraftId || article.id}` : `article-${article.id}`}
-                className={`rounded-xl border p-4 hover:shadow-md transition-all flex flex-col justify-between space-y-3 group ${
+                className={`rounded-xl border p-2.5 sm:p-4 hover:shadow-md transition-all flex flex-col justify-between space-y-2 sm:space-y-3 group h-full ${
                   isSelected
                     ? 'bg-indigo-50/40 border-indigo-300 ring-2 ring-indigo-500/30'
                     : 'bg-white border-gray-200'
                 }`}
               >
-                <div className="space-y-2.5">
+                <div className="space-y-2">
                   {/* Header Kartu: Checkbox + Status & Badges */}
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center justify-between gap-1">
+                    <div className="flex items-center gap-1.5">
                       <input
                         type="checkbox"
                         checked={isSelected}
                         onChange={() => handleToggleSelect(article.id)}
-                        className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                        className="w-3.5 h-3.5 sm:w-4 sm:h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
                       />
                       <span
-                        className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${
+                        className={`px-1.5 sm:px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-extrabold uppercase ${
                           article.isJurnalisQueue
                             ? 'bg-purple-100 text-purple-900 border border-purple-200'
                             : isPublished
@@ -805,57 +816,69 @@ export default function ArticleManagerClient({
                             : 'bg-amber-100 text-amber-900'
                         }`}
                       >
-                        {article.isJurnalisQueue ? 'Antrean Jurnalis' : article.status}
+                        {article.isJurnalisQueue ? 'Antrean' : article.status}
                       </span>
                     </div>
                     {getSourceBadge(article.source)}
                   </div>
 
+                  {/* Thumbnail Cover Gambar (Jika Tersedia) */}
+                  {article.coverUrl && (
+                    <div className="relative w-full aspect-[16/10] rounded-lg overflow-hidden bg-gray-100">
+                      <img
+                        src={article.coverUrl}
+                        alt={article.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        loading="lazy"
+                      />
+                    </div>
+                  )}
+
                   {/* Judul Artikel */}
-                  <h3 className="text-sm font-bold text-gray-900 group-hover:text-indigo-600 transition-colors line-clamp-2 leading-snug">
+                  <h3 className="text-xs sm:text-sm font-bold text-gray-900 group-hover:text-indigo-600 transition-colors line-clamp-2 leading-snug">
                     <Link href={article.isJurnalisQueue ? '/admin/jurnalis' : `/admin/edit/${article.id}`}>
                       {article.title}
                     </Link>
                   </h3>
 
                   {/* Cuplikan */}
-                  <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed">
+                  <p className="text-[10px] sm:text-xs text-gray-500 line-clamp-2 leading-relaxed">
                     {article.excerpt || 'Tidak ada cuplikan teks.'}
                   </p>
                 </div>
 
                 {/* Footer Kartu */}
-                <div className="pt-3 border-t border-gray-100 space-y-2.5">
-                  <div className="flex items-center justify-between text-[11px] text-gray-400">
-                    <span className={`px-2 py-0.5 rounded font-bold border ${getCategoryColor(article.category)}`}>
+                <div className="pt-2 sm:pt-3 border-t border-gray-100 space-y-2 mt-auto">
+                  <div className="flex items-center justify-between text-[10px] sm:text-[11px] text-gray-400 gap-1">
+                    <span className={`px-1.5 sm:px-2 py-0.5 rounded font-bold border truncate max-w-[70px] sm:max-w-none ${getCategoryColor(article.category)}`}>
                       {article.category}
                     </span>
-                    <span className={`truncate max-w-[130px] ${article.isJurnalisQueue ? 'font-bold text-indigo-700' : ''}`}>
+                    <span className={`truncate text-[9px] sm:text-[11px] ${article.isJurnalisQueue ? 'font-bold text-indigo-700' : ''}`}>
                       {formatDate(article.publishAt || article.publishedAt || article.createdAt)}
                     </span>
                   </div>
 
                   {/* Action buttons */}
-                  <div className="flex items-center justify-between gap-2 pt-1">
+                  <div className="flex items-center justify-between gap-1 sm:gap-1.5 pt-1">
                     {article.isJurnalisQueue ? (
-                      <div className="flex items-center gap-1.5 flex-1">
+                      <div className="flex items-center gap-1 flex-1 min-w-0">
                         <button
                           type="button"
                           onClick={() => handleBypassJurnalisPublish(article.jurnalisDraftId || article.id)}
                           disabled={isCurrentlyPublishing}
-                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold text-xs shadow-2xs transition-all cursor-pointer flex-1 justify-center disabled:opacity-50"
+                          className="inline-flex items-center gap-1 px-1.5 sm:px-2.5 py-1.5 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold text-[10px] sm:text-xs shadow-2xs transition-all cursor-pointer flex-1 justify-center disabled:opacity-50 min-w-0 truncate"
                           title="Bypass Antrean: Terbitkan artikel ini detik ini juga ke website"
                         >
                           {isCurrentlyPublishing ? (
-                            <RefreshCw className="w-3 h-3 animate-spin" />
+                            <RefreshCw className="w-3 h-3 animate-spin shrink-0" />
                           ) : (
-                            <Rocket className="w-3 h-3" />
+                            <Rocket className="w-3 h-3 shrink-0" />
                           )}
-                          <span>Bypass Terbit</span>
+                          <span className="truncate">Bypass</span>
                         </button>
                         <Link
                           href="/admin/jurnalis"
-                          className="p-1.5 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-700 font-semibold text-xs border border-purple-200 shadow-2xs transition-colors"
+                          className="p-1.5 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-700 font-semibold text-xs border border-purple-200 shadow-2xs transition-colors shrink-0"
                           title="Buka di Jurnalis AI"
                         >
                           <Bot className="w-3.5 h-3.5" />
@@ -866,40 +889,41 @@ export default function ArticleManagerClient({
                         type="button"
                         onClick={() => handleQuickPublish(article.id)}
                         disabled={isCurrentlyPublishing}
-                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-2xs transition-all cursor-pointer flex-1 justify-center disabled:opacity-50"
+                        className="inline-flex items-center gap-1 px-1.5 sm:px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] sm:text-xs shadow-2xs transition-all cursor-pointer flex-1 justify-center disabled:opacity-50 min-w-0"
                       >
                         {isCurrentlyPublishing ? (
-                          <RefreshCw className="w-3 h-3 animate-spin" />
+                          <RefreshCw className="w-3 h-3 animate-spin shrink-0" />
                         ) : (
-                          <Rocket className="w-3 h-3" />
+                          <Rocket className="w-3 h-3 shrink-0" />
                         )}
-                        <span>Terbitkan</span>
+                        <span className="truncate">Terbitkan</span>
                       </button>
                     ) : (
                       <a
                         href={`/berita/${article.category.toLowerCase().replace(/\s+/g, '-')}/${article.id}/${article.slug}`}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs transition-colors flex-1 justify-center"
+                        className="inline-flex items-center gap-1 px-1.5 sm:px-2.5 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-[10px] sm:text-xs transition-colors flex-1 justify-center min-w-0"
                       >
-                        <ExternalLink className="w-3 h-3" />
-                        <span>Lihat Web</span>
+                        <ExternalLink className="w-3 h-3 shrink-0" />
+                        <span className="truncate">Lihat</span>
                       </a>
                     )}
 
                     <Link
                       href={`/admin/edit/${article.id}`}
-                      className="p-1.5 rounded-lg bg-gray-900 hover:bg-black text-white font-semibold text-xs shadow-2xs transition-colors"
+                      className="p-1.5 rounded-lg bg-gray-900 hover:bg-black text-white font-semibold text-xs shadow-2xs transition-colors shrink-0"
                       title="Edit Artikel"
                     >
                       <Settings className="w-3.5 h-3.5" />
                     </Link>
 
+                    {/* Delete Button */}
                     <DeleteButton
                       id={article.id}
                       title={article.title}
                       showText={false}
-                      className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+                      className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer shrink-0"
                     />
                   </div>
                 </div>

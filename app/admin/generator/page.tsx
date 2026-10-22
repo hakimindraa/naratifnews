@@ -431,12 +431,14 @@ export default function GeneratorStudioPage() {
             </p>
           </div>
 
-          {/* Quick Metrics & Link */}
-          <div className="flex flex-wrap items-center gap-3 shrink-0">
-            <div className="flex items-center gap-3 bg-white/5 backdrop-blur-md px-4 py-2.5 rounded-xl border border-white/10 text-xs">
-              <div>
+          {/* Quick Metrics & Link (2 Kartu Berdampingan di Mobile, Rapi & Lega) */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 w-full sm:w-auto shrink-0 mt-2 sm:mt-0">
+            {/* Grid 2 Kolom untuk Metrik di HP */}
+            <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center sm:gap-2.5">
+              {/* Box 1: Model Aktif */}
+              <div className="bg-white/5 backdrop-blur-md px-3 py-2 rounded-xl border border-white/10 text-xs">
                 <div className="text-[10px] text-gray-400 font-medium">Model Aktif</div>
-                <div className="font-bold text-white flex items-center gap-1.5 mt-0.5">
+                <div className="font-bold text-white flex items-center gap-1.5 mt-0.5 truncate">
                   <span
                     className={`w-2 h-2 rounded-full ${
                       selectedProvider === 'gemini'
@@ -444,124 +446,137 @@ export default function GeneratorStudioPage() {
                         : selectedProvider === 'groq'
                         ? 'bg-cyan-400'
                         : 'bg-emerald-400'
-                    } animate-pulse`}
+                    } animate-pulse shrink-0`}
                   />
-                  <span>
+                  <span className="truncate">
                     {selectedProvider === 'gemini'
-                      ? 'Gemini 3.8 Flash'
+                      ? 'Gemini 3.8'
                       : selectedProvider === 'groq'
                       ? 'Groq Cloud'
-                      : '9Router Gateway'}
+                      : '9Router'}
                   </span>
                 </div>
               </div>
-              <div className="w-px h-6 bg-white/10" />
-              <div>
-                <div className="text-[10px] text-gray-400 font-medium">Sukses</div>
-                <div className="font-bold text-emerald-400 mt-0.5">{stats.successRate}</div>
+
+              {/* Box 2: Rasio Sukses */}
+              <div className="bg-white/5 backdrop-blur-md px-3 py-2 rounded-xl border border-white/10 text-xs flex items-center justify-between">
+                <div>
+                  <div className="text-[10px] text-gray-400 font-medium">Sukses</div>
+                  <div className="font-bold text-emerald-400 mt-0.5">{stats.successRate}</div>
+                </div>
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400/80 shrink-0 ml-1.5" />
               </div>
             </div>
 
+            {/* Tombol Dasbor Redaksi */}
             <Link
               href="/admin"
-              className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs transition-colors border border-white/10"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs transition-colors border border-white/10 text-center"
             >
               <span>Dasbor Redaksi</span>
-              <ArrowRight className="w-3.5 h-3.5" />
+              <ArrowRight className="w-3.5 h-3.5 shrink-0" />
             </Link>
           </div>
         </div>
       </div>
 
-      {/* 2. STAT CARDS (SELARAS DENGAN DASBOR REDAKSI) */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      {/* 2. STAT CARDS (SELARAS DENGAN DASBOR REDAKSI - 2 Kolom Tinggi Rata) */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
         {/* Total Hasil AI */}
-        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-gray-200 shadow-xs flex items-center justify-between">
-          <div>
-            <p className="text-[10px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
+        <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-gray-200 shadow-xs flex flex-col justify-between h-full min-h-[96px] sm:min-h-[104px]">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-gray-500">
               Total Hasil AI
-            </p>
-            <h3 className="text-xl sm:text-2xl font-black text-gray-900 font-heading">
-              {stats.totalGenerated}
-            </h3>
-            <span className="text-[11px] text-indigo-600 font-medium mt-0.5 block">
-              Tercatat di Neon DB
             </span>
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+              <Bot className="w-4 h-4 sm:w-5 sm:h-5" />
+            </div>
           </div>
-          <div className="w-10 h-10 sm:w-12 sm:h-12 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 shrink-0">
-            <Bot className="w-5 h-5 sm:w-6 sm:h-6" />
+          <div className="mt-1">
+            <div className="text-2xl sm:text-3xl font-black font-heading text-gray-900 leading-tight">
+              {stats.totalGenerated}
+            </div>
+            <div className="text-[10px] sm:text-[11px] text-indigo-600 font-medium mt-0.5 truncate">
+              Tercatat di Neon DB
+            </div>
           </div>
         </div>
 
         {/* Terbit Langsung */}
-        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-gray-200 shadow-xs flex items-center justify-between">
-          <div>
-            <p className="text-[10px] sm:text-xs font-bold text-emerald-600 uppercase tracking-wider mb-1">
+        <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-gray-200 shadow-xs flex flex-col justify-between h-full min-h-[96px] sm:min-h-[104px]">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-emerald-600">
               Terbit Langsung
-            </p>
-            <h3 className="text-xl sm:text-2xl font-black text-emerald-700 font-heading">
-              {stats.publishedCount}
-            </h3>
-            <span className="text-[11px] text-emerald-600/80 mt-0.5 block">
-              Status Published
             </span>
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+              <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5" />
+            </div>
           </div>
-          <div className="w-10 h-10 sm:w-12 sm:h-12 bg-emerald-50 rounded-xl flex items-center justify-center text-emerald-600 shrink-0">
-            <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6" />
+          <div className="mt-1">
+            <div className="text-2xl sm:text-3xl font-black font-heading text-emerald-700 leading-tight">
+              {stats.publishedCount}
+            </div>
+            <div className="text-[10px] sm:text-[11px] text-emerald-600/80 mt-0.5 truncate">
+              Status Published
+            </div>
           </div>
         </div>
 
         {/* Draft Siap Review */}
-        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-gray-200 shadow-xs flex items-center justify-between">
-          <div>
-            <p className="text-[10px] sm:text-xs font-bold text-amber-600 uppercase tracking-wider mb-1 flex items-center gap-1">
-              <span>Draf Siap Review</span>
+        <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-gray-200 shadow-xs flex flex-col justify-between h-full min-h-[96px] sm:min-h-[104px]">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-amber-600 flex items-center gap-1.5">
+              <span>Draf Review</span>
               {stats.draftCount > 0 && <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />}
-            </p>
-            <h3 className="text-xl sm:text-2xl font-black text-amber-700 font-heading">
-              {stats.draftCount}
-            </h3>
-            <span className="text-[11px] text-amber-600/80 mt-0.5 block">
-              Perlu pemeriksaan
             </span>
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+              <PenSquare className="w-4 h-4 sm:w-5 sm:h-5" />
+            </div>
           </div>
-          <div className="w-10 h-10 sm:w-12 sm:h-12 bg-amber-50 rounded-xl flex items-center justify-center text-amber-600 shrink-0">
-            <PenSquare className="w-5 h-5 sm:w-6 sm:h-6" />
+          <div className="mt-1">
+            <div className="text-2xl sm:text-3xl font-black font-heading text-amber-700 leading-tight">
+              {stats.draftCount}
+            </div>
+            <div className="text-[10px] sm:text-[11px] text-amber-600/80 mt-0.5 truncate">
+              Perlu pemeriksaan
+            </div>
           </div>
         </div>
 
         {/* Rata-Rata Waktu */}
-        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-gray-200 shadow-xs flex items-center justify-between">
-          <div>
-            <p className="text-[10px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
+        <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-gray-200 shadow-xs flex flex-col justify-between h-full min-h-[96px] sm:min-h-[104px]">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-gray-500">
               Rata-rata Waktu
-            </p>
-            <h3 className="text-xl sm:text-2xl font-black text-gray-900 font-heading">
-              {stats.avgDuration}
-            </h3>
-            <span className="text-[11px] text-gray-400 mt-0.5 block">
-              Per artikel berita
             </span>
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gray-100 text-gray-700 flex items-center justify-center shrink-0">
+              <Clock className="w-4 h-4 sm:w-5 sm:h-5" />
+            </div>
           </div>
-          <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gray-100 rounded-xl flex items-center justify-center text-gray-700 shrink-0">
-            <Clock className="w-5 h-5 sm:w-6 sm:h-6" />
+          <div className="mt-1">
+            <div className="text-2xl sm:text-3xl font-black font-heading text-gray-900 leading-tight">
+              {stats.avgDuration}
+            </div>
+            <div className="text-[10px] sm:text-[11px] text-gray-400 mt-0.5 truncate">
+              Per artikel berita
+            </div>
           </div>
         </div>
       </div>
 
       {/* 3. MAIN GENERATOR CARD (REDESAIN RINGKAS & ERGONOMIS) */}
       <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-7 border border-gray-200 shadow-sm space-y-6">
-        {/* 3.1 CHIP PILLS INSPIRASI TOPIK (TIDAK MEMAKAN RUANG VERTIKAL) */}
+        {/* 3.1 CHIP PILLS INSPIRASI TOPIK (2 KOLOM SIMETRIS DI HP) */}
         <div>
           <div className="flex items-center justify-between mb-2.5">
             <label className="text-xs font-bold uppercase tracking-wider text-gray-700 flex items-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
-              <span>Inspirasi Topik Cepat (Klik Sekali untuk Mengisi):</span>
+              <span>Inspirasi Topik Cepat:</span>
             </label>
-            <span className="text-[11px] text-gray-400">Pilih inspirasi atau ketik sendiri</span>
+            <span className="text-[10px] sm:text-[11px] text-gray-400">Sentuh untuk pilih</span>
           </div>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-1.5 sm:gap-2">
             {PRESET_TOPICS.map((preset, idx) => {
               const Icon = preset.icon;
               const isSelected = prompt === preset.prompt;
@@ -573,7 +588,7 @@ export default function GeneratorStudioPage() {
                   type="button"
                   onClick={() => handleSelectPreset(preset)}
                   disabled={isLoading}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  className={`w-full sm:w-auto inline-flex items-center justify-between sm:justify-start gap-1.5 px-2.5 sm:px-3 py-2 sm:py-1.5 rounded-xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer text-left ${
                     isSelected
                       ? 'bg-indigo-600 text-white shadow-xs ring-2 ring-indigo-600/30'
                       : isReg
@@ -581,10 +596,12 @@ export default function GeneratorStudioPage() {
                       : 'bg-gray-50 text-gray-700 border border-gray-200 hover:bg-gray-100'
                   }`}
                 >
-                  <Icon className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-white' : isReg ? 'text-emerald-600' : 'text-gray-500'}`} />
-                  <span>{preset.label}</span>
+                  <div className="flex items-center gap-1.5 min-w-0 truncate">
+                    <Icon className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-white' : isReg ? 'text-emerald-600' : 'text-gray-500'}`} />
+                    <span className="truncate">{preset.label}</span>
+                  </div>
                   <span
-                    className={`text-[9px] px-1.5 py-0.2 rounded font-extrabold ${
+                    className={`shrink-0 text-[9px] px-1.5 py-0.5 rounded font-extrabold ${
                       isSelected
                         ? 'bg-white/20 text-white'
                         : isReg
@@ -657,13 +674,13 @@ export default function GeneratorStudioPage() {
           />
         </div>
 
-        {/* 3.4 GRID PENGATURAN PRODUKSI (LEGA, RAPI & TERSTRUKTUR) */}
+        {/* 3.4 GRID PENGATURAN PRODUKSI (2 KOLOM SIMETRIS DI HP, 3 KOLOM DESKTOP) */}
         <div className="pt-2 border-t border-gray-100">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
             {/* Box 1: AI Engine */}
-            <div className="bg-indigo-50/70 p-3.5 rounded-xl border border-indigo-200 space-y-1">
+            <div className="col-span-1 bg-indigo-50/70 p-2.5 sm:p-3.5 rounded-xl border border-indigo-200 flex flex-col justify-between">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-indigo-900 flex items-center gap-1">
+                <span className="text-[10px] sm:text-xs font-extrabold uppercase tracking-wider text-indigo-900 flex items-center gap-1">
                   <Bot className="w-3 h-3 text-indigo-600" />
                   AI Engine
                 </span>
@@ -679,7 +696,7 @@ export default function GeneratorStudioPage() {
                 value={selectedProvider}
                 onChange={(e) => setSelectedProvider(e.target.value as any)}
                 disabled={isLoading}
-                className="w-full bg-white rounded-lg border border-indigo-200 px-2.5 py-1.5 text-xs font-bold text-indigo-950 outline-none cursor-pointer truncate"
+                className="w-full bg-white rounded-lg border border-indigo-200 px-2 sm:px-2.5 py-1.5 text-[11px] sm:text-xs font-bold text-indigo-950 outline-none cursor-pointer truncate mt-1.5"
               >
                 <option value="gemini">Google Gemini 3.8 Flash</option>
                 <option value="groq">Groq Cloud (GPT-OSS 120B)</option>
@@ -690,17 +707,17 @@ export default function GeneratorStudioPage() {
             </div>
 
             {/* Box 2: Kategori & Wilayah */}
-            <div className="bg-gray-50 p-3.5 rounded-xl border border-gray-200 space-y-1">
-              <span className="text-[10px] font-extrabold uppercase tracking-wider text-gray-600 flex items-center gap-1">
+            <div className="col-span-1 bg-gray-50 p-2.5 sm:p-3.5 rounded-xl border border-gray-200 flex flex-col justify-between">
+              <span className="text-[10px] sm:text-xs font-extrabold uppercase tracking-wider text-gray-600 flex items-center gap-1">
                 <Layers className="w-3 h-3 text-gray-500" />
                 Kategori Berita
               </span>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-col gap-1.5 mt-1.5">
                 <select
                   value={selectedCategory}
                   onChange={(e) => setSelectedCategory(e.target.value)}
                   disabled={isLoading}
-                  className="w-full bg-white rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs font-bold text-gray-800 outline-none cursor-pointer"
+                  className="w-full bg-white rounded-lg border border-gray-200 px-2 sm:px-2.5 py-1.5 text-[11px] sm:text-xs font-bold text-gray-800 outline-none cursor-pointer"
                 >
                   <option value="AI">AI</option>
                   <option value="Nasional">Nasional</option>
@@ -719,7 +736,7 @@ export default function GeneratorStudioPage() {
                     value={selectedRegion}
                     onChange={(e) => setSelectedRegion(e.target.value)}
                     disabled={isLoading}
-                    className="w-full bg-emerald-50 rounded-lg border border-emerald-300 px-2.5 py-1.5 text-xs font-bold text-emerald-950 outline-none cursor-pointer animate-in fade-in"
+                    className="w-full bg-emerald-50 rounded-lg border border-emerald-300 px-2 sm:px-2.5 py-1.5 text-[11px] sm:text-xs font-bold text-emerald-950 outline-none cursor-pointer animate-in fade-in"
                   >
                     {INDONESIA_REGIONS.map((r) => (
                       <option key={r} value={r}>
@@ -732,8 +749,8 @@ export default function GeneratorStudioPage() {
             </div>
 
             {/* Box 3: Riset Google News */}
-            <div className="bg-blue-50/70 p-3.5 rounded-xl border border-blue-200 space-y-1">
-              <span className="text-[10px] font-extrabold uppercase tracking-wider text-blue-900 flex items-center gap-1">
+            <div className="col-span-1 bg-blue-50/70 p-2.5 sm:p-3.5 rounded-xl border border-blue-200 flex flex-col justify-between">
+              <span className="text-[10px] sm:text-xs font-extrabold uppercase tracking-wider text-blue-900 flex items-center gap-1">
                 <Search className="w-3 h-3 text-blue-600" />
                 Riset Google News
               </span>
@@ -741,35 +758,35 @@ export default function GeneratorStudioPage() {
                 type="button"
                 onClick={() => setEnableWebSearch(!enableWebSearch)}
                 disabled={isLoading}
-                className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg border text-xs font-bold transition-all cursor-pointer ${
+                className={`w-full flex items-center justify-between px-2 sm:px-2.5 py-1.5 rounded-lg border text-[11px] sm:text-xs font-bold transition-all cursor-pointer mt-1.5 ${
                   enableWebSearch
                     ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
                     : 'bg-white text-gray-500 border-gray-200'
                 }`}
               >
-                <span>{enableWebSearch ? 'Aktif (Riset Riil)' : 'Nonaktif (Murni AI)'}</span>
+                <span className="truncate">{enableWebSearch ? 'Aktif' : 'Nonaktif'}</span>
                 <span
-                  className={`text-[9px] px-1.5 py-0.5 rounded font-extrabold ${
+                  className={`text-[9px] px-1.5 py-0.5 rounded font-extrabold shrink-0 ${
                     enableWebSearch ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-700'
                   }`}
                 >
-                  {selectedCategory === 'Regional' ? 'Lokal ID' : 'Dual Engine'}
+                  {selectedCategory === 'Regional' ? 'Lokal' : 'Dual'}
                 </span>
               </button>
             </div>
 
             {/* Box 4: Target Status */}
-            <div className="bg-gray-50 p-3.5 rounded-xl border border-gray-200 space-y-1">
-              <span className="text-[10px] font-extrabold uppercase tracking-wider text-gray-600 flex items-center gap-1">
+            <div className="col-span-1 bg-gray-50 p-2.5 sm:p-3.5 rounded-xl border border-gray-200 flex flex-col justify-between">
+              <span className="text-[10px] sm:text-xs font-extrabold uppercase tracking-wider text-gray-600 flex items-center gap-1">
                 <Rocket className="w-3 h-3 text-gray-500" />
                 Target Status
               </span>
-              <div className="grid grid-cols-2 gap-1.5 bg-gray-200/80 p-1 rounded-lg">
+              <div className="grid grid-cols-2 gap-1 bg-gray-200/80 p-1 rounded-lg mt-1.5">
                 <button
                   type="button"
                   onClick={() => setPublishStatus('draft')}
                   disabled={isLoading}
-                  className={`text-xs py-1 rounded-md font-bold transition-all cursor-pointer ${
+                  className={`text-[11px] sm:text-xs py-1 rounded-md font-bold transition-all cursor-pointer text-center ${
                     publishStatus === 'draft'
                       ? 'bg-amber-500 text-white shadow-2xs'
                       : 'text-gray-600 hover:text-gray-900'
@@ -781,7 +798,7 @@ export default function GeneratorStudioPage() {
                   type="button"
                   onClick={() => setPublishStatus('published')}
                   disabled={isLoading}
-                  className={`text-xs py-1 rounded-md font-bold transition-all cursor-pointer ${
+                  className={`text-[11px] sm:text-xs py-1 rounded-md font-bold transition-all cursor-pointer text-center ${
                     publishStatus === 'published'
                       ? 'bg-emerald-600 text-white shadow-2xs'
                       : 'text-gray-600 hover:text-gray-900'
@@ -793,17 +810,17 @@ export default function GeneratorStudioPage() {
             </div>
 
             {/* Box 5: Target Panjang */}
-            <div className="bg-gray-50 p-3.5 rounded-xl border border-gray-200 space-y-1 sm:col-span-2 lg:col-span-2">
-              <span className="text-[10px] font-extrabold uppercase tracking-wider text-gray-600 flex items-center gap-1">
+            <div className="col-span-2 lg:col-span-2 bg-gray-50 p-2.5 sm:p-3.5 rounded-xl border border-gray-200 flex flex-col justify-between">
+              <span className="text-[10px] sm:text-xs font-extrabold uppercase tracking-wider text-gray-600 flex items-center gap-1">
                 <FileText className="w-3 h-3 text-gray-500" />
                 Target Panjang Naskah
               </span>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-1.5 sm:gap-2 mt-1.5">
                 <button
                   type="button"
                   onClick={() => setArticleLength('standar')}
                   disabled={isLoading}
-                  className={`px-3 py-1.5 rounded-lg border text-xs font-bold transition-all cursor-pointer ${
+                  className={`px-2 sm:px-3 py-1.5 rounded-lg border text-[11px] sm:text-xs font-bold transition-all cursor-pointer text-center ${
                     articleLength === 'standar'
                       ? 'bg-gray-900 text-white border-gray-900 shadow-2xs'
                       : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-100'
@@ -815,7 +832,7 @@ export default function GeneratorStudioPage() {
                   type="button"
                   onClick={() => setArticleLength('mendalam')}
                   disabled={isLoading}
-                  className={`px-3 py-1.5 rounded-lg border text-xs font-bold transition-all cursor-pointer ${
+                  className={`px-2 sm:px-3 py-1.5 rounded-lg border text-[11px] sm:text-xs font-bold transition-all cursor-pointer text-center ${
                     articleLength === 'mendalam'
                       ? 'bg-gray-900 text-white border-gray-900 shadow-2xs'
                       : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-100'
@@ -828,12 +845,12 @@ export default function GeneratorStudioPage() {
           </div>
 
           {/* Action Trigger Button */}
-          <div className="mt-5">
+          <div className="mt-4 sm:mt-5">
             <button
               type="button"
               onClick={handleStartGeneration}
               disabled={!prompt.trim() || isLoading}
-              className={`w-full inline-flex items-center justify-center gap-2.5 py-4 px-6 rounded-2xl font-black text-sm sm:text-base shadow-md transition-all duration-200 cursor-pointer ${
+              className={`w-full inline-flex items-center justify-center gap-2 py-3.5 sm:py-4 px-4 sm:px-6 rounded-xl sm:rounded-2xl font-black text-xs sm:text-base shadow-md transition-all duration-200 cursor-pointer ${
                 isLoading
                   ? 'bg-indigo-400 text-white cursor-not-allowed'
                   : !prompt.trim()
@@ -843,12 +860,12 @@ export default function GeneratorStudioPage() {
             >
               {isLoading ? (
                 <>
-                  <RefreshCw className="w-5 h-5 animate-spin" />
+                  <RefreshCw className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
                   <span>AI Sedang Memproses Liputan & Menulis Naskah...</span>
                 </>
               ) : (
                 <>
-                  <Wand2 className="w-5 h-5" />
+                  <Wand2 className="w-4 h-4 sm:w-5 sm:h-5" />
                   <span>Mulai Riset, Buat & Unggah Berita</span>
                 </>
               )}
@@ -1117,13 +1134,13 @@ export default function GeneratorStudioPage() {
             </div>
           </div>
 
-          {/* Tabs Filter Status & Search */}
+          {/* Tabs Filter Status & Search (2x2 di Mobile, Flex di Desktop) */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-1">
-            <div className="flex flex-wrap items-center gap-1.5">
+            <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-1.5">
               <button
                 type="button"
                 onClick={() => setLogFilterStatus('all')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                className={`w-full sm:w-auto px-2.5 sm:px-3 py-2 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition-colors cursor-pointer text-center ${
                   logFilterStatus === 'all'
                     ? 'bg-gray-900 text-white'
                     : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
@@ -1134,7 +1151,7 @@ export default function GeneratorStudioPage() {
               <button
                 type="button"
                 onClick={() => setLogFilterStatus('published')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                className={`w-full sm:w-auto px-2.5 sm:px-3 py-2 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition-colors cursor-pointer text-center ${
                   logFilterStatus === 'published'
                     ? 'bg-emerald-600 text-white'
                     : 'bg-white text-emerald-800 hover:bg-emerald-50 border border-emerald-300'
@@ -1145,7 +1162,7 @@ export default function GeneratorStudioPage() {
               <button
                 type="button"
                 onClick={() => setLogFilterStatus('draft')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                className={`w-full sm:w-auto px-2.5 sm:px-3 py-2 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition-colors cursor-pointer text-center ${
                   logFilterStatus === 'draft'
                     ? 'bg-amber-600 text-white'
                     : 'bg-white text-amber-800 hover:bg-amber-50 border border-amber-300'
@@ -1156,7 +1173,7 @@ export default function GeneratorStudioPage() {
               <button
                 type="button"
                 onClick={() => setLogFilterStatus('failed')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                className={`w-full sm:w-auto px-2.5 sm:px-3 py-2 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition-colors cursor-pointer text-center ${
                   logFilterStatus === 'failed'
                     ? 'bg-red-600 text-white'
                     : 'bg-white text-red-800 hover:bg-red-50 border border-red-300'
@@ -1186,60 +1203,19 @@ export default function GeneratorStudioPage() {
             Tidak ada riwayat hasil AI untuk filter yang dipilih.
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm text-gray-600">
-              <thead className="bg-gray-50/75 border-b border-gray-200 text-[11px] font-bold text-gray-700 uppercase tracking-wider">
-                <tr>
-                  <th className="px-5 py-3">Waktu</th>
-                  <th className="px-5 py-3">Topik / Prompt</th>
-                  <th className="px-5 py-3">Judul Artikel Dihasilkan</th>
-                  <th className="px-5 py-3">Kategori</th>
-                  <th className="px-5 py-3">Status</th>
-                  <th className="px-5 py-3">Durasi</th>
-                  <th className="px-5 py-3 text-right">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {filteredLogs.map((log) => {
-                  const isPub = log.status === 'published';
-                  const isDrf = log.status === 'draft';
-                  const isFail = log.status === 'failed';
+          <>
+            {/* MOBILE CARD VIEW (BLOCK DI HP, BEBAS HORIZONTAL SCROLL) */}
+            <div className="block md:hidden divide-y divide-gray-100">
+              {filteredLogs.map((log) => {
+                const isPub = log.status === 'published';
+                const isDrf = log.status === 'draft';
+                const isFail = log.status === 'failed';
 
-                  return (
-                    <tr key={log.id} className="hover:bg-gray-50/60 transition-colors">
-                      <td className="px-5 py-3.5 whitespace-nowrap text-xs text-gray-500">
-                        <div className="flex items-center gap-1.5">
-                          <Clock className="w-3 h-3 text-gray-400" />
-                          <span>{formatLogDate(log.createdAt)}</span>
-                        </div>
-                      </td>
-
-                      <td className="px-5 py-3.5 text-xs font-medium text-gray-800 max-w-xs">
-                        <span className="line-clamp-2">{log.prompt}</span>
-                      </td>
-
-                      <td className="px-5 py-3.5 text-xs font-bold text-gray-900 max-w-sm">
-                        {log.articleId ? (
-                          <Link
-                            href={`/admin/edit/${log.articleId}`}
-                            className="hover:text-indigo-600 transition-colors line-clamp-2"
-                          >
-                            {log.articleTitle || 'Tanpa Judul'}
-                          </Link>
-                        ) : (
-                          <span className="line-clamp-2 text-red-600">
-                            {log.errorMessage || 'Gagal'}
-                          </span>
-                        )}
-                      </td>
-
-                      <td className="px-5 py-3.5 whitespace-nowrap">
-                        <span className="text-[10px] font-bold bg-gray-100 text-gray-700 px-2 py-0.5 rounded">
-                          {log.category}
-                        </span>
-                      </td>
-
-                      <td className="px-5 py-3.5 whitespace-nowrap">
+                return (
+                  <div key={log.id} className="p-3.5 space-y-2.5 hover:bg-gray-50/60 transition-colors">
+                    {/* Header Card: Status, Kategori & Waktu */}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5">
                         <span
                           className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${
                             isPub
@@ -1254,40 +1230,171 @@ export default function GeneratorStudioPage() {
                           {isFail && <AlertCircle className="w-2.5 h-2.5" />}
                           <span>{log.status}</span>
                         </span>
-                      </td>
+                        <span className="text-[10px] font-bold bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded">
+                          {log.category}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1 text-[11px] text-gray-400 shrink-0">
+                        <Clock className="w-3 h-3" />
+                        <span>{formatLogDate(log.createdAt)}</span>
+                        {log.durationMs && (
+                          <span className="text-[10px] font-bold text-gray-500 bg-gray-100 px-1 py-0.2 rounded">
+                            {(log.durationMs / 1000).toFixed(1)}s
+                          </span>
+                        )}
+                      </div>
+                    </div>
 
-                      <td className="px-5 py-3.5 whitespace-nowrap text-xs text-gray-500">
-                        {log.durationMs ? `${(log.durationMs / 1000).toFixed(1)}s` : '-'}
-                      </td>
+                    {/* Body Card: Judul Artikel & Prompt */}
+                    <div>
+                      {log.articleId ? (
+                        <Link
+                          href={`/admin/edit/${log.articleId}`}
+                          className="text-xs sm:text-sm font-bold text-gray-900 hover:text-indigo-600 transition-colors line-clamp-2 leading-snug"
+                        >
+                          {log.articleTitle || 'Tanpa Judul'}
+                        </Link>
+                      ) : (
+                        <span className="text-xs font-bold text-red-600 line-clamp-2">
+                          {log.errorMessage || 'Gagal'}
+                        </span>
+                      )}
+                      <p className="text-[11px] text-gray-500 line-clamp-2 mt-1.5 bg-gray-50 p-2 rounded-lg border border-gray-100">
+                        <span className="font-semibold text-gray-700">Prompt:</span> {log.prompt}
+                      </p>
+                    </div>
 
-                      <td className="px-5 py-3.5 whitespace-nowrap text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          {log.articleId && (
+                    {/* Footer Actions */}
+                    <div className="flex items-center justify-end gap-1.5 pt-1">
+                      {log.articleId && (
+                        <Link
+                          href={`/admin/edit/${log.articleId}`}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold text-indigo-600 hover:bg-indigo-50 border border-indigo-100 transition-colors"
+                        >
+                          <Settings className="w-3 h-3" />
+                          <span>Edit</span>
+                        </Link>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteLog(log.id)}
+                        disabled={deletingId === log.id}
+                        title="Hapus riwayat ini"
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold text-red-500 hover:bg-red-50 border border-red-100 transition-colors cursor-pointer disabled:opacity-50"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                        <span>Hapus</span>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* DESKTOP TABLE VIEW (HIDDEN DI MOBILE) */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-left text-sm text-gray-600">
+                <thead className="bg-gray-50/75 border-b border-gray-200 text-[11px] font-bold text-gray-700 uppercase tracking-wider">
+                  <tr>
+                    <th className="px-5 py-3">Waktu</th>
+                    <th className="px-5 py-3">Topik / Prompt</th>
+                    <th className="px-5 py-3">Judul Artikel Dihasilkan</th>
+                    <th className="px-5 py-3">Kategori</th>
+                    <th className="px-5 py-3">Status</th>
+                    <th className="px-5 py-3">Durasi</th>
+                    <th className="px-5 py-3 text-right">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {filteredLogs.map((log) => {
+                    const isPub = log.status === 'published';
+                    const isDrf = log.status === 'draft';
+                    const isFail = log.status === 'failed';
+
+                    return (
+                      <tr key={log.id} className="hover:bg-gray-50/60 transition-colors">
+                        <td className="px-5 py-3.5 whitespace-nowrap text-xs text-gray-500">
+                          <div className="flex items-center gap-1.5">
+                            <Clock className="w-3 h-3 text-gray-400" />
+                            <span>{formatLogDate(log.createdAt)}</span>
+                          </div>
+                        </td>
+
+                        <td className="px-5 py-3.5 text-xs font-medium text-gray-800 max-w-xs">
+                          <span className="line-clamp-2">{log.prompt}</span>
+                        </td>
+
+                        <td className="px-5 py-3.5 text-xs font-bold text-gray-900 max-w-sm">
+                          {log.articleId ? (
                             <Link
                               href={`/admin/edit/${log.articleId}`}
-                              className="p-1.5 rounded-lg text-gray-400 hover:text-gray-900 hover:bg-gray-100 transition-colors"
-                              title="Edit Artikel"
+                              className="hover:text-indigo-600 transition-colors line-clamp-2"
                             >
-                              <Settings className="w-3.5 h-3.5" />
+                              {log.articleTitle || 'Tanpa Judul'}
                             </Link>
+                          ) : (
+                            <span className="line-clamp-2 text-red-600">
+                              {log.errorMessage || 'Gagal'}
+                            </span>
                           )}
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteLog(log.id)}
-                            disabled={deletingId === log.id}
-                            title="Hapus riwayat ini"
-                            className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer disabled:opacity-50"
+                        </td>
+
+                        <td className="px-5 py-3.5 whitespace-nowrap">
+                          <span className="text-[10px] font-bold bg-gray-100 text-gray-700 px-2 py-0.5 rounded">
+                            {log.category}
+                          </span>
+                        </td>
+
+                        <td className="px-5 py-3.5 whitespace-nowrap">
+                          <span
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${
+                              isPub
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : isDrf
+                                ? 'bg-amber-100 text-amber-900'
+                                : 'bg-red-100 text-red-800'
+                            }`}
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                            {isPub && <CheckCircle2 className="w-2.5 h-2.5" />}
+                            {isDrf && <PenSquare className="w-2.5 h-2.5" />}
+                            {isFail && <AlertCircle className="w-2.5 h-2.5" />}
+                            <span>{log.status}</span>
+                          </span>
+                        </td>
+
+                        <td className="px-5 py-3.5 whitespace-nowrap text-xs text-gray-500">
+                          {log.durationMs ? `${(log.durationMs / 1000).toFixed(1)}s` : '-'}
+                        </td>
+
+                        <td className="px-5 py-3.5 whitespace-nowrap text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            {log.articleId && (
+                              <Link
+                                href={`/admin/edit/${log.articleId}`}
+                                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-900 hover:bg-gray-100 transition-colors"
+                                title="Edit Artikel"
+                              >
+                                <Settings className="w-3.5 h-3.5" />
+                              </Link>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteLog(log.id)}
+                              disabled={deletingId === log.id}
+                              title="Hapus riwayat ini"
+                              className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer disabled:opacity-50"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
     </div>

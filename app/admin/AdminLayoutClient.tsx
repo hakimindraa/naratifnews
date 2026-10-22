@@ -238,20 +238,29 @@ export default function AdminLayoutClient({ children }: AdminLayoutClientProps) 
         </div>
       </aside>
 
-      {/* Top Bar Mobile */}
-      <header className="md:hidden bg-gray-900 text-white px-4 h-15 flex items-center justify-between border-b border-gray-800 sticky top-0 z-20">
-        <Link href="/admin" className="flex items-center gap-2 font-bold text-base font-heading">
-          <div className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center font-bold text-white text-xs">
+      {/* Top Bar Mobile (Rapi, 1 Baris Sejajar & Tombol Seragam h-9) */}
+      <header className="md:hidden bg-gray-900/95 backdrop-blur-md text-white px-3 sm:px-4 h-14 flex items-center justify-between border-b border-gray-800/90 sticky top-0 z-30">
+        {/* Brand Logo & Name (Anti-Patah) */}
+        <Link href="/admin" className="flex items-center gap-2 shrink-0">
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center font-black text-white text-xs shadow-xs shrink-0">
             A
           </div>
-          <span>Ada Fakta Admin</span>
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="font-extrabold text-sm tracking-tight text-white whitespace-nowrap">
+              Ada Fakta
+            </span>
+            <span className="text-[9px] font-black px-1.5 py-0.5 rounded-md bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 shrink-0">
+              ADMIN
+            </span>
+          </div>
         </Link>
 
-        <div className="flex items-center gap-2">
+        {/* Right Controls (Tinggi Seragam h-9, Rapi & Seimbang) */}
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           <button
             type="button"
             onClick={() => setMediaModalOpen(true)}
-            className="p-1.5 rounded-lg bg-gray-800 text-indigo-300 hover:text-white border border-gray-700 cursor-pointer"
+            className="w-9 h-9 rounded-xl bg-gray-800/90 hover:bg-gray-700 text-indigo-300 hover:text-white border border-gray-700/80 flex items-center justify-center transition-colors cursor-pointer shrink-0"
             aria-label="Buka Media ImgBB"
             title="Media ImgBB"
           >
@@ -259,11 +268,12 @@ export default function AdminLayoutClient({ children }: AdminLayoutClientProps) 
           </button>
           <VercelStatusBadge />
           <button
+            type="button"
             onClick={() => setMobileOpen(true)}
-            className="p-2 rounded-lg bg-gray-800 text-gray-300 hover:text-white"
+            className="w-9 h-9 rounded-xl bg-gray-800/90 hover:bg-gray-700 text-gray-300 hover:text-white border border-gray-700/80 flex items-center justify-center transition-colors cursor-pointer shrink-0"
             aria-label="Buka Menu"
           >
-            <Menu className="w-5 h-5" />
+            <Menu className="w-4 h-4" />
           </button>
         </div>
       </header>

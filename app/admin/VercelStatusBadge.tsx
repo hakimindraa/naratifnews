@@ -117,11 +117,11 @@ export default function VercelStatusBadge() {
 
   return (
     <div className="relative inline-block text-left" ref={popoverRef}>
-      {/* BADGE TRIGGER BUTTON */}
+      {/* BADGE TRIGGER BUTTON (Tinggi h-9, whitespace-nowrap, Anti-Patah) */}
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className={`flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer border shadow-2xs ${
+        className={`h-9 flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 rounded-xl text-xs font-semibold transition-all cursor-pointer border shadow-2xs whitespace-nowrap shrink-0 ${
           isReady
             ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/20'
             : isBuilding
@@ -134,34 +134,42 @@ export default function VercelStatusBadge() {
       >
         {/* State Indicator */}
         {loading && !latest ? (
-          <RefreshCw className="w-3.5 h-3.5 animate-spin text-gray-400" />
+          <RefreshCw className="w-3.5 h-3.5 animate-spin text-gray-400 shrink-0" />
         ) : isReady ? (
-          <span className="relative flex h-2 w-2">
+          <span className="relative flex h-2 w-2 shrink-0">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
             <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
           </span>
         ) : isBuilding ? (
-          <RefreshCw className="w-3.5 h-3.5 animate-spin text-amber-400" />
+          <RefreshCw className="w-3.5 h-3.5 animate-spin text-amber-400 shrink-0" />
         ) : isError ? (
-          <AlertTriangle className="w-3.5 h-3.5 text-rose-400" />
+          <AlertTriangle className="w-3.5 h-3.5 text-rose-400 shrink-0" />
         ) : (
-          <span className="w-2 h-2 rounded-full bg-gray-400" />
+          <span className="w-2 h-2 rounded-full bg-gray-400 shrink-0" />
         )}
 
-        {/* Text Label */}
-        <span className="font-mono text-[11px] sm:text-xs">
-          {loading && !latest
-            ? 'Vercel...'
-            : isReady
-            ? 'Deploy: Ready'
-            : isBuilding
-            ? 'Building...'
-            : isError
-            ? 'Deploy: Failed'
-            : 'Vercel'}
+        {/* Text Label (Anti Patah 2 Baris) */}
+        <span className="font-mono text-[11px] sm:text-xs whitespace-nowrap">
+          {loading && !latest ? (
+            'Vercel...'
+          ) : isReady ? (
+            <>
+              <span className="hidden sm:inline">Deploy: </span>
+              <span>Ready</span>
+            </>
+          ) : isBuilding ? (
+            'Building...'
+          ) : isError ? (
+            <>
+              <span className="hidden sm:inline">Deploy: </span>
+              <span>Failed</span>
+            </>
+          ) : (
+            'Vercel'
+          )}
         </span>
 
-        <ChevronDown className={`w-3 h-3 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        <ChevronDown className={`w-3 h-3 text-gray-400 transition-transform shrink-0 ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
       {/* FLOATING POPOVER DROPDOWN */}

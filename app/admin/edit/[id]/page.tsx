@@ -27,7 +27,7 @@ export default async function EditPage({ params }: { params: Promise<{ id: strin
         <h1 className="text-2xl font-bold text-gray-900 font-heading">Edit Artikel</h1>
       </div>
       
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+      <div className="bg-white p-4 sm:p-8 rounded-2xl shadow-sm border border-gray-200">
         <EditForm article={article[0]} />
       </div>
     </div>
