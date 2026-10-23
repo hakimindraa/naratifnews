@@ -47,7 +47,7 @@ export default function DraftPhotoModal({
       const d = new Date(initialPublishAt);
       if (!isNaN(d.getTime())) return toDateTimeLocalString(d);
     }
-    return toDateTimeLocalString(new Date(Date.now() + 2 * 60 * 60 * 1000));
+    return toDateTimeLocalString(new Date(Date.now() + 60 * 60 * 1000));
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);

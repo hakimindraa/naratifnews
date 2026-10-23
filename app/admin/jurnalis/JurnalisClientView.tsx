@@ -36,6 +36,7 @@ import {
   attachPhotoToDraftAction,
   removePhotoFromDraftAction,
   instantPublishDraftAction,
+  updateJurnalisPublishIntervalAction,
 } from './actions';
 import DraftPhotoModal from './DraftPhotoModal';
 
@@ -57,13 +58,41 @@ export interface JurnalisDraftItem {
   created_at: string;
 }
 
-interface JurnalisClientViewProps {
-  initialDrafts: JurnalisDraftItem[];
+function formatRelativeSchedule(publishAtStr: string | null | undefined): { label: string; isPast: boolean } {
+  if (!publishAtStr) return { label: 'Menunggu giliran cron', isPast: false };
+  const target = new Date(publishAtStr).getTime();
+  const now = Date.now();
+  const diffMs = target - now;
+
+  if (diffMs <= 0) {
+    return { label: '⚡ Siap Tayang (Jatuh Tempo)', isPast: true };
+  }
+
+  const diffMinutes = Math.round(diffMs / (60 * 1000));
+  if (diffMinutes < 60) {
+    return { label: `dalam ${diffMinutes} mnt`, isPast: false };
+  }
+  const hours = Math.floor(diffMinutes / 60);
+  const mins = diffMinutes % 60;
+  if (mins === 0) {
+    return { label: `dalam ${hours} jam`, isPast: false };
+  }
+  return { label: `dalam ${hours}j ${mins}m`, isPast: false };
 }
 
-export default function JurnalisClientView({ initialDrafts }: JurnalisClientViewProps) {
+interface JurnalisClientViewProps {
+  initialDrafts: JurnalisDraftItem[];
+  initialIntervalMinutes?: number;
+}
+
+export default function JurnalisClientView({
+  initialDrafts,
+  initialIntervalMinutes = 60,
+}: JurnalisClientViewProps) {
   const router = useRouter();
   const [drafts, setDrafts] = useState<JurnalisDraftItem[]>(initialDrafts);
+  const [intervalMinutes, setIntervalMinutes] = useState<number>(initialIntervalMinutes);
+  const [isSavingInterval, setIsSavingInterval] = useState(false);
   const [loadingId, setLoadingId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [convertingId, setConvertingId] = useState<number | null>(null);
@@ -139,6 +168,24 @@ export default function JurnalisClientView({ initialDrafts }: JurnalisClientView
       alert('Terjadi kesalahan jaringan saat memanggil generator AI');
     } finally {
       setLoadingId(null);
+    }
+  }
+
+  // Simpan pengaturan interval antrean baru
+  async function handleSaveInterval(newInterval: number) {
+    if (isSavingInterval || intervalMinutes === newInterval) return;
+    setIsSavingInterval(true);
+    try {
+      const res = await updateJurnalisPublishIntervalAction(newInterval);
+      if (res.success && res.intervalMinutes) {
+        setIntervalMinutes(res.intervalMinutes);
+      } else {
+        alert(res.error || 'Gagal menyimpan interval');
+      }
+    } catch {
+      alert('Terjadi kesalahan jaringan saat menyimpan interval');
+    } finally {
+      setIsSavingInterval(false);
     }
   }
 
@@ -379,6 +426,15 @@ export default function JurnalisClientView({ initialDrafts }: JurnalisClientView
   const totalPublished = drafts.filter((d) => d.status === 'published').length;
   const totalGenerated = drafts.filter((d) => d.status !== 'draft').length;
 
+  // Draf dalam antrean diurutkan berdasarkan publish_at ASC untuk nomor urut
+  const queuedDrafts = [...drafts]
+    .filter((d) => d.status === 'ready_to_publish')
+    .sort((a, b) => {
+      const timeA = a.publish_at ? new Date(a.publish_at).getTime() : 0;
+      const timeB = b.publish_at ? new Date(b.publish_at).getTime() : 0;
+      return timeA - timeB;
+    });
+
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* Header Banner */}
@@ -495,6 +551,59 @@ export default function JurnalisClientView({ initialDrafts }: JurnalisClientView
             <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center">
               <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Waterfall Queue Interval Control Card */}
+      <div className="bg-gradient-to-r from-indigo-50/90 via-white to-purple-50/90 border border-indigo-200/80 rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-xs">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div className="flex items-start sm:items-center gap-2.5 sm:gap-3">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+              <Clock className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
+            </div>
+            <div>
+              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                <span className="text-xs sm:text-sm font-bold text-gray-900 font-heading">
+                  Jeda Antrean Publikasi (Waterfall Queue)
+                </span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold border border-emerald-300">
+                  ⚡ Berjadwal Runtun
+                </span>
+              </div>
+              <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5">
+                Setiap berita berfoto otomatis dijadwalkan berjarak <b>{intervalMinutes >= 60 ? `${intervalMinutes / 60} jam` : `${intervalMinutes} menit`}</b> dari berita sebelumnya.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5 sm:gap-2 self-start md:self-center shrink-0">
+            <span className="text-[10px] sm:text-xs text-gray-400 font-medium hidden sm:inline">
+              Pilih Jeda:
+            </span>
+            {[
+              { label: '30 Menit', val: 30 },
+              { label: '1 Jam (Default)', val: 60 },
+              { label: '2 Jam', val: 120 },
+              { label: '3 Jam', val: 180 },
+            ].map((opt) => (
+              <button
+                key={opt.val}
+                type="button"
+                disabled={isSavingInterval}
+                onClick={() => handleSaveInterval(opt.val)}
+                className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-xs font-semibold transition-all cursor-pointer ${
+                  intervalMinutes === opt.val
+                    ? 'bg-indigo-600 text-white shadow-xs font-bold'
+                    : 'bg-white hover:bg-gray-100 text-gray-700 border border-gray-300/80'
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+            {isSavingInterval && (
+              <Loader2 className="w-3.5 h-3.5 text-indigo-600 animate-spin shrink-0 ml-1" />
+            )}
           </div>
         </div>
       </div>
@@ -650,6 +759,7 @@ export default function JurnalisClientView({ initialDrafts }: JurnalisClientView
             const isQueued = draft.status === 'ready_to_publish';
             const isPublished = draft.status === 'published';
             const isNeedPhoto = hasArticle && !hasPhoto && !isPublished;
+            const queueRank = isQueued ? queuedDrafts.findIndex((q) => q.id === draft.id) + 1 : 0;
 
             const isGenerating = loadingId === draft.id;
             const isDeleting = deletingId === draft.id;
@@ -700,8 +810,8 @@ export default function JurnalisClientView({ initialDrafts }: JurnalisClientView
                     ) : isQueued ? (
                       <span className="text-[9px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 border border-indigo-300 shrink-0 flex items-center gap-1">
                         <CalendarClock className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-indigo-600" />
-                        <span className="hidden xs:inline">Antrean</span>
-                        <span className="xs:hidden">Antre</span>
+                        <span className="hidden xs:inline">Antrean #{queueRank > 0 ? queueRank : 1}</span>
+                        <span className="xs:hidden">#{queueRank > 0 ? queueRank : 1}</span>
                       </span>
                     ) : isNeedPhoto ? (
                       <span className="text-[9px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 shrink-0 flex items-center gap-1">
@@ -767,17 +877,37 @@ export default function JurnalisClientView({ initialDrafts }: JurnalisClientView
                           {draft.cover_caption}
                         </p>
                       )}
-                      {isQueued && draft.publish_at && (
-                        <div className="flex items-center gap-1 text-[9px] sm:text-[10px] font-semibold text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-md px-1.5 py-0.5 mt-1">
-                          <CalendarClock className="w-3 h-3 text-indigo-600 shrink-0" />
-                          <span className="truncate">
-                            Terjadwal: {new Date(draft.publish_at).toLocaleDateString('id-ID', {
-                              day: 'numeric',
-                              month: 'short',
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })} WIB
-                          </span>
+                      {isQueued && (
+                        <div className="space-y-1 mt-1.5">
+                          <div className="flex items-center justify-between gap-1 text-[9px] sm:text-[10px]">
+                            <span className="inline-flex items-center gap-1 font-bold text-indigo-700 bg-indigo-50 border border-indigo-200/80 rounded px-1.5 py-0.5 shadow-2xs">
+                              ⏳ Urutan #{queueRank > 0 ? queueRank : 1}
+                            </span>
+                            {draft.publish_at && (
+                              <span
+                                className={`font-semibold px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] ${
+                                  formatRelativeSchedule(draft.publish_at).isPast
+                                    ? 'bg-amber-100 text-amber-800 font-bold animate-pulse border border-amber-300'
+                                    : 'bg-gray-100 text-gray-600 border border-gray-200'
+                                }`}
+                              >
+                                {formatRelativeSchedule(draft.publish_at).label}
+                              </span>
+                            )}
+                          </div>
+                          {draft.publish_at && (
+                            <div className="flex items-center gap-1 text-[9px] sm:text-[10px] font-medium text-gray-700 bg-gray-50 border border-gray-200/70 rounded-md px-1.5 py-0.5">
+                              <CalendarClock className="w-3 h-3 text-indigo-600 shrink-0" />
+                              <span className="truncate">
+                                Tayang: {new Date(draft.publish_at).toLocaleDateString('id-ID', {
+                                  day: 'numeric',
+                                  month: 'short',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })} WIB
+                              </span>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>

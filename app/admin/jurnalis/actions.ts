@@ -1,7 +1,7 @@
 'use server';
 
 import { db, sql } from '@/db';
-import { articles, jurnalisDrafts } from '@/db/schema';
+import { articles, jurnalisDrafts, systemSettings } from '@/db/schema';
 import { eq, desc, inArray, and, isNotNull, gt } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { uploadImageToImgbb } from '../media-actions';
@@ -225,13 +225,72 @@ export async function attachPhotoToDraftAction(draftId: number, formData: FormDa
   }
 }
 
+const JURNALIS_INTERVAL_KEY = 'jurnalis_publish_interval_minutes';
+const DEFAULT_JURNALIS_INTERVAL_MINUTES = 60; // 1 Jam default
+
 /**
- * Menghitung waktu slot tayang rekomendasi berikutnya (interval 2 jam).
- * Mencari jadwal publish_at terjauh yang ada di antrean aktif, lalu menambah 2 jam.
+ * Mengambil interval publikasi antrean jurnalis dalam satuan menit dari system_settings.
+ * Default: 60 menit (1 Jam).
+ */
+export async function getJurnalisPublishIntervalAction(): Promise<number> {
+  try {
+    const [row] = await db
+      .select({ value: systemSettings.value })
+      .from(systemSettings)
+      .where(eq(systemSettings.key, JURNALIS_INTERVAL_KEY))
+      .limit(1);
+
+    if (row && row.value) {
+      const parsed = parseInt(row.value, 10);
+      if (!isNaN(parsed) && parsed > 0) {
+        return parsed;
+      }
+    }
+    return DEFAULT_JURNALIS_INTERVAL_MINUTES;
+  } catch (err) {
+    console.error('Gagal mengambil interval jurnalis:', err);
+    return DEFAULT_JURNALIS_INTERVAL_MINUTES;
+  }
+}
+
+/**
+ * Menyimpan interval publikasi antrean jurnalis baru ke system_settings.
+ */
+export async function updateJurnalisPublishIntervalAction(intervalMinutes: number) {
+  try {
+    const safeInterval = Math.max(5, Math.min(1440, Number(intervalMinutes) || DEFAULT_JURNALIS_INTERVAL_MINUTES));
+    await db
+      .insert(systemSettings)
+      .values({
+        key: JURNALIS_INTERVAL_KEY,
+        value: safeInterval.toString(),
+        updatedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: systemSettings.key,
+        set: {
+          value: safeInterval.toString(),
+          updatedAt: new Date(),
+        },
+      });
+
+    revalidatePath('/admin/jurnalis');
+    return { success: true, intervalMinutes: safeInterval };
+  } catch (err: any) {
+    console.error('Gagal menyimpan interval antrean jurnalis:', err);
+    return { success: false, error: err?.message || 'Gagal menyimpan interval antrean' };
+  }
+}
+
+/**
+ * Menghitung waktu slot tayang rekomendasi berikutnya (Waterfall Queue).
+ * Mencari jadwal publish_at terjauh yang ada di antrean aktif, lalu menambah interval dinamis (default: 1 jam).
  */
 export async function getNextSuggestedPublishTimeAction() {
   try {
     const now = new Date();
+    const intervalMinutes = await getJurnalisPublishIntervalAction();
+    const intervalMs = intervalMinutes * 60 * 1000;
 
     // 1. Cek antrean jurnalis yang aktif dan memiliki publish_at di masa depan
     const [latestJurnalis] = await db
@@ -270,19 +329,21 @@ export async function getNextSuggestedPublishTimeAction() {
       baseTime = latestArticle.publishAt;
     }
 
-    // Tambah interval 2 jam
-    const nextSlot = new Date(baseTime.getTime() + 2 * 60 * 60 * 1000);
+    // Tambah interval dinamis (Waterfall Queue)
+    const nextSlot = new Date(baseTime.getTime() + intervalMs);
 
     return {
       success: true,
       iso: nextSlot.toISOString(),
+      intervalMinutes,
     };
   } catch (err: any) {
     console.error('Gagal menghitung slot waktu:', err);
-    const fallback = new Date(Date.now() + 2 * 60 * 60 * 1000);
+    const fallback = new Date(Date.now() + 60 * 60 * 1000);
     return {
       success: true,
       iso: fallback.toISOString(),
+      intervalMinutes: 60,
     };
   }
 }
