@@ -2218,13 +2218,27 @@ async function sendWelcomeMessage(
 ) {
   let total = 0;
   let published = 0;
+  let scheduled = 0;
   let draft = 0;
 
   try {
-    const allArticles = await db.select({ status: articles.status }).from(articles);
-    total = allArticles.length;
+    const [allArticles, jurnalisQueued] = await Promise.all([
+      db.select({ status: articles.status }).from(articles),
+      db
+        .select({ id: jurnalisDrafts.id })
+        .from(jurnalisDrafts)
+        .where(
+          and(
+            eq(jurnalisDrafts.status, 'ready_to_publish'),
+            isNotNull(jurnalisDrafts.coverUrl)
+          )
+        ),
+    ]);
     published = allArticles.filter((a) => a.status === 'published').length;
+    const dbScheduled = allArticles.filter((a) => a.status === 'scheduled').length;
+    scheduled = dbScheduled + jurnalisQueued.length;
     draft = allArticles.filter((a) => a.status === 'draft').length;
+    total = published + draft + scheduled;
   } catch {
     // fallback jika gagal select db
   }
@@ -2249,6 +2263,7 @@ Halo <b>${firstName}</b> 👋 Selamat datang di asisten editorial pintar Ada Fak
 📊 <b>STATUS PORTAL REDAKSI:</b>
 📁 Total Arsip : <b>${total} artikel</b>
 🚀 Tayang Web  : <b>${published} artikel</b>
+⏳ Terjadwal   : <b>${scheduled} artikel</b>
 📝 Draf Review : <b>${draft} artikel</b>${autopilotBox}
 </blockquote>
 
@@ -2285,11 +2300,32 @@ Halo <b>${firstName}</b> 👋 Selamat datang di asisten editorial pintar Ada Fak
 }
 
 async function sendStatsMessage(chatId: number | string, messageId: number | undefined, siteUrl: string) {
-  const allArticles = await db.select({ status: articles.status }).from(articles);
-  const total = allArticles.length;
-  const published = allArticles.filter((a) => a.status === 'published').length;
-  const scheduled = allArticles.filter((a) => a.status === 'scheduled').length;
-  const draft = allArticles.filter((a) => a.status === 'draft').length;
+  let total = 0;
+  let published = 0;
+  let scheduled = 0;
+  let draft = 0;
+
+  try {
+    const [allArticles, jurnalisQueued] = await Promise.all([
+      db.select({ status: articles.status }).from(articles),
+      db
+        .select({ id: jurnalisDrafts.id })
+        .from(jurnalisDrafts)
+        .where(
+          and(
+            eq(jurnalisDrafts.status, 'ready_to_publish'),
+            isNotNull(jurnalisDrafts.coverUrl)
+          )
+        ),
+    ]);
+    published = allArticles.filter((a) => a.status === 'published').length;
+    const dbScheduled = allArticles.filter((a) => a.status === 'scheduled').length;
+    scheduled = dbScheduled + jurnalisQueued.length;
+    draft = allArticles.filter((a) => a.status === 'draft').length;
+    total = published + draft + scheduled;
+  } catch {
+    // fallback
+  }
 
   let autopilotBox = '';
   try {
@@ -2352,15 +2388,24 @@ async function sendJurnalisStatusMessage(
       .orderBy(asc(jurnalisDrafts.publishAt), asc(jurnalisDrafts.createdAt))
       .limit(1);
 
-    // Ambil model AI yang sedang aktif di database
+    // Ambil model AI yang sedang aktif di database dan interval antrean
     let activeModel = 'radox/deepseek-v4-flash-0731';
+    let intervalMinutes = 60;
     try {
       const settings = await db.select().from(systemSettings);
       const customModel = settings.find((s) => s.key === 'ai_custom_model')?.value;
       const gatewayModel = settings.find((s) => s.key === 'ai_gateway_model')?.value;
       if (customModel && customModel.trim()) activeModel = customModel.trim();
       else if (gatewayModel && gatewayModel.trim()) activeModel = gatewayModel.trim();
+
+      const intervalVal = settings.find((s) => s.key === 'jurnalis_publish_interval_minutes')?.value;
+      if (intervalVal) {
+        const parsed = parseInt(intervalVal, 10);
+        if (!isNaN(parsed) && parsed > 0) intervalMinutes = parsed;
+      }
     } catch {}
+
+    const intervalLabel = intervalMinutes >= 60 ? `${intervalMinutes / 60} Jam` : `${intervalMinutes} Menit`;
 
     let nextQueueBox = '';
     if (nextDraft) {
@@ -2388,13 +2433,13 @@ Panel produksi otomatis artikel dan kurasi fakta berita harian
 📡 Total Usulan Bot   : <b>${total} berita</b>
 📝 Draf Naskah        : <b>${rawDrafts} draf</b>
 🖼️ Butuh Foto Cover   : <b>${needPhoto} draf</b>
-⏰ Antrean Terjadwal  : <b>${readyCount} draf</b> (Interval 2 Jam)
+⏰ Antrean Terjadwal  : <b>${readyCount} draf</b> (Interval ${intervalLabel})
 ✅ Sudah Tayang       : <b>${published} berita</b>
 </blockquote>${nextQueueBox}
 
 <blockquote>
 ⚙️ <b>KONFIGURASI OTOMASI SISTEM:</b>
-⏱️ Interval Publikasi : <b>Per 2 Jam Sekali (Auto-Slot)</b>
+⏱️ Interval Publikasi : <b>Per ${intervalLabel} Sekali (Waterfall Queue)</b>
 🧠 Model AI Aktif     : <code>${activeModel}</code>
 ✍️ Penulis Default    : <b>Redaksi Ada Fakta</b>
 🖼️ CDN Gambar        : <code>i.ibb.co.com (ImgBB Mirror)</code>
@@ -2650,7 +2695,7 @@ async function handleGenerateJurnalisDraft(
 
 📷 <b>LANGKAH TERAKHIR: PASANG FOTO SAMPUL</b>
 Kirimkan foto sampul berita ini sekarang langsung dari <b>Galeri HP Anda</b> di obrolan Telegram ini!
-<i>(Foto otomatis diunggah ke CDN ImgBB dan draf resmi masuk antrean tayang per 2 jam)</i>`;
+<i>(Foto otomatis diunggah ke CDN ImgBB dan draf resmi masuk antrean tayang berjadwal)</i>`;
 
   const inlineKeyboard = [
     [{ text: '📷 Buka Meja Jurnalis Web ↗', url: `${siteUrl}/admin/jurnalis` }],
@@ -2694,7 +2739,7 @@ async function handleRequestJurnalisPhoto(
 2. Pilih file foto dari <b>Galeri HP Anda</b>
 3. Kirimkan langsung ke chat ini
 
-<i>Foto otomatis diunggah ke CDN ImgBB dan draf langsung terjadwal per 2 jam ke depan!</i>`;
+<i>Foto otomatis diunggah ke CDN ImgBB dan draf langsung masuk antrean tayang berjadwal!</i>`;
 
   await updateOrSendMessage(chatId, messageId, promptPhotoText, {
     inlineKeyboard: [

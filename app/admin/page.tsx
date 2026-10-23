@@ -17,6 +17,7 @@ import BotJurnalisWidget from './BotJurnalisWidget';
 import { db } from '@/db';
 import { articles, aiGenerationLogs, jurnalisDrafts } from '@/db/schema';
 import { desc, eq, and, isNotNull } from 'drizzle-orm';
+import { getJurnalisPublishIntervalAction } from './jurnalis/actions';
 
 export const instant = false;
 
@@ -31,7 +32,7 @@ export default async function AdminDashboard(props: {
       ? resolvedSearchParams.tab
       : 'all';
 
-  const [dbArticles, logs, jurnalisQueued, allJurnalisDrafts] = await Promise.all([
+  const [dbArticles, logs, jurnalisQueued, allJurnalisDrafts, intervalMinutes] = await Promise.all([
     db.select().from(articles).orderBy(desc(articles.createdAt)),
     db.select({ articleId: aiGenerationLogs.articleId, prompt: aiGenerationLogs.prompt }).from(aiGenerationLogs),
     db
@@ -47,7 +48,10 @@ export default async function AdminDashboard(props: {
     db
       .select({ id: jurnalisDrafts.id, status: jurnalisDrafts.status })
       .from(jurnalisDrafts),
+    getJurnalisPublishIntervalAction(),
   ]);
+
+  const intervalLabel = intervalMinutes >= 60 ? `${intervalMinutes / 60} jam` : `${intervalMinutes} menit`;
 
   const logMap = new Map<number, string>();
   for (const log of logs) {
@@ -310,7 +314,7 @@ export default async function AdminDashboard(props: {
                   <span className="text-[10px] sm:text-[11px] text-gray-400">/ {jurnalisTotalCount} usulan</span>
                 </div>
                 <p className="text-[10px] sm:text-[11px] text-gray-500 mt-0.5 line-clamp-1">
-                  Antrean berkala per 2 jam
+                  Antrean berkala per {intervalLabel}
                 </p>
               </div>
             </div>
