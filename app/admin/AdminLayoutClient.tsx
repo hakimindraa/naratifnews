@@ -21,6 +21,7 @@ import {
   Users,
   Newspaper,
   Bot,
+  Database,
 } from 'lucide-react';
 import { logoutAdmin } from './auth-actions';
 import VercelStatusBadge from './VercelStatusBadge';
@@ -99,6 +100,12 @@ export default function AdminLayoutClient({ children }: AdminLayoutClientProps) 
       label: 'Pengaturan AI',
       href: '/admin/pengaturan',
       icon: Settings,
+    },
+    {
+      label: 'Pembersihan DB',
+      href: '/admin/maintenance',
+      icon: Database,
+      badge: 'Auto',
     },
   ];
 

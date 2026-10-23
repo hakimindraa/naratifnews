@@ -97,7 +97,7 @@ function MobileThematicStrip({
               <h5 className="font-bold text-gray-900 line-clamp-2 text-xs leading-snug">
                 {art.title}
               </h5>
-              <span className="text-[10px] text-gray-400 mt-2 block font-medium">
+              <span suppressHydrationWarning className="text-[10px] text-gray-400 mt-2 block font-medium">
                 {getTimeAgo(art.publishedAt)}
               </span>
             </div>
