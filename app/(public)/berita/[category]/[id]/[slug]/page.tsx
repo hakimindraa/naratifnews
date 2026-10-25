@@ -240,13 +240,13 @@ export default async function ArticlePage({
       <div className="flex flex-col lg:flex-row gap-10">
         {/* Main Content (Left Column) */}
         <article className="lg:w-2/3">
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold font-heading text-gray-900 leading-tight mb-6">
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold font-heading text-gray-900 leading-snug mb-4">
             {article.title}
           </h1>
 
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-gray-200 mb-6 gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-full bg-gray-100 overflow-hidden shrink-0 border border-indigo-500/40 shadow-2xs flex items-center justify-center">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 sm:pb-4 border-b border-gray-200 mb-5 gap-3 sm:gap-4">
+            <div className="flex items-center gap-2.5 sm:gap-3">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-gray-100 overflow-hidden shrink-0 border border-indigo-500/40 shadow-2xs flex items-center justify-center">
                 <img
                   src={
                     authorProfile?.avatarUrl ||
@@ -259,13 +259,13 @@ export default async function ArticlePage({
                 />
               </div>
               <div>
-                <div className="font-bold text-gray-900 text-sm sm:text-base leading-snug">
+                <div className="font-bold text-gray-900 text-xs sm:text-sm leading-snug">
                   {authorProfile?.name || article.author || 'Redaksi'}
                 </div>
-                <div className="text-xs text-gray-500 font-normal mt-0.5">
+                <div className="text-[11px] text-gray-500 font-normal mt-0.5">
                   {authorProfile?.role || 'Tim Redaksi'}
                 </div>
-                <div className="text-gray-400 text-xs mt-1">
+                <div className="text-gray-400 text-[11px] mt-0.5">
                   {article.publishedAt ? new Date(article.publishedAt).toLocaleString('id-ID', { weekday: 'long', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' }).replace(' pukul', '') : '-'} WIB
                 </div>
               </div>
