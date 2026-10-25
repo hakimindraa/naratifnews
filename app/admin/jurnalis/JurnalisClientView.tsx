@@ -171,7 +171,7 @@ export default function JurnalisClientView({
     }
   }
 
-  // Simpan pengaturan interval antrean baru
+  // Simpan pengaturan interval antrean baru & rekalibrasi jadwal antrean aktif
   async function handleSaveInterval(newInterval: number) {
     if (isSavingInterval || intervalMinutes === newInterval) return;
     setIsSavingInterval(true);
@@ -179,6 +179,15 @@ export default function JurnalisClientView({
       const res = await updateJurnalisPublishIntervalAction(newInterval);
       if (res.success && res.intervalMinutes) {
         setIntervalMinutes(res.intervalMinutes);
+        if (res.updatedSchedules && res.updatedSchedules.length > 0) {
+          setDrafts((prev) =>
+            prev.map((d) => {
+              const matched = res.updatedSchedules?.find((s) => s.id === d.id);
+              return matched ? { ...d, publish_at: matched.publishAt } : d;
+            })
+          );
+        }
+        router.refresh();
       } else {
         alert(res.error || 'Gagal menyimpan interval');
       }

@@ -2,7 +2,7 @@
 
 import { db, sql } from '@/db';
 import { articles, jurnalisDrafts, systemSettings } from '@/db/schema';
-import { eq, desc, inArray, and, isNotNull, gt } from 'drizzle-orm';
+import { eq, desc, asc, inArray, and, isNotNull, gt } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { uploadImageToImgbb } from '../media-actions';
 import { notifySearchEngines } from '@/lib/indexing';
@@ -134,6 +134,24 @@ export async function convertDraftToArticleAction(draftId: number, targetCategor
 }
 
 /**
+ * Memastikan tanggal dari input form memiliki offset zona waktu WIB (+07:00)
+ * jika dikirim dalam format datetime-local tanpa timezone offset (misal: "2026-10-26T09:00").
+ */
+function parsePublishAtWithWib(raw: string | null | undefined): Date | null {
+  if (!raw) return null;
+  let str = raw.trim();
+  if (!str) return null;
+
+  // Jika format datetime-local tanpa penanda zona waktu (Z atau +HH:MM atau -HH:MM)
+  if (!str.includes('Z') && !str.includes('+') && !/-\d{2}:\d{2}$/.test(str)) {
+    str = str.replace('T', ' ') + '+07:00';
+  }
+
+  const parsed = new Date(str);
+  return isNaN(parsed.getTime()) ? null : parsed;
+}
+
+/**
  * Unggah atau kaitkan foto ImgBB ke draf jurnalis.
  * Jika naskah berita sudah siap (generated), status otomatis dinaikkan ke 'ready_to_publish' (masuk antrean cron).
  */
@@ -183,15 +201,9 @@ export async function attachPhotoToDraftAction(draftId: number, formData: FormDa
     // Jika draf sudah memiliki teks artikel ter-generate, otomatis aktifkan antrean 'ready_to_publish'
     const newStatus = draft.generatedArticle ? 'ready_to_publish' : draft.status;
 
-    // Ambil publishAt dari form atau hitung auto-slot +2 jam
+    // Ambil publishAt dari form (dengan kalibrasi WIB +07:00) atau hitung auto-slot Waterfall Queue
     const publishAtRaw = formData.get('publishAt') as string | null;
-    let targetPublishAt: Date | null = null;
-    if (publishAtRaw) {
-      const parsed = new Date(publishAtRaw);
-      if (!isNaN(parsed.getTime())) {
-        targetPublishAt = parsed;
-      }
-    }
+    let targetPublishAt: Date | null = parsePublishAtWithWib(publishAtRaw);
     if (!targetPublishAt && newStatus === 'ready_to_publish') {
       const slotRes = await getNextSuggestedPublishTimeAction();
       targetPublishAt = new Date(slotRes.iso);
@@ -254,7 +266,8 @@ export async function getJurnalisPublishIntervalAction(): Promise<number> {
 }
 
 /**
- * Menyimpan interval publikasi antrean jurnalis baru ke system_settings.
+ * Menyimpan interval publikasi antrean jurnalis baru ke system_settings,
+ * sekaligus merekalibrasi seluruh draf antrean aktif agar tersusun rapi sesuai interval baru.
  */
 export async function updateJurnalisPublishIntervalAction(intervalMinutes: number) {
   try {
@@ -274,8 +287,52 @@ export async function updateJurnalisPublishIntervalAction(intervalMinutes: numbe
         },
       });
 
+    const now = new Date();
+    const intervalMs = safeInterval * 60 * 1000;
+
+    // Ambil seluruh draf yang ada dalam antrean terbit (ready_to_publish)
+    const queued = await db
+      .select({ id: jurnalisDrafts.id, publishAt: jurnalisDrafts.publishAt })
+      .from(jurnalisDrafts)
+      .where(
+        and(
+          eq(jurnalisDrafts.status, 'ready_to_publish'),
+          isNotNull(jurnalisDrafts.publishAt)
+        )
+      )
+      .orderBy(asc(jurnalisDrafts.publishAt), asc(jurnalisDrafts.createdAt));
+
+    const updatedSchedules: { id: number; publishAt: string }[] = [];
+
+    if (queued.length > 0) {
+      // Draf urutan pertama (#1)
+      let currentBaseTime: Date;
+      if (queued[0].publishAt && queued[0].publishAt > now) {
+        currentBaseTime = queued[0].publishAt;
+      } else {
+        currentBaseTime = new Date(now.getTime() + intervalMs);
+        await db
+          .update(jurnalisDrafts)
+          .set({ publishAt: currentBaseTime })
+          .where(eq(jurnalisDrafts.id, queued[0].id));
+      }
+      updatedSchedules.push({ id: queued[0].id, publishAt: currentBaseTime.toISOString() });
+
+      // Urutan #2 dan seterusnya direkalibrasi berjarak tepat intervalMs
+      for (let i = 1; i < queued.length; i++) {
+        const nextTime = new Date(currentBaseTime.getTime() + intervalMs);
+        await db
+          .update(jurnalisDrafts)
+          .set({ publishAt: nextTime })
+          .where(eq(jurnalisDrafts.id, queued[i].id));
+        updatedSchedules.push({ id: queued[i].id, publishAt: nextTime.toISOString() });
+        currentBaseTime = nextTime;
+      }
+    }
+
     revalidatePath('/admin/jurnalis');
-    return { success: true, intervalMinutes: safeInterval };
+    revalidatePath('/admin');
+    return { success: true, intervalMinutes: safeInterval, updatedSchedules };
   } catch (err: any) {
     console.error('Gagal menyimpan interval antrean jurnalis:', err);
     return { success: false, error: err?.message || 'Gagal menyimpan interval antrean' };
@@ -353,8 +410,8 @@ export async function getNextSuggestedPublishTimeAction() {
  */
 export async function updateDraftScheduleAction(draftId: number, publishAtStr: string) {
   try {
-    const publishAt = new Date(publishAtStr);
-    if (isNaN(publishAt.getTime())) {
+    const publishAt = parsePublishAtWithWib(publishAtStr);
+    if (!publishAt) {
       return { success: false, error: 'Format tanggal dan jam tidak valid' };
     }
     await db.update(jurnalisDrafts).set({ publishAt }).where(eq(jurnalisDrafts.id, draftId));

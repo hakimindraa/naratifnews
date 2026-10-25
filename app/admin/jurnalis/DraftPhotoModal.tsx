@@ -281,7 +281,7 @@ export default function DraftPhotoModal({
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
                 <Clock className="w-3.5 h-3.5 text-indigo-600" />
-                <span>Jadwal Jam Tayang (Auto-Slot 2 Jam)</span>
+                <span>Jadwal Jam Tayang (WIB)</span>
               </label>
               <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100">
                 Rekomendasi Otomatis
@@ -294,7 +294,7 @@ export default function DraftPhotoModal({
               className="w-full text-xs px-3.5 py-2 rounded-xl border border-gray-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none font-medium text-gray-800"
             />
             <p className="text-[11px] text-gray-500">
-              Otomatis diatur per jeda 2 jam setelah antrean aktif sebelumnya. Anda bebas mengubah tanggal & jam ini sesuai keinginan.
+              Otomatis mengikuti jeda antrean dari berita sebelumnya (WIB). Anda bebas mengubah tanggal & jam ini sesuai keinginan.
             </p>
           </div>
 
