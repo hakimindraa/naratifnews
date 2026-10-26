@@ -52,7 +52,6 @@ export default function AdminLayoutClient({ children }: AdminLayoutClientProps) 
       label: 'Jurnalis AI',
       href: '/admin/jurnalis',
       icon: Newspaper,
-      badge: 'Bot Intel',
     },
     {
       label: 'Tulis Berita',
@@ -63,37 +62,31 @@ export default function AdminLayoutClient({ children }: AdminLayoutClientProps) 
       label: 'AI Studio',
       href: '/admin/generator',
       icon: Sparkles,
-      badge: 'Pro AI',
     },
     {
       label: 'Sadur Berita URL',
       href: '/admin/sadur',
       icon: Link2,
-      badge: 'Baru',
     },
     {
       label: 'Tim Penulis',
       href: '/admin/penulis',
       icon: Users,
-      badge: 'Profil',
     },
     {
       label: 'Cron Job',
       href: '/admin/cron',
       icon: Timer,
-      badge: 'Live',
     },
     {
       label: 'Manajemen Iklan',
       href: '/admin/iklan',
       icon: Coins,
-      badge: 'Cuan',
     },
     {
       label: 'Media ImgBB',
       href: '#media-imgbb',
       icon: ImageIcon,
-      badge: 'CDN',
       isModalTrigger: true,
     },
     {
@@ -105,7 +98,6 @@ export default function AdminLayoutClient({ children }: AdminLayoutClientProps) 
       label: 'Pembersihan DB',
       href: '/admin/maintenance',
       icon: Database,
-      badge: 'Auto',
     },
   ];
 
@@ -131,7 +123,7 @@ export default function AdminLayoutClient({ children }: AdminLayoutClientProps) 
                 Ada Fakta Admin
               </span>
               <span className="text-[10px] text-gray-400 font-medium flex items-center gap-1.5 mt-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                 Redaksi Aktif
               </span>
             </div>
@@ -154,17 +146,10 @@ export default function AdminLayoutClient({ children }: AdminLayoutClientProps) 
                       key={item.href}
                       type="button"
                       onClick={() => setMediaModalOpen(true)}
-                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-all group text-gray-300 hover:bg-gray-800/80 hover:text-white cursor-pointer text-left"
+                      className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-colors text-gray-300 hover:bg-gray-800/80 hover:text-white cursor-pointer text-left"
                     >
-                      <div className="flex items-center gap-2.5">
-                        <Icon className="w-4 h-4 text-indigo-400 group-hover:text-indigo-300 transition-transform group-hover:scale-110" />
-                        <span>{item.label}</span>
-                      </div>
-                      {item.badge && (
-                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-indigo-900/60 text-indigo-300 border border-indigo-700/50">
-                          {item.badge}
-                        </span>
-                      )}
+                      <Icon className="w-4 h-4 text-indigo-400" />
+                      <span>{item.label}</span>
                     </button>
                   );
                 }
@@ -172,31 +157,18 @@ export default function AdminLayoutClient({ children }: AdminLayoutClientProps) 
                   <Link
                     key={item.href}
                     href={item.href}
-                    className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-all group ${
+                    className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-colors ${
                       active
-                        ? 'bg-indigo-600 text-white shadow-sm font-semibold'
+                        ? 'bg-indigo-600 text-white font-semibold'
                         : 'text-gray-300 hover:bg-gray-800/80 hover:text-white'
                     }`}
                   >
-                    <div className="flex items-center gap-2.5">
-                      <Icon
-                        className={`w-4 h-4 transition-transform group-hover:scale-110 ${
-                          active ? 'text-white' : 'text-gray-400 group-hover:text-indigo-400'
-                        }`}
-                      />
-                      <span>{item.label}</span>
-                    </div>
-                    {item.badge && (
-                      <span
-                        className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${
-                          active
-                            ? 'bg-white/20 text-white'
-                            : 'bg-indigo-900/60 text-indigo-300 border border-indigo-700/50'
-                        }`}
-                      >
-                        {item.badge}
-                      </span>
-                    )}
+                    <Icon
+                      className={`w-4 h-4 ${
+                        active ? 'text-white' : 'text-gray-400'
+                      }`}
+                    />
+                    <span>{item.label}</span>
                   </Link>
                 );
               })}
@@ -246,10 +218,10 @@ export default function AdminLayoutClient({ children }: AdminLayoutClientProps) 
       </aside>
 
       {/* Top Bar Mobile (Rapi, 1 Baris Sejajar & Tombol Seragam h-9) */}
-      <header className="md:hidden bg-gray-900/95 backdrop-blur-md text-white px-3 sm:px-4 h-14 flex items-center justify-between border-b border-gray-800/90 sticky top-0 z-30">
+      <header className="md:hidden bg-gray-900 text-white px-3 sm:px-4 h-14 flex items-center justify-between border-b border-gray-800/90 sticky top-0 z-30">
         {/* Brand Logo & Name (Anti-Patah) */}
         <Link href="/admin" className="flex items-center gap-2 shrink-0">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center font-black text-white text-xs shadow-xs shrink-0">
+          <div className="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center font-black text-white text-xs shadow-xs shrink-0">
             A
           </div>
           <div className="flex items-center gap-1.5 min-w-0">
@@ -267,7 +239,7 @@ export default function AdminLayoutClient({ children }: AdminLayoutClientProps) 
           <button
             type="button"
             onClick={() => setMediaModalOpen(true)}
-            className="w-9 h-9 rounded-xl bg-gray-800/90 hover:bg-gray-700 text-indigo-300 hover:text-white border border-gray-700/80 flex items-center justify-center transition-colors cursor-pointer shrink-0"
+            className="w-9 h-9 rounded-xl bg-gray-800 hover:bg-gray-700 text-indigo-300 hover:text-white border border-gray-700/80 flex items-center justify-center transition-colors cursor-pointer shrink-0"
             aria-label="Buka Media ImgBB"
             title="Media ImgBB"
           >
@@ -277,7 +249,7 @@ export default function AdminLayoutClient({ children }: AdminLayoutClientProps) 
           <button
             type="button"
             onClick={() => setMobileOpen(true)}
-            className="w-9 h-9 rounded-xl bg-gray-800/90 hover:bg-gray-700 text-gray-300 hover:text-white border border-gray-700/80 flex items-center justify-center transition-colors cursor-pointer shrink-0"
+            className="w-9 h-9 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white border border-gray-700/80 flex items-center justify-center transition-colors cursor-pointer shrink-0"
             aria-label="Buka Menu"
           >
             <Menu className="w-4 h-4" />
@@ -290,7 +262,7 @@ export default function AdminLayoutClient({ children }: AdminLayoutClientProps) 
         <div className="fixed inset-0 z-50 md:hidden flex">
           {/* Backdrop */}
           <div
-            className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
+            className="fixed inset-0 bg-black/60 transition-opacity"
             onClick={() => setMobileOpen(false)}
           />
 
@@ -319,17 +291,10 @@ export default function AdminLayoutClient({ children }: AdminLayoutClientProps) 
                         setMobileOpen(false);
                         setMediaModalOpen(true);
                       }}
-                      className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all text-gray-300 hover:bg-gray-800 hover:text-white cursor-pointer text-left"
+                      className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-colors text-gray-300 hover:bg-gray-800 hover:text-white cursor-pointer text-left"
                     >
-                      <div className="flex items-center gap-3">
-                        <Icon className="w-4 h-4 text-indigo-400" />
-                        <span>{item.label}</span>
-                      </div>
-                      {item.badge && (
-                        <span className="text-[10px] bg-indigo-900 text-indigo-200 px-1.5 py-0.5 rounded">
-                          {item.badge}
-                        </span>
-                      )}
+                      <Icon className="w-4 h-4 text-indigo-400" />
+                      <span>{item.label}</span>
                     </button>
                   );
                 }
@@ -338,21 +303,14 @@ export default function AdminLayoutClient({ children }: AdminLayoutClientProps) 
                     key={item.href}
                     href={item.href}
                     onClick={() => setMobileOpen(false)}
-                    className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                    className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-colors ${
                       active
                         ? 'bg-indigo-600 text-white font-semibold'
                         : 'text-gray-300 hover:bg-gray-800 hover:text-white'
                     }`}
                   >
-                    <div className="flex items-center gap-3">
-                      <Icon className="w-4 h-4" />
-                      <span>{item.label}</span>
-                    </div>
-                    {item.badge && (
-                      <span className="text-[10px] bg-indigo-900 text-indigo-200 px-1.5 py-0.5 rounded">
-                        {item.badge}
-                      </span>
-                    )}
+                    <Icon className="w-4 h-4" />
+                    <span>{item.label}</span>
                   </Link>
                 );
               })}
@@ -393,7 +351,7 @@ export default function AdminLayoutClient({ children }: AdminLayoutClientProps) 
       {/* Main Content Area (Offset for Desktop Sidebar) */}
       <div className="flex-1 md:pl-64 flex flex-col min-w-0">
         {/* Desktop Sticky Header Bar */}
-        <header className="hidden md:flex h-16 items-center justify-between px-6 lg:px-8 border-b border-gray-200/80 bg-white/95 backdrop-blur-sm sticky top-0 z-20">
+        <header className="hidden md:flex h-16 items-center justify-between px-6 lg:px-8 border-b border-gray-200 bg-white sticky top-0 z-20">
           <div className="flex items-center gap-2">
             <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">
               Portal Redaksi Ada Fakta

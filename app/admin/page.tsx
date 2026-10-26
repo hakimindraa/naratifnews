@@ -234,7 +234,7 @@ export default async function AdminDashboard(props: {
             <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-amber-600 flex items-center gap-1.5">
               <span>Draf Review</span>
               {draftArticles > 0 && (
-                <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                <span className="w-2 h-2 rounded-full bg-amber-500" />
               )}
             </span>
             <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
@@ -275,8 +275,8 @@ export default async function AdminDashboard(props: {
             <span className="text-xs font-extrabold uppercase tracking-wider text-gray-700">
               Produksi & Draf Sumber AI
             </span>
-            <span className="text-[10px] font-bold bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full">
-              Realtime Neon DB
+            <span className="text-[10px] font-bold bg-gray-100 text-gray-700 px-2 py-0.5 rounded-md border border-gray-200">
+              Neon DB
             </span>
           </div>
           <span className="text-[10px] sm:text-[11px] text-gray-400 hidden sm:inline">
@@ -289,28 +289,28 @@ export default async function AdminDashboard(props: {
           {/* 1. Jurnalis AI (Hero Card di Mobile selebar 2 kolom, Desktop 1 kolom sejajar) */}
           <Link
             href="/admin/jurnalis"
-            className="group col-span-2 lg:col-span-1 bg-gradient-to-br from-purple-50 via-purple-50/40 to-white p-3.5 sm:p-4 rounded-2xl border border-purple-200 hover:border-purple-300 hover:shadow-md transition-all flex flex-col justify-between"
+            className="group col-span-2 lg:col-span-1 bg-white p-3.5 sm:p-4 rounded-2xl border border-gray-200 hover:border-gray-300 hover:shadow-xs transition-colors flex flex-col justify-between"
           >
             <div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-purple-600 text-white flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                  <div className="w-8 h-8 rounded-lg bg-gray-900 text-white flex items-center justify-center shrink-0">
                     <Bot className="w-4 h-4" />
                   </div>
-                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-purple-100 text-purple-900 border border-purple-200">
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-gray-100 text-gray-800">
                     Jurnalis AI
                   </span>
                 </div>
-                <span className="text-[10px] font-bold text-purple-700 bg-purple-100/70 px-2 py-0.5 rounded-md lg:hidden">
+                <span className="text-[10px] font-bold text-gray-600 bg-gray-100 px-2 py-0.5 rounded-md lg:hidden">
                   Antrean Aktif
                 </span>
               </div>
               <div className="mt-2.5 sm:mt-3">
                 <div className="flex items-baseline gap-1.5">
-                  <span className="text-xl sm:text-2xl font-black font-heading text-purple-950">
+                  <span className="text-xl sm:text-2xl font-black font-heading text-gray-900">
                     {jurnalisQueueCount}
                   </span>
-                  <span className="text-xs font-semibold text-purple-700">Terjadwal</span>
+                  <span className="text-xs font-semibold text-gray-700">Terjadwal</span>
                   <span className="text-[10px] sm:text-[11px] text-gray-400">/ {jurnalisTotalCount} usulan</span>
                 </div>
                 <p className="text-[10px] sm:text-[11px] text-gray-500 mt-0.5 line-clamp-1">
@@ -318,32 +318,32 @@ export default async function AdminDashboard(props: {
                 </p>
               </div>
             </div>
-            <div className="mt-2 pt-2 border-t border-purple-100/80 flex items-center justify-between text-[11px] font-bold text-purple-700 group-hover:text-purple-900">
+            <div className="mt-2 pt-2 border-t border-gray-100 flex items-center justify-between text-[11px] font-bold text-gray-700 group-hover:text-black">
               <span>Buka Jurnalis AI</span>
-              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+              <ArrowRight className="w-3.5 h-3.5 text-gray-400" />
             </div>
           </Link>
 
           {/* 2. AI Studio Generator */}
           <Link
             href="/admin/generator"
-            className="group col-span-1 bg-gradient-to-br from-indigo-50/70 to-white p-3.5 sm:p-4 rounded-2xl border border-indigo-100 hover:border-indigo-300 hover:shadow-md transition-all flex flex-col justify-between h-full"
+            className="group col-span-1 bg-white p-3.5 sm:p-4 rounded-2xl border border-gray-200 hover:border-gray-300 hover:shadow-xs transition-colors flex flex-col justify-between h-full"
           >
             <div>
               <div className="flex items-center justify-between">
-                <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                <div className="w-8 h-8 rounded-lg bg-gray-900 text-white flex items-center justify-center shrink-0">
                   <Sparkles className="w-4 h-4" />
                 </div>
-                <span className="text-[10px] font-extrabold px-1.5 sm:px-2 py-0.5 rounded-md bg-indigo-100/80 text-indigo-800">
+                <span className="text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded-md bg-gray-100 text-gray-800">
                   AI Studio
                 </span>
               </div>
               <div className="mt-2.5 sm:mt-3">
                 <div className="flex items-baseline gap-1">
-                  <span className="text-lg sm:text-2xl font-black font-heading text-indigo-950">
+                  <span className="text-lg sm:text-2xl font-black font-heading text-gray-900">
                     {studioDrafts}
                   </span>
-                  <span className="text-xs font-semibold text-indigo-700">Draf</span>
+                  <span className="text-xs font-semibold text-gray-700">Draf</span>
                   <span className="text-[10px] sm:text-[11px] text-gray-400">/{studioTotal}</span>
                 </div>
                 <p className="text-[10px] sm:text-[11px] text-gray-500 mt-0.5 line-clamp-1">
@@ -351,32 +351,32 @@ export default async function AdminDashboard(props: {
                 </p>
               </div>
             </div>
-            <div className="mt-2 pt-2 border-t border-indigo-100/60 flex items-center justify-between text-[11px] font-bold text-indigo-600 group-hover:text-indigo-800">
+            <div className="mt-2 pt-2 border-t border-gray-100 flex items-center justify-between text-[11px] font-bold text-gray-700 group-hover:text-black">
               <span>Buka Studio</span>
-              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+              <ArrowRight className="w-3.5 h-3.5 text-gray-400" />
             </div>
           </Link>
 
           {/* 3. Sadur Berita URL */}
           <Link
             href="/admin/sadur"
-            className="group col-span-1 bg-gradient-to-br from-cyan-50/70 to-white p-3.5 sm:p-4 rounded-2xl border border-cyan-100 hover:border-cyan-300 hover:shadow-md transition-all flex flex-col justify-between h-full"
+            className="group col-span-1 bg-white p-3.5 sm:p-4 rounded-2xl border border-gray-200 hover:border-gray-300 hover:shadow-xs transition-colors flex flex-col justify-between h-full"
           >
             <div>
               <div className="flex items-center justify-between">
-                <div className="w-8 h-8 rounded-lg bg-cyan-600 text-white flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                <div className="w-8 h-8 rounded-lg bg-gray-900 text-white flex items-center justify-center shrink-0">
                   <Link2 className="w-4 h-4" />
                 </div>
-                <span className="text-[10px] font-extrabold px-1.5 sm:px-2 py-0.5 rounded-md bg-cyan-100/80 text-cyan-800">
+                <span className="text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded-md bg-gray-100 text-gray-800">
                   Sadur URL
                 </span>
               </div>
               <div className="mt-2.5 sm:mt-3">
                 <div className="flex items-baseline gap-1">
-                  <span className="text-lg sm:text-2xl font-black font-heading text-cyan-950">
+                  <span className="text-lg sm:text-2xl font-black font-heading text-gray-900">
                     {sadurDrafts}
                   </span>
-                  <span className="text-xs font-semibold text-cyan-700">Draf</span>
+                  <span className="text-xs font-semibold text-gray-700">Draf</span>
                   <span className="text-[10px] sm:text-[11px] text-gray-400">/{sadurTotal}</span>
                 </div>
                 <p className="text-[10px] sm:text-[11px] text-gray-500 mt-0.5 line-clamp-1">
@@ -384,32 +384,32 @@ export default async function AdminDashboard(props: {
                 </p>
               </div>
             </div>
-            <div className="mt-2 pt-2 border-t border-cyan-100/60 flex items-center justify-between text-[11px] font-bold text-cyan-700 group-hover:text-cyan-900">
+            <div className="mt-2 pt-2 border-t border-gray-100 flex items-center justify-between text-[11px] font-bold text-gray-700 group-hover:text-black">
               <span>Buka Sadur</span>
-              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+              <ArrowRight className="w-3.5 h-3.5 text-gray-400" />
             </div>
           </Link>
 
           {/* 4. Autopilot AI */}
           <Link
             href="/admin/cron"
-            className="group col-span-1 bg-gradient-to-br from-amber-50/70 to-white p-3.5 sm:p-4 rounded-2xl border border-amber-100 hover:border-amber-300 hover:shadow-md transition-all flex flex-col justify-between h-full"
+            className="group col-span-1 bg-white p-3.5 sm:p-4 rounded-2xl border border-gray-200 hover:border-gray-300 hover:shadow-xs transition-colors flex flex-col justify-between h-full"
           >
             <div>
               <div className="flex items-center justify-between">
-                <div className="w-8 h-8 rounded-lg bg-amber-500 text-white flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                <div className="w-8 h-8 rounded-lg bg-gray-900 text-white flex items-center justify-center shrink-0">
                   <Bot className="w-4 h-4" />
                 </div>
-                <span className="text-[10px] font-extrabold px-1.5 sm:px-2 py-0.5 rounded-md bg-amber-100/80 text-amber-800">
+                <span className="text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded-md bg-gray-100 text-gray-800">
                   Autopilot
                 </span>
               </div>
               <div className="mt-2.5 sm:mt-3">
                 <div className="flex items-baseline gap-1">
-                  <span className="text-lg sm:text-2xl font-black font-heading text-amber-950">
+                  <span className="text-lg sm:text-2xl font-black font-heading text-gray-900">
                     {autopilotDrafts}
                   </span>
-                  <span className="text-xs font-semibold text-amber-700">Draf</span>
+                  <span className="text-xs font-semibold text-gray-700">Draf</span>
                   <span className="text-[10px] sm:text-[11px] text-gray-400">/{autopilotTotal}</span>
                 </div>
                 <p className="text-[10px] sm:text-[11px] text-gray-500 mt-0.5 line-clamp-1">
@@ -417,23 +417,23 @@ export default async function AdminDashboard(props: {
                 </p>
               </div>
             </div>
-            <div className="mt-2 pt-2 border-t border-amber-100/60 flex items-center justify-between text-[11px] font-bold text-amber-700 group-hover:text-amber-900">
+            <div className="mt-2 pt-2 border-t border-gray-100 flex items-center justify-between text-[11px] font-bold text-gray-700 group-hover:text-black">
               <span>Autopilot</span>
-              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+              <ArrowRight className="w-3.5 h-3.5 text-gray-400" />
             </div>
           </Link>
 
           {/* 5. Manual & File .MD */}
           <Link
             href="/admin/tulis"
-            className="group col-span-1 bg-gradient-to-br from-gray-50/80 to-white p-3.5 sm:p-4 rounded-2xl border border-gray-200 hover:border-gray-300 hover:shadow-md transition-all flex flex-col justify-between h-full"
+            className="group col-span-1 bg-white p-3.5 sm:p-4 rounded-2xl border border-gray-200 hover:border-gray-300 hover:shadow-xs transition-colors flex flex-col justify-between h-full"
           >
             <div>
               <div className="flex items-center justify-between">
-                <div className="w-8 h-8 rounded-lg bg-gray-900 text-white flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                <div className="w-8 h-8 rounded-lg bg-gray-900 text-white flex items-center justify-center shrink-0">
                   <PenSquare className="w-4 h-4" />
                 </div>
-                <span className="text-[10px] font-extrabold px-1.5 sm:px-2 py-0.5 rounded-md bg-gray-200/80 text-gray-800">
+                <span className="text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded-md bg-gray-100 text-gray-800">
                   Manual / .MD
                 </span>
               </div>
@@ -450,9 +450,9 @@ export default async function AdminDashboard(props: {
                 </p>
               </div>
             </div>
-            <div className="mt-2 pt-2 border-t border-gray-100 flex items-center justify-between text-[11px] font-bold text-gray-800 group-hover:text-black">
+            <div className="mt-2 pt-2 border-t border-gray-100 flex items-center justify-between text-[11px] font-bold text-gray-700 group-hover:text-black">
               <span>Tulis Berita</span>
-              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+              <ArrowRight className="w-3.5 h-3.5 text-gray-400" />
             </div>
           </Link>
         </div>

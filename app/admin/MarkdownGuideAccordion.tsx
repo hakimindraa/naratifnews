@@ -69,7 +69,7 @@ export default function MarkdownGuideAccordion() {
 
       {/* Collapsible Content */}
       {isOpen && (
-        <div className="p-4 sm:p-6 border-t border-gray-200 space-y-4 animate-in fade-in duration-200">
+        <div className="p-4 sm:p-6 border-t border-gray-200 space-y-4">
           <div className="relative">
             <pre className="bg-[#0f172a] text-gray-100 p-4 sm:p-5 rounded-xl text-xs sm:text-sm overflow-x-auto font-mono scrollbar-hide border border-slate-800 leading-relaxed">
               {TEMPLATE_CONTENT}

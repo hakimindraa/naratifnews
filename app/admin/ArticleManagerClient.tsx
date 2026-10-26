@@ -935,11 +935,11 @@ export default function ArticleManagerClient({
 
       {/* 4. BILAH AKSI MENGAMBANG (FLOATING ACTION TOOLBAR) */}
       {selectedIds.length > 0 && (
-        <div className="fixed bottom-5 sm:bottom-6 left-1/2 -translate-x-1/2 z-50 w-[95%] max-w-2xl animate-in fade-in slide-in-from-bottom-5 duration-200">
-          <div className="bg-gray-900/95 backdrop-blur-md text-white p-2.5 sm:p-3 rounded-2xl shadow-2xl border border-gray-700/80 flex flex-wrap items-center justify-between gap-2.5 sm:gap-3">
+        <div className="fixed bottom-5 sm:bottom-6 left-1/2 -translate-x-1/2 z-50 w-[95%] max-w-2xl">
+          <div className="bg-gray-900 text-white p-2.5 sm:p-3 rounded-2xl shadow-xl border border-gray-800 flex flex-wrap items-center justify-between gap-2.5 sm:gap-3">
             {/* Counter Badge */}
             <div className="flex items-center gap-2 pl-2">
-              <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse" />
+              <span className="w-2 h-2 rounded-full bg-indigo-400" />
               <span className="text-xs sm:text-sm font-bold text-gray-100">
                 <b>{selectedIds.length}</b> dipilih
               </span>

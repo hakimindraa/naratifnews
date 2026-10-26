@@ -56,22 +56,7 @@ export default function VercelStatusBadge() {
 
   useEffect(() => {
     fetchStatus();
-
-    // Auto-polling interval:
-    // Jika sedang building/initializing: polling tiap 10 detik agar tahu saat selesai.
-    // Saat status normal (ready/idle): polling tiap 5 menit (300.000 ms) agar sangat hemat & tidak membebani.
-    const isBuilding =
-      data?.latest?.state === 'BUILDING' ||
-      data?.latest?.state === 'INITIALIZING' ||
-      data?.latest?.state === 'QUEUED';
-
-    const intervalTime = isBuilding ? 10000 : 5 * 60 * 1000; // 5 menit
-    const timer = setInterval(() => {
-      fetchStatus();
-    }, intervalTime);
-
-    return () => clearInterval(timer);
-  }, [data?.latest?.state]);
+  }, []);
 
   // Click outside listener untuk menutup popup
   useEffect(() => {
@@ -98,7 +83,6 @@ export default function VercelStatusBadge() {
 
     if (res.success) {
       setRedeployNotice('🚀 Build baru berhasil dipicu di Vercel!');
-      // Refetch setelah 2 detik
       setTimeout(() => fetchStatus(), 2000);
     } else {
       setRedeployNotice(`❌ Gagal: ${res.error || 'Terjadi kesalahan'}`);
@@ -121,11 +105,11 @@ export default function VercelStatusBadge() {
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className={`h-9 flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 rounded-xl text-xs font-semibold transition-all cursor-pointer border shadow-2xs whitespace-nowrap shrink-0 ${
+        className={`h-9 flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 rounded-xl text-xs font-semibold transition-colors cursor-pointer border shadow-2xs whitespace-nowrap shrink-0 ${
           isReady
             ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/20'
             : isBuilding
-            ? 'bg-amber-500/10 text-amber-300 border-amber-500/30 hover:bg-amber-500/20 animate-pulse'
+            ? 'bg-amber-500/10 text-amber-300 border-amber-500/30 hover:bg-amber-500/20'
             : isError
             ? 'bg-rose-500/10 text-rose-300 border-rose-500/30 hover:bg-rose-500/20'
             : 'bg-gray-800 text-gray-300 border-gray-700 hover:bg-gray-700'
@@ -136,10 +120,7 @@ export default function VercelStatusBadge() {
         {loading && !latest ? (
           <RefreshCw className="w-3.5 h-3.5 animate-spin text-gray-400 shrink-0" />
         ) : isReady ? (
-          <span className="relative flex h-2 w-2 shrink-0">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-          </span>
+          <span className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" />
         ) : isBuilding ? (
           <RefreshCw className="w-3.5 h-3.5 animate-spin text-amber-400 shrink-0" />
         ) : isError ? (
@@ -177,11 +158,11 @@ export default function VercelStatusBadge() {
         <>
           {/* Backdrop gelap di tampilan mobile */}
           <div
-            className="fixed inset-0 bg-black/60 backdrop-blur-2xs z-40 sm:hidden"
+            className="fixed inset-0 bg-black/60 z-40 sm:hidden"
             onClick={() => setIsOpen(false)}
           />
 
-          <div className="fixed inset-x-3.5 top-18 sm:top-full sm:mt-2 sm:absolute sm:inset-x-auto sm:right-0 w-auto sm:w-96 max-w-sm sm:max-w-none mx-auto sm:mx-0 rounded-2xl bg-gray-900 border border-gray-800 shadow-2xl p-4 sm:p-5 z-50 text-white animate-in fade-in zoom-in-95 duration-200 max-h-[85vh] overflow-y-auto">
+          <div className="fixed inset-x-3.5 top-18 sm:top-full sm:mt-2 sm:absolute sm:inset-x-auto sm:right-0 w-auto sm:w-96 max-w-sm sm:max-w-none mx-auto sm:mx-0 rounded-2xl bg-gray-900 border border-gray-800 shadow-xl p-4 sm:p-5 z-50 text-white max-h-[85vh] overflow-y-auto">
             {/* Header */}
           <div className="flex items-center justify-between pb-3 border-b border-gray-800">
             <div className="flex items-center gap-2">
@@ -303,9 +284,9 @@ export default function VercelStatusBadge() {
                   type="button"
                   onClick={handleTriggerRedeploy}
                   disabled={redeploying || isBuilding}
-                  className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white font-bold text-xs shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                  className="w-full py-2 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition-colors flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                 >
-                  <Zap className={`w-3.5 h-3.5 text-amber-300 ${redeploying ? 'animate-bounce' : ''}`} />
+                  <Zap className="w-3.5 h-3.5 text-amber-300" />
                   <span>{redeploying ? 'Memicu Deploy Ulang...' : isBuilding ? 'Sedang Building...' : '⚡ Trigger Deploy Ulang'}</span>
                 </button>
               </div>
