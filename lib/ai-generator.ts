@@ -965,7 +965,13 @@ export interface SadurArticleOptions {
 export async function requestSadurArticleFromSource(
   options: SadurArticleOptions
 ): Promise<GeneratedArticleDraft & { modelUsed: string; providerUsed: string }> {
-  const provider: AIProvider = options.provider || 'groq';
+  let provider: AIProvider = options.provider || 'gemini';
+  if (!options.provider) {
+    const dbDefaultProvider = await getDbConfig('ai_default_provider');
+    if (dbDefaultProvider === 'gemini' || dbDefaultProvider === 'groq' || dbDefaultProvider === '9router') {
+      provider = dbDefaultProvider as AIProvider;
+    }
+  }
 
   const wordCountTarget =
     options.length === 'ringkas'
@@ -1015,32 +1021,30 @@ export async function requestSadurArticleFromSource(
     ? options.domain.replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/.*$/, '')
     : 'Sumber Terkait';
 
-  const systemPrompt = `Anda adalah jurnalis teknologi senior dan editor penyadur berita di portal media teknologi "Ada Fakta" (Indonesia).
-Tugas Anda adalah membaca laporan berita sumber asli, mengekstrak fakta-fakta kunci, dan MENULIS ULANG (REWRITE / SADUR) menjadi naskah berita orisinal berbahasa Indonesia yang segar, berwawasan tajam, dan memenuhi standar jurnalisme piramida terbalik.
+  const systemPrompt = `Anda adalah jurnalis senior dan editor penyadur berita di portal media terkemuka "Ada Fakta" (adafakta.web.id).
+Tugas Anda adalah membaca laporan berita sumber asli, mengekstrak fakta-fakta kunci, dan MENULIS ULANG (REWRITE / SADUR) menjadi naskah berita orisinal berbahasa Indonesia yang segar, berwawasan tajam, objektif, dan memenuhi kaidah piramida terbalik (5W + 1H).
 
 ATURAN PENULISAN:
-1. Bahasa: Bahasa Indonesia baku, modern, dan bergaya jurnalisme teknologi berbobot.
+1. Bahasa: Bahasa Indonesia baku, modern, dan bergaya jurnalisme terpercaya (lugas, berimbang, tanpa opini fiktif).
 2. Anti-Plagiarisme: JANGAN melakukan terjemahan harfiah kata demi kata. Susun kembali struktur kalimat dan alur paragraf dengan gaya narasi redaksi Ada Fakta yang mengalir dan dinamis.
-3. Faktual & Akurat: Pertahankan semua fakta riil, angka, data teknis, kronologi peristiwa, nama perusahaan, serta nama narasumber dan kutipannya dari artikel sumber.
-4. Format Konten: Gunakan Markdown murni (Heading ##, ###, bullet points, penekanan bold, kutipan analitis >). JANGAN gunakan tag HTML mentah seperti <p>, <div>, <span>.
-5. Panjang konten: Target ${wordCountTarget}.
-6. Kategori artikel HARUS salah satu dari: ["AI", "Software", "Hardware", "Gadget", "Infrastruktur", "Regional", "Nasional", "Internasional", "Sport"].
-7. Atribusi Sumber Wajib: Pada bagian paling bawah artikel (baris terakhir), WAJIB sertakan garis pembatas (---) dan satu baris sumber ringkas:
-   ---
-   *Sumber: ${cleanDomain}.*
-   (Cukup tulis nama media sumber yang bersih, DILARANG mencantumkan link URL panjang atau teks bertele-tele).
-8. Larangan Judul Ganda: DILARANG mengulang judul berita sebagai Heading (# atau ##) di baris pertama 'content'. Bagian 'content' WAJIB langsung dimulai dengan paragraf teks narasi liputan.
-9. Output: WAJIB HANYA berupa objek JSON murni (VALID JSON) tanpa teks obrolan apa pun di luar JSON.
+3. Faktual & Akurat: Pertahankan semua fakta riil, angka, data teknis, kronologi peristiwa, nama perusahaan/lembaga, serta nama narasumber dan kutipannya dari artikel sumber.
+4. Kalimat Pembuka: Kalimat pertama pada paragraf pembuka WAJIB diawali langsung dengan teks "adafaktanews - " (huruf kecil semua diikuti tanda hubung dan spasi), contoh: "adafaktanews - [inti peristiwa terhangat...]".
+5. Format Narasi Bersih: Tulis berita dalam 3-5 paragraf mengalir yang padat (Lead peristiwa terhangat, penjelasan konteks/narasumber, dampak atau implikasi peristiwa, dan penutup status terkini). DILARANG menggunakan subjudul Markdown (## atau ###), DILARANG menggunakan bullet points (- atau *), dan DILARANG memakai tag HTML mentah.
+6. Panjang konten: Target ${wordCountTarget}.
+7. Kategori artikel HARUS salah satu dari: ["AI", "Software", "Hardware", "Gadget", "Infrastruktur", "Regional", "Nasional", "Internasional", "Sport"].
+8. Atribusi Sumber Riset: Di akhir naskah berita (baris terakhir), WAJIB sertakan satu baris sumber ringkas bertuliskan miring: "*Sumber: ${cleanDomain}.*". Contoh: "*Sumber: ${cleanDomain}.*". DILARANG mencantumkan garis pembatas (---) dan DILARANG mencantumkan link URL panjang.
+9. Larangan Judul Ganda: DILARANG mengulang judul berita sebagai Heading (# atau ##) di baris pertama 'content'. Bagian 'content' WAJIB langsung dimulai dengan "adafaktanews - ".
+10. Output: WAJIB HANYA berupa objek JSON murni (VALID JSON) tanpa pembuka atau penutup obrolan apa pun di luar JSON.
 
 FORMAT STRUKTUR JSON YANG WAJIB ANDA HASILKAN:
 {
   "title": "Judul Berita Baru yang Menarik, Faktual, dan Orisinal (Maks 15 kata)",
   "slug": "slug-url-ramah-seo-berdasarkan-judul-baru",
-  "excerpt": "Ringkasan tajam 2-3 kalimat yang menggambarkan inti berita (maksimal 250 karakter)",
+  "excerpt": "Ringkasan tajam 1-2 kalimat yang menggambarkan inti berita (maksimal 180 karakter, minimalis & padat)",
   "category": "${targetCategory}",
   "tags": ["Tag1", "Tag2", "Tag3", "Tag4"],
   "coverCaption": "Deskripsi singkat foto/ilustrasi berita (maksimal 100 karakter)",
-  "content": "Isi lengkap berita dalam format Markdown..."
+  "content": "adafaktanews - [Isi lengkap berita mengalir dalam paragraf bersih...]"
 }`;
 
   const userPrompt = `Silakan sadur dan tulis ulang laporan berita sumber berikut menjadi artikel berita Ada Fakta yang orisinal:
@@ -1135,13 +1139,44 @@ Ingat, balas HANYA dengan dokumen JSON yang valid sesuai format yang ditentukan.
     ? parsed.tags.map((t: any) => String(t).trim()).filter(Boolean)
     : [finalCategory, defaultMiddleTag, options.domain || 'Ada Fakta'];
 
-  const cleanedContent = cleanContentHeading(String(parsed.content).trim(), String(parsed.title).trim());
-  const finalContent = injectInternalLinkIfMissing(cleanedContent, internalCandidates, finalCategory);
+  // 1. Bersihkan heading liar jika mengulang judul
+  let cleanedContent = cleanContentHeading(String(parsed.content).trim(), String(parsed.title).trim());
+
+  // 2. Bersihkan garis pembatas horizontal liar (--- atau ***)
+  cleanedContent = cleanedContent.replace(/\n\s*[-*_]{3,}\s*\n/g, '\n\n').trim();
+
+  // 3. Bersihkan subjudul liar (## atau ###) jika AI masih menyelipkannya agar narasi tetap mengalir bersih
+  cleanedContent = cleanedContent.replace(/^(?:#{1,6}\s*)([^\n\r]+)/gm, '$1');
+
+  // 4. Pastikan awalan selalu 'adafaktanews - '
+  if (!cleanedContent.toLowerCase().startsWith('adafaktanews -')) {
+    cleanedContent = cleanedContent.replace(/^adafaktanews\s*[-–—]?\s*/i, '');
+    cleanedContent = `adafaktanews - ${cleanedContent.trimStart()}`;
+  }
+
+  // 5. Bersihkan penanda sumber sementara jika sudah ada di teks agar tidak ganda sebelum injeksi internal link
+  cleanedContent = cleanedContent.replace(/\n*\*Sumber:.*?\*\s*$/i, '').trim();
+
+  // 6. Sisipkan Smart Internal Linking ("Baca Juga")
+  const finalContentWithLink = injectInternalLinkIfMissing(cleanedContent, internalCandidates, finalCategory);
+
+  // 7. Pastikan baris akhir selalu memuat atribusi '*Sumber: [cleanDomain]*'
+  let finalContent = finalContentWithLink;
+  if (!finalContent.includes('*Sumber:')) {
+    finalContent = `${finalContent.trimEnd()}\n\n*Sumber: ${cleanDomain}*`;
+  }
+
+  // 8. Format excerpt minimalis & padat (maksimal 180-200 karakter)
+  let cleanExcerpt = String(parsed.excerpt || parsed.title).trim();
+  cleanExcerpt = cleanExcerpt.replace(/^[#*"\s]+/, '').replace(/["\s]+$/, '');
+  if (cleanExcerpt.length > 200) {
+    cleanExcerpt = cleanExcerpt.slice(0, 197).trim() + '...';
+  }
 
   return {
     title: String(parsed.title).trim(),
     slug: sanitizeSlug(parsed.slug || parsed.title),
-    excerpt: String(parsed.excerpt || parsed.title).slice(0, 500).trim(),
+    excerpt: cleanExcerpt,
     content: finalContent,
     category: finalCategory,
     tags,

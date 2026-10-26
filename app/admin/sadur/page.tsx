@@ -68,6 +68,7 @@ export default function SadurPage() {
     articleId: number;
     title: string;
     slug: string;
+    excerpt?: string;
     category: string;
     status: string;
     durationMs: number;
@@ -165,6 +166,7 @@ export default function SadurPage() {
         articleId: res.articleId,
         title: res.title || '',
         slug: res.slug || '',
+        excerpt: res.excerpt || undefined,
         category: res.category || category,
         status: res.status || status,
         durationMs: res.durationMs || 0,
@@ -584,6 +586,17 @@ export default function SadurPage() {
               <span>📂 Kategori: <b>{sadurResult.category}</b></span>
               <span className="truncate max-w-full">🔗 Slug: <code className="font-mono text-gray-700">{sadurResult.slug}</code></span>
             </div>
+
+            {sadurResult.excerpt && (
+              <div className="pt-2 border-t border-emerald-100/90">
+                <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block mb-1">
+                  Deskripsi Cuplikan (Excerpt):
+                </span>
+                <p className="text-xs sm:text-sm text-gray-700 italic bg-white/70 p-2.5 rounded-lg border border-emerald-100 leading-relaxed">
+                  &ldquo;{sadurResult.excerpt}&rdquo;
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Advisory Kemiripan Topik */}

@@ -75,6 +75,15 @@ export async function generateSadurArticleAction(params: GenerateSadurParams) {
       return { success: false, message: 'Konten sumber tidak mencukupi untuk disadur.' };
     }
 
+    // Sinkronkan default AI provider jika belum disetel
+    let activeProvider = params.provider;
+    if (!activeProvider) {
+      const settings = await getAISettings();
+      if (settings.defaultProvider) {
+        activeProvider = settings.defaultProvider as AIProvider;
+      }
+    }
+
     // Panggil generator penyadur AI
     const result = await requestSadurArticleFromSource({
       sourceUrl: params.sourceUrl,
@@ -83,7 +92,7 @@ export async function generateSadurArticleAction(params: GenerateSadurParams) {
       domain: params.domain,
       category: params.category,
       length: params.length,
-      provider: params.provider,
+      provider: activeProvider,
     });
 
     const now = new Date();
@@ -119,7 +128,7 @@ export async function generateSadurArticleAction(params: GenerateSadurParams) {
       articleTitle: newArticle.title,
       category: newArticle.category,
       status: newArticle.status,
-      model: result.modelUsed || params.provider,
+      model: result.modelUsed || activeProvider,
       durationMs,
       errorMessage: null,
       createdAt: now,
@@ -145,6 +154,7 @@ export async function generateSadurArticleAction(params: GenerateSadurParams) {
       articleId: newArticle.id,
       title: newArticle.title,
       slug: newArticle.slug,
+      excerpt: newArticle.excerpt,
       category: newArticle.category,
       status: newArticle.status,
       durationMs,
