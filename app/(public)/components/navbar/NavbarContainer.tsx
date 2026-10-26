@@ -3,7 +3,6 @@
 import { useState } from "react";
 import TopUtilityBar from "./TopUtilityBar";
 import MainNavbar from "./MainNavbar";
-import CategoryPillsMobile from "./CategoryPillsMobile";
 import BreakingTicker from "./BreakingTicker";
 import MobileDrawer from "./MobileDrawer";
 
@@ -40,13 +39,12 @@ export default function NavbarContainer({ breakingNews, trendingTags }: NavbarCo
       {/* 1. Desktop Utility Bar (Non-sticky, menghilang saat scroll) */}
       <TopUtilityBar />
 
-      {/* 2. Main Sticky Section (Glassmorphic Header + Mobile Tabs) */}
+      {/* 2. Main Sticky Section (Glassmorphic Header) */}
       <div className="sticky top-0 z-40 shadow-xs">
         <MainNavbar
           categories={CATEGORIES}
           onOpenDrawer={() => setIsDrawerOpen(true)}
         />
-        <CategoryPillsMobile categories={CATEGORIES} />
       </div>
 
       {/* 3. Ticker Berita Terkini & Trending Tags */}

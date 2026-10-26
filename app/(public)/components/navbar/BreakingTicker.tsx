@@ -18,13 +18,13 @@ export default function BreakingTicker({ breakingNews, trendingTags }: BreakingT
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row md:items-center justify-between gap-2">
         {/* Sisi Kiri: Breaking News Headline */}
         <div className="flex items-center min-w-0 flex-1">
-          <span className="bg-black text-white text-[10px] md:text-xs font-black px-2 py-0.5 rounded-sm mr-2.5 shrink-0 uppercase tracking-wider shadow-2xs">
-            Breaking
+          <span className="bg-red-600 text-white text-[10px] md:text-xs font-medium px-2 py-0.5 rounded-md mr-2.5 shrink-0 tracking-wide uppercase">
+            Terkini
           </span>
           {breakingNews ? (
             <Link
               href={`/berita/${breakingNews.category.toLowerCase()}/${breakingNews.id}/${breakingNews.slug}`}
-              className="truncate text-xs md:text-sm font-semibold text-gray-900 hover:text-gray-600 transition-colors"
+              className="truncate text-xs md:text-sm font-normal text-gray-800 hover:text-red-600 transition-colors"
             >
               {breakingNews.title}
             </Link>
