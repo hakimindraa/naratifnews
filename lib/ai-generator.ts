@@ -565,6 +565,24 @@ function sanitizeSlug(rawSlug: string): string {
   return cleaned;
 }
 
+export function sanitizeCoverCaption(
+  caption: string | null | undefined,
+  fallbackTitle: string = '',
+  sourceName: string = 'Redaksi'
+): string {
+  let text = (caption || fallbackTitle || '').trim();
+
+  // 1. Bersihkan awalan 'Ilustrasi', 'Ilustrasi liputan:', 'Foto ilustrasi:', dsb.
+  text = text.replace(/^(?:foto\s+)?ilustrasi(?:\s+(?:liputan|berita|sampul|artikel))?\s*[:–—-]?\s*/i, '');
+
+  // 2. Jika tidak ada kredit tanda kurung di akhir, tambahkan kredit standar ala Detik/Kompas
+  if (!/\((?:foto|dok)[^)]*\)$/i.test(text)) {
+    text = `${text.replace(/[.\s]+$/, '')}. (Foto: Dok. ${sourceName || 'Redaksi'})`;
+  }
+
+  return text.slice(0, 140).trim();
+}
+
 function getEnvVar(key: string, defaultValue = ''): string {
   // 1. Cek process.env dulu (terutama saat di Vercel / serverless production)
   if (process.env[key]) {
@@ -794,7 +812,7 @@ FORMAT STRUKTUR JSON YANG WAJIB ANDA HASILKAN:
   "excerpt": "Ringkasan tajam 2-3 kalimat yang menggambarkan inti berita (maksimal 250 karakter)",
   "category": "Regional",
   "tags": ["Regional", "${cleanRegion || 'Daerah'}", "Kebijakan Daerah", "Pemda"],
-  "coverCaption": "Deskripsi singkat foto/ilustrasi berita (maksimal 100 karakter)",
+  "coverCaption": "Keterangan foto jurnalistik standar media nasional (Kompas/Detik/CNN): deskripsi peristiwa/subjek to-the-point diakhiri kredit foto '(Foto: Dok. Istimewa)'. DILARANG menggunakan kata 'Ilustrasi' (maksimal 100 karakter)",
   "content": "adafaktanews - [Isi lengkap berita mengalir dalam paragraf bersih...]"
 }`
     : `Anda adalah jurnalis teknologi senior dan editor utama di portal media teknologi terkemuka "Ada Fakta" (Indonesia).
@@ -817,7 +835,7 @@ FORMAT STRUKTUR JSON YANG WAJIB ANDA HASILKAN:
   "excerpt": "Ringkasan tajam 2-3 kalimat yang menggambarkan inti berita (maksimal 250 karakter)",
   "category": "${targetCategory}",
   "tags": ["Tag1", "Tag2", "Tag3", "Tag4"],
-  "coverCaption": "Deskripsi singkat foto/ilustrasi berita (maksimal 100 karakter)",
+  "coverCaption": "Keterangan foto jurnalistik standar media nasional (Kompas/Detik/CNN): deskripsi peristiwa/subjek to-the-point diakhiri kredit foto '(Foto: Dok. Istimewa)'. DILARANG menggunakan kata 'Ilustrasi' (maksimal 100 karakter)",
   "content": "adafaktanews - [Isi lengkap berita mengalir dalam paragraf bersih...]"
 }`;
 
@@ -945,7 +963,7 @@ Ingat, balas HANYA dengan dokumen JSON yang valid sesuai format yang ditentukan.
     content: finalContent,
     category: finalCategory,
     tags,
-    coverCaption: String(parsed.coverCaption || `Ilustrasi liputan ${parsed.title}`).trim(),
+    coverCaption: sanitizeCoverCaption(parsed.coverCaption, parsed.title, 'Istimewa'),
     researchSources,
     modelUsed: modelName,
     providerUsed: provider,
@@ -1043,7 +1061,7 @@ FORMAT STRUKTUR JSON YANG WAJIB ANDA HASILKAN:
   "excerpt": "Ringkasan tajam 1-2 kalimat yang menggambarkan inti berita (maksimal 180 karakter, minimalis & padat)",
   "category": "${targetCategory}",
   "tags": ["Tag1", "Tag2", "Tag3", "Tag4"],
-  "coverCaption": "Deskripsi singkat foto/ilustrasi berita (maksimal 100 karakter)",
+  "coverCaption": "Keterangan foto jurnalistik standar media nasional (Kompas/Detik/CNN): deskripsi peristiwa/subjek to-the-point diakhiri kredit foto '(Foto: Dok. Istimewa)'. DILARANG menggunakan kata 'Ilustrasi' (maksimal 100 karakter)",
   "content": "adafaktanews - [Isi lengkap berita mengalir dalam paragraf bersih...]"
 }`;
 
@@ -1180,7 +1198,7 @@ Ingat, balas HANYA dengan dokumen JSON yang valid sesuai format yang ditentukan.
     content: finalContent,
     category: finalCategory,
     tags,
-    coverCaption: String(parsed.coverCaption || `Ilustrasi liputan ${parsed.title}`).trim(),
+    coverCaption: sanitizeCoverCaption(parsed.coverCaption, parsed.title, cleanDomain || 'Istimewa'),
     modelUsed: modelName,
     providerUsed: provider,
   };

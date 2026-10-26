@@ -277,7 +277,7 @@ export default function EditForm({ article }: { article: any }) {
             name="coverCaption"
             value={coverCaption}
             onChange={(e) => setCoverCaption(e.target.value)}
-            placeholder="Contoh: Ilustrasi server AI dan komputasi awan. (Dok. Unsplash)"
+            placeholder="Contoh: Suasana peluncuran server AI di Jakarta. (Foto: Dok. Istimewa)"
             className="w-full px-3.5 sm:px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-gray-900 focus:border-gray-900 text-xs sm:text-sm"
           />
         </div>

@@ -40,7 +40,7 @@ export default function DraftPhotoModal({
   const [filePreview, setFilePreview] = useState<string | null>(null);
   const [imageUrl, setImageUrl] = useState('');
   const [caption, setCaption] = useState(
-    initialCaption || `Ilustrasi liputan: ${draftTitle.slice(0, 80)}`
+    initialCaption || `${draftTitle.trim().replace(/[.\s]+$/, '')}. (Foto: Dok. Redaksi)`
   );
   const [publishAt, setPublishAt] = useState<string>(() => {
     if (initialPublishAt) {
@@ -271,7 +271,7 @@ export default function DraftPhotoModal({
               type="text"
               value={caption}
               onChange={(e) => setCaption(e.target.value)}
-              placeholder="Contoh: Ilustrasi peluncuran inovasi AI..."
+              placeholder="Contoh: Suasana kawasan Gunung Bromo yang kembali dibuka untuk umum. (Foto: Dok. Istimewa)"
               className="w-full text-xs px-3.5 py-2 rounded-xl border border-gray-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none"
             />
           </div>

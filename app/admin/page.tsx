@@ -18,6 +18,7 @@ import { db } from '@/db';
 import { articles, aiGenerationLogs, jurnalisDrafts } from '@/db/schema';
 import { desc, eq, and, isNotNull } from 'drizzle-orm';
 import { getJurnalisPublishIntervalAction } from './jurnalis/actions';
+import { sanitizeCoverCaption } from '@/lib/ai-generator';
 
 export const instant = false;
 
@@ -85,7 +86,7 @@ export default async function AdminDashboard(props: {
     title: d.generatedTitle || d.title,
     excerpt: d.summary || '',
     coverUrl: d.coverUrl,
-    coverCaption: d.coverCaption || `Ilustrasi: ${d.generatedTitle || d.title}`,
+    coverCaption: sanitizeCoverCaption(d.coverCaption, d.generatedTitle || d.title, 'Redaksi'),
     category: d.category || 'Nasional',
     author: 'Redaksi 2',
     tags: d.tags || ['antrean-jurnalis'],

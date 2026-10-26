@@ -8,6 +8,7 @@ import { uploadImageToImgbb } from '../media-actions';
 import { notifySearchEngines } from '@/lib/indexing';
 import { sendTelegramMessage } from '@/lib/telegram';
 import { getAISettings } from '@/app/admin/pengaturan/actions';
+import { sanitizeCoverCaption } from '@/lib/ai-generator';
 
 function generateSlug(text: string): string {
   const base = text
@@ -89,7 +90,7 @@ export async function convertDraftToArticleAction(draftId: number, targetCategor
 
     const rawCoverUrl = draft.coverUrl || 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=1200&auto=format&fit=crop&q=80';
     const coverUrl = rawCoverUrl.replace(/https?:\/\/i\.ibb\.co\//g, 'https://i.ibb.co.com/');
-    const coverCaption = draft.coverCaption || `Ilustrasi liputan berita: ${title}`;
+    const coverCaption = sanitizeCoverCaption(draft.coverCaption, title, draft.source || 'Redaksi');
     const tags = Array.isArray(draft.tags) && draft.tags.length > 0 
       ? draft.tags 
       : ['berita', 'intelijen-jurnalis', chosenCategory.toLowerCase()];
@@ -213,7 +214,7 @@ export async function attachPhotoToDraftAction(draftId: number, formData: FormDa
       .update(jurnalisDrafts)
       .set({
         coverUrl: finalCoverUrl,
-        coverCaption: caption || draft.coverCaption || `Ilustrasi: ${draft.generatedTitle || draft.title}`,
+        coverCaption: sanitizeCoverCaption(caption || draft.coverCaption, draft.generatedTitle || draft.title, draft.source || 'Redaksi'),
         publishAt: targetPublishAt || draft.publishAt,
         status: newStatus,
       })
@@ -517,7 +518,7 @@ export async function instantPublishDraftAction(draftId: number) {
         author: 'Redaksi 2',
         authorId: 3,
         coverUrl: normalizedCoverUrl,
-        coverCaption: draft.coverCaption || `Ilustrasi liputan: ${title}`,
+        coverCaption: sanitizeCoverCaption(draft.coverCaption, title, draft.source || 'Redaksi'),
         status: 'published',
         publishedAt: now,
         publishAt: now,
@@ -904,7 +905,7 @@ export async function attachPhotoUrlToDraftAction(draftId: number, photoUrl: str
       .update(jurnalisDrafts)
       .set({
         coverUrl: normalizedCoverUrl,
-        coverCaption: caption || draft.coverCaption || `Ilustrasi: ${draft.generatedTitle || draft.title}`,
+        coverCaption: sanitizeCoverCaption(caption || draft.coverCaption, draft.generatedTitle || draft.title, draft.source || 'Redaksi'),
         publishAt: targetPublishAt || draft.publishAt,
         status: newStatus,
       })

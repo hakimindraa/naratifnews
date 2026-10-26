@@ -5,6 +5,7 @@ import { eq, and, isNotNull, asc, lte, or, isNull, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { notifySearchEngines } from '@/lib/indexing';
 import { sendTelegramMessage } from '@/lib/telegram';
+import { sanitizeCoverCaption } from '@/lib/ai-generator';
 
 export const maxDuration = 45;
 
@@ -82,8 +83,11 @@ export async function GET(request: Request) {
 
     const rawCover = draftToPublish.coverUrl!;
     const coverUrl = rawCover.replace(/https?:\/\/i\.ibb\.co\//g, 'https://i.ibb.co.com/');
-    const coverCaption =
-      draftToPublish.coverCaption || `Ilustrasi liputan: ${title} (Sumber: ${draftToPublish.source})`;
+    const coverCaption = sanitizeCoverCaption(
+      draftToPublish.coverCaption,
+      title,
+      draftToPublish.source || 'Istimewa'
+    );
 
     let articleTags: string[] = ['berita', 'adafaktanews', chosenCategory.toLowerCase()];
     if (Array.isArray(draftToPublish.tags) && draftToPublish.tags.length > 0) {

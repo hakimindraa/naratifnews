@@ -136,7 +136,7 @@ export default function ImgbbMediaModal({
       setResultUrl(res.url);
       setResultThumb(res.thumbUrl || res.url);
       if (onSelectUrl) {
-        onSelectUrl(res.url, `Ilustrasi liputan. (Dok. Ada Fakta)`);
+        onSelectUrl(res.url, `Dokumentasi Ada Fakta. (Foto: Dok. Redaksi)`);
         onClose();
       }
     } else {
