@@ -30,7 +30,7 @@ export default function MainNavbar({ categories, onOpenDrawer }: MainNavbarProps
               className="text-2xl lg:text-3xl font-black font-heading tracking-tighter group flex items-center"
             >
               <span className="text-gray-900 group-hover:text-black transition-colors">ada</span>
-              <span className="text-gray-400 group-hover:text-red-600 transition-colors">fakta</span>
+              <span className="text-gray-400 group-hover:text-black transition-colors">fakta</span>
             </Link>
           </div>
 
@@ -47,8 +47,8 @@ export default function MainNavbar({ categories, onOpenDrawer }: MainNavbarProps
                   key={cat.name}
                   href={cat.href}
                   className={`text-sm tracking-tight transition-all pb-1 border-b-2 ${isActive
-                      ? "text-red-600 font-bold border-red-600"
-                      : "text-gray-700 hover:text-red-600 font-semibold border-transparent"
+                      ? "text-black font-bold border-black"
+                      : "text-gray-700 hover:text-black font-semibold border-transparent"
                     }`}
                 >
                   {cat.name}
@@ -72,7 +72,7 @@ export default function MainNavbar({ categories, onOpenDrawer }: MainNavbarProps
               href="https://whatsapp.com/channel/0029VbDdM7DFSAszJWyjca01"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center space-x-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3.5 py-1.5 rounded-full shadow-xs transition-colors shrink-0"
+              className="flex items-center space-x-1.5 bg-black hover:bg-gray-800 text-white text-xs font-bold px-3.5 py-1.5 rounded-full shadow-xs transition-colors shrink-0"
               title="Gabung Saluran WhatsApp Resmi Ada Fakta"
             >
               <MessageCircle className="w-3.5 h-3.5" />

@@ -10,10 +10,10 @@ export default function TopUtilityBar() {
         <div className="flex items-center space-x-3">
           <CurrentDate />
           <span className="text-gray-300">|</span>
-          <div className="flex items-center space-x-1.5 text-emerald-700 font-semibold">
+          <div className="flex items-center space-x-1.5 text-gray-700 font-semibold">
             <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-gray-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-gray-900"></span>
             </span>
             <span>Live Update</span>
           </div>
@@ -38,9 +38,9 @@ export default function TopUtilityBar() {
             href="https://whatsapp.com/channel/0029VbDdM7DFSAszJWyjca01"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center space-x-1.5 text-emerald-700 hover:text-emerald-800 font-semibold transition-colors"
+            className="flex items-center space-x-1.5 text-gray-700 hover:text-black font-semibold transition-colors"
           >
-            <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
+            <MessageCircle className="w-3.5 h-3.5 text-gray-600" />
             <span>Saluran WA Redaksi</span>
           </a>
         </div>

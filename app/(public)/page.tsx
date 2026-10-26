@@ -1,13 +1,14 @@
 import Link from "next/link";
 import { db } from "@/db";
 import { articles } from "@/db/schema";
-import { eq, desc, asc, notInArray, and } from "drizzle-orm";
+import { eq, desc, asc, notInArray, and, sql } from "drizzle-orm";
 import { formatDistanceToNow } from "date-fns";
 import { id } from "date-fns/locale";
 import LatestNewsSection from "./LatestNewsSection";
 import DailyAssistanceWidget from "./DailyAssistanceWidget";
 import KabarNusantaraSection from "./KabarNusantaraSection";
 import ThematicSidebar from "./ThematicSidebar";
+import KanalEksplorasiSection from "./components/KanalEksplorasiSection";
 
 export const instant = false;
 
@@ -140,13 +141,107 @@ export default async function Home() {
   const internasionalArticles = rawInternasional.map(mapToThematicItem);
   const sportArticles = rawSport.map(mapToThematicItem);
 
+  // 9. Query Kanal & Kategori untuk Seksi Eksplorasi Bawah Halaman
+  const categoryDefs = [
+    { name: "Nasional", slug: "nasional", dbCategory: "Nasional", iconName: "nasional" },
+    { name: "Regional", slug: "regional", dbCategory: "Regional", iconName: "regional" },
+    { name: "AI & Otomasi", slug: "ai", dbCategory: "AI", iconName: "ai" },
+    { name: "Gadget", slug: "gadget", dbCategory: "Gadget", iconName: "gadget" },
+    { name: "Software & Web", slug: "software", dbCategory: "Software", iconName: "software" },
+    { name: "Hardware", slug: "hardware", dbCategory: "Hardware", iconName: "hardware" },
+    { name: "Infrastruktur", slug: "infrastruktur", dbCategory: "Infrastruktur", iconName: "infrastruktur" },
+    { name: "Internasional", slug: "internasional", dbCategory: "Internasional", iconName: "internasional" },
+    { name: "Sport", slug: "sport", dbCategory: "Sport", iconName: "sport" },
+  ];
+
+  // Hitung jumlah artikel per kategori
+  let rawCategoryCounts: { category: string; count: number }[] = [];
+  try {
+    rawCategoryCounts = await db
+      .select({
+        category: articles.category,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(articles)
+      .where(eq(articles.status, 'published'))
+      .groupBy(articles.category);
+  } catch (err) {
+    console.warn("Gagal memuat kategori counts:", err);
+  }
+
+  const categoryCountsMap = new Map<string, number>();
+  rawCategoryCounts.forEach((r) => {
+    categoryCountsMap.set(r.category.toLowerCase(), r.count);
+  });
+
+  // Query 3 artikel terbaru untuk setiap kategori
+  const channelResults = await Promise.all(
+    categoryDefs.map(async (def) => {
+      let rows: typeof publishedArticles = [];
+      try {
+        rows = await db
+          .select()
+          .from(articles)
+          .where(and(eq(articles.status, 'published'), eq(articles.category, def.dbCategory)))
+          .orderBy(desc(articles.publishedAt))
+          .limit(3);
+      } catch (err) {
+        console.warn(`Gagal memuat artikel kategori ${def.dbCategory}:`, err);
+      }
+
+      const latest = rows.length > 0 ? rows[0] : null;
+      const subs = rows.slice(1).map((r) => ({
+        id: r.id,
+        slug: r.slug,
+        title: r.title,
+        coverUrl: r.coverUrl,
+        category: r.category,
+        publishedAt: r.publishedAt ? r.publishedAt.toISOString() : null,
+      }));
+
+      return {
+        name: def.name,
+        slug: def.slug,
+        iconName: def.iconName,
+        totalArticles: categoryCountsMap.get(def.slug) || rows.length,
+        latestArticle: latest
+          ? {
+              id: latest.id,
+              slug: latest.slug,
+              title: latest.title,
+              coverUrl: latest.coverUrl,
+              category: latest.category,
+              publishedAt: latest.publishedAt ? latest.publishedAt.toISOString() : null,
+            }
+          : null,
+        subArticles: subs,
+      };
+    })
+  );
+
+  // Kumpulkan trending tags dari artikel terbit
+  const uniqueTags = new Set<string>();
+  publishedArticles.forEach((article) => {
+    if (article.tags && Array.isArray(article.tags)) {
+      article.tags.forEach((tag) => {
+        if (uniqueTags.size < 8 && tag && typeof tag === 'string') {
+          uniqueTags.add(tag);
+        }
+      });
+    }
+  });
+  let trendingTags = Array.from(uniqueTags);
+  if (trendingTags.length === 0) {
+    trendingTags = ['Teknologi', 'AI', 'Gadget', 'Software', 'Infrastruktur', 'Nasional', 'Regional'];
+  }
+
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-7xl mx-auto px-0 sm:px-6 lg:px-8 py-0 sm:py-8">
       {/* H1 Semantik Brand & SEO untuk Google Search & Aksesibilitas */}
       <h1 className="sr-only">Ada Fakta: Berita Terkini Hari Ini, Fakta Aktual Terpercaya</h1>
 
       {publishedArticles.length === 0 && (
-        <div className="text-center py-20 bg-white rounded-sm border border-gray-200">
+        <div className="text-center py-20 bg-white rounded-sm border border-gray-200 mx-4 sm:mx-0">
           <h2 className="text-2xl font-bold text-gray-700 mb-2">Belum Ada Berita yang Terbit</h2>
           <p className="text-gray-500">
             Silakan unggah artikel Markdown melalui panel admin dengan waktu terbit (publish_at) di masa lalu agar muncul di sini.
@@ -155,11 +250,11 @@ export default async function Home() {
       )}
 
       {featuredArticle && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-12">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-8 mb-8 sm:mb-12">
           {/* KOLOM KIRI (LEBAR 6 DARI 12): Headline Utama + Baca Juga + Berita Sorotan */}
           <div className="lg:col-span-6 flex flex-col">
-            {/* Card Headline Utama */}
-            <div className="flex flex-col w-full bg-white border border-gray-100 overflow-hidden rounded-sm mb-6 shadow-xs hover:shadow-md transition-all group">
+            {/* Card Headline Utama (Mobile: Full-Bleed Edge-to-Edge) */}
+            <div className="flex flex-col w-full bg-white border-b sm:border border-gray-100 overflow-hidden rounded-none sm:rounded-sm mb-4 sm:mb-6 shadow-2xs sm:shadow-xs hover:shadow-md transition-all group">
               <Link
                 href={`/berita/${featuredArticle.category.toLowerCase()}/${featuredArticle.id}/${featuredArticle.slug}`}
                 className="w-full relative overflow-hidden bg-gray-50 aspect-video block"
@@ -171,37 +266,38 @@ export default async function Home() {
                 />
               </Link>
 
-              <div className="p-5 sm:p-7 flex flex-col justify-center bg-white">
-                <div className="mb-3 flex items-center gap-2">
-                  <span className="bg-gray-900 text-white text-[10px] sm:text-xs font-bold uppercase tracking-wider px-2.5 py-1 rounded-md shadow-2xs">
+              <div className="p-3.5 sm:p-7 flex flex-col justify-center bg-white">
+                <div className="mb-2 sm:mb-3 flex items-center gap-2">
+                  <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-gray-500">
                     {featuredArticle.category}
                   </span>
+                  <span className="text-xs text-gray-300 font-medium">•</span>
                   <span className="text-xs text-gray-400 font-medium">Headline</span>
                 </div>
 
                 <Link
                   href={`/berita/${featuredArticle.category.toLowerCase()}/${featuredArticle.id}/${featuredArticle.slug}`}
                 >
-                  <h2 className="text-2xl sm:text-3xl font-bold font-heading text-gray-900 group-hover:text-indigo-600 transition-colors mb-3 leading-tight line-clamp-3">
+                  <h2 className="text-lg sm:text-2xl lg:text-3xl font-semibold text-gray-900 group-hover:text-gray-600 transition-colors mb-2 leading-snug line-clamp-3">
                     {featuredArticle.title}
                   </h2>
                 </Link>
 
                 {featuredArticle.publishedAt && (
-                  <div className="text-xs text-gray-400 font-medium mt-1">
+                  <div className="text-[11px] sm:text-xs text-gray-400 font-medium">
                     {formatDistanceToNow(new Date(featuredArticle.publishedAt), { addSuffix: true, locale: id })}
                   </div>
                 )}
 
                 {/* BACA JUGA (Format Minimalis Inline ala Kompas) */}
                 {bacaJugaArticles.length > 0 && (
-                  <div className="mt-5 pt-4 border-t border-gray-100 space-y-2">
+                  <div className="mt-3.5 pt-3 border-t border-gray-100 space-y-1.5">
                     {bacaJugaArticles.map((bj) => (
                       <div key={bj.id} className="text-xs sm:text-sm leading-relaxed">
                         <span className="font-semibold text-gray-700 mr-1.5">Baca juga:</span>
                         <Link
                           href={`/berita/${bj.category.toLowerCase()}/${bj.id}/${bj.slug}`}
-                          className="text-sky-600 hover:text-sky-700 font-medium hover:underline transition-colors"
+                          className="text-gray-900 hover:text-gray-600 font-medium underline underline-offset-2 transition-colors"
                         >
                           {bj.title}
                         </Link>
@@ -214,7 +310,7 @@ export default async function Home() {
 
             {/* BERITA SOROTAN (3 Kartu Pilihan Redaksi) */}
             {sorotanArticles.length > 0 && (
-              <div className="space-y-3">
+              <div className="space-y-3 px-3.5 sm:px-0 mb-6 sm:mb-0">
                 <div className="flex items-center justify-between pb-2 border-b border-gray-200">
                   <div className="flex items-center gap-2">
                     <h3 className="text-sm sm:text-base font-bold font-heading text-gray-900 uppercase tracking-wider">
@@ -241,10 +337,10 @@ export default async function Home() {
                       </div>
                       <div className="p-3 flex flex-col justify-between flex-1">
                         <div>
-                          <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider block mb-1">
+                          <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 block mb-1">
                             {art.category}
                           </span>
-                          <h4 className="font-bold text-gray-900 group-hover:text-indigo-600 transition-colors line-clamp-2 text-xs sm:text-sm leading-snug">
+                          <h4 className="font-semibold text-gray-900 group-hover:text-gray-600 transition-colors line-clamp-2 text-xs sm:text-sm leading-snug">
                             {art.title}
                           </h4>
                         </div>
@@ -262,13 +358,13 @@ export default async function Home() {
           </div>
 
           {/* KOLOM KANAN (LEBAR 6 DARI 12): Populer Hari Ini & Kilas Balik di atas, Info Harian & Tren di bawah */}
-          <div className="lg:col-span-6 flex flex-col justify-between lg:border-l lg:border-gray-200/80 lg:pl-8">
+          <div className="lg:col-span-6 flex flex-col justify-between lg:border-l lg:border-gray-200/80 lg:pl-8 px-3.5 sm:px-0">
             {/* Subgrid: Populer Hari Ini (col 1) & Kilas Balik (col 2) */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 items-start">
               {/* Populer Hari Ini */}
               <div className="flex flex-col">
-                <div className="flex items-center justify-between mb-5 pb-2 border-b border-gray-200">
-                  <h3 className="text-base font-bold font-heading text-gray-900 flex items-center gap-2">
+                <div className="flex items-center justify-between mb-4 sm:mb-5 pb-2 border-b border-gray-200">
+                  <h3 className="text-sm sm:text-base font-bold font-heading text-gray-900 flex items-center gap-2">
                     <span>Populer Hari Ini</span>
                   </h3>
                 </div>
@@ -281,18 +377,20 @@ export default async function Home() {
                       <Link
                         key={article.id}
                         href={`/berita/${article.category.toLowerCase()}/${article.id}/${article.slug}`}
-                        className="py-3.5 first:pt-0 group flex items-start gap-3.5 cursor-pointer"
+                        className="py-2.5 sm:py-3.5 first:pt-0 group flex items-start gap-3 cursor-pointer"
                       >
-                        <span className="text-3xl sm:text-4xl font-black font-heading text-gray-200 group-hover:text-indigo-500 transition-colors shrink-0 leading-none w-7 text-center">
-                          {index + 1}
+                        <span className="text-xl sm:text-2xl font-bold font-heading text-gray-400 group-hover:text-gray-900 transition-colors shrink-0 leading-none w-5 sm:w-7 text-center pt-0.5">
+                          {String(index + 1).padStart(2, '0')}
                         </span>
-                        <div className="min-w-0">
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-0.5">
-                            {article.category}
-                          </span>
-                          <h4 className="font-bold text-gray-900 group-hover:text-indigo-600 transition-colors line-clamp-2 text-xs sm:text-sm leading-snug">
+                        <div className="min-w-0 flex-1">
+                          <h4 className="font-semibold text-gray-900 group-hover:text-gray-600 transition-colors line-clamp-2 text-[14px] sm:text-sm leading-[1.35]">
                             {article.title}
                           </h4>
+                          {article.publishedAt && (
+                            <span className="text-[11px] text-gray-400 font-normal mt-1 block">
+                              {formatDistanceToNow(new Date(article.publishedAt), { addSuffix: true, locale: id })}
+                            </span>
+                          )}
                         </div>
                       </Link>
                     ))
@@ -329,14 +427,14 @@ export default async function Home() {
                           </div>
                           <div className="p-3">
                             <div className="flex items-center justify-between text-[10px] text-gray-400 mb-1">
-                              <span className="font-bold uppercase text-purple-700">{kilasBalikArticles[0].category}</span>
+                              <span className="font-bold uppercase text-gray-500">{kilasBalikArticles[0].category}</span>
                               <span>
                                 {kilasBalikArticles[0].publishedAt
                                   ? formatDistanceToNow(new Date(kilasBalikArticles[0].publishedAt), { addSuffix: true, locale: id })
                                   : ''}
                               </span>
                             </div>
-                            <h4 className="font-bold text-gray-900 group-hover:text-indigo-600 transition-colors line-clamp-2 text-xs sm:text-sm leading-snug">
+                            <h4 className="font-semibold text-gray-900 group-hover:text-gray-600 transition-colors line-clamp-2 text-xs sm:text-sm leading-snug">
                               {kilasBalikArticles[0].title}
                             </h4>
                           </div>
@@ -359,7 +457,7 @@ export default async function Home() {
                               />
                             </div>
                             <div className="min-w-0 flex-1">
-                              <h4 className="font-bold text-gray-900 group-hover:text-indigo-600 transition-colors line-clamp-2 text-xs leading-snug">
+                              <h4 className="font-semibold text-gray-900 group-hover:text-gray-600 transition-colors line-clamp-2 text-xs leading-snug">
                                 {kb.title}
                               </h4>
                               <span className="text-[10px] text-gray-400 block mt-1">
@@ -387,7 +485,7 @@ export default async function Home() {
       <KabarNusantaraSection articles={regionalArticles} />
 
       {/* Bagian Bawah: Feed Berita Terbaru (Lebar 8) + Sidebar Tematik (Lebar 4 Desktop Only) */}
-      <div className="mt-14 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-start">
+      <div className="mt-6 sm:mt-14 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-start">
         {/* Kolom Kiri: Feed Berita Terbaru (Mobile: 2 Kolom dengan Selingan Carousel Tematik) */}
         <div className="lg:col-span-8 min-w-0">
           <LatestNewsSection
@@ -412,6 +510,12 @@ export default async function Home() {
           />
         </div>
       </div>
+
+      {/* Seksi Eksplorasi Kanal & Topik Hangat (Memenuhi Bagian Bawah dengan Informasi Lengkap) */}
+      <KanalEksplorasiSection
+        channels={channelResults}
+        trendingTags={trendingTags}
+      />
     </div>
   );
 }

@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { DollarSign, Sun, CloudSun, CloudRain, Wind, Flame, ShieldCheck, ExternalLink } from "lucide-react";
 
 interface AssistanceData {
   usdRate: number;
@@ -63,20 +62,21 @@ async function getAssistanceData(): Promise<AssistanceData> {
     let weatherCode = fallbackData.weatherCode;
     if (weatherRes.status === "fulfilled" && weatherRes.value?.current) {
       temp = Math.round(weatherRes.value.current.temperature_2m);
-      weatherCode = weatherRes.value.current.weather_code ?? 1;
+      weatherCode = weatherRes.value.current.weather_code;
+
       if (weatherCode === 0) weatherCondition = "Cerah";
       else if ([1, 2, 3].includes(weatherCode)) weatherCondition = "Cerah Berawan";
       else if ([45, 48].includes(weatherCode)) weatherCondition = "Berkabut";
-      else if ([51, 53, 55, 61, 63, 65].includes(weatherCode)) weatherCondition = "Hujan";
-      else if ([80, 81, 82].includes(weatherCode)) weatherCondition = "Hujan Deras";
+      else if ([51, 53, 55, 61, 63, 65, 80, 81, 82].includes(weatherCode))
+        weatherCondition = "Hujan Ringan";
       else if ([95, 96, 99].includes(weatherCode)) weatherCondition = "Hujan Petir";
     }
 
-    // 3. AQI Jakarta
+    // 3. Kualitas Udara (AQI)
     let aqi = fallbackData.aqi;
     let aqiStatus = fallbackData.aqiStatus;
     let aqiLevel = fallbackData.aqiLevel;
-    if (aqiRes.status === "fulfilled" && aqiRes.value?.current?.us_aqi) {
+    if (aqiRes.status === "fulfilled" && aqiRes.value?.current) {
       aqi = Math.round(aqiRes.value.current.us_aqi);
       if (aqi <= 50) {
         aqiStatus = "Baik";
@@ -85,7 +85,7 @@ async function getAssistanceData(): Promise<AssistanceData> {
         aqiStatus = "Sedang";
         aqiLevel = "moderate";
       } else if (aqi <= 150) {
-        aqiStatus = "Sensitif";
+        aqiStatus = "Tidak Sehat bagi Sensitif";
         aqiLevel = "unhealthy-sensitive";
       } else {
         aqiStatus = "Tidak Sehat";
@@ -93,20 +93,14 @@ async function getAssistanceData(): Promise<AssistanceData> {
       }
     }
 
-    // 4. Google Trends ID
+    // 4. Trending Topics Google
     let trends = fallbackData.trends;
     if (trendsRes.status === "fulfilled" && typeof trendsRes.value === "string") {
-      const list: string[] = [];
-      const matches = trendsRes.value.matchAll(/<item>[\s\S]*?<title>(.*?)<\/title>/g);
-      for (const match of matches) {
-        if (match[1]) {
-          const clean = match[1].replace(/<!\[CDATA\[(.*?)\]\]>/, "$1").trim();
-          if (clean && clean.length <= 26 && !list.includes(clean)) {
-            list.push(clean);
-          }
-        }
-      }
-      if (list.length >= 3) {
+      const titles = trendsRes.value.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>/g);
+      if (titles && titles.length > 0) {
+        const list = titles
+          .map((t) => t.replace(/<title><!\[CDATA\[/, "").replace(/\]\]><\/title>/, ""))
+          .filter((t) => t && t.trim() !== "" && !t.includes("Daily Search Trends"));
         trends = list.slice(0, 3);
       }
     }
@@ -129,120 +123,87 @@ async function getAssistanceData(): Promise<AssistanceData> {
 export default async function DailyAssistanceWidget() {
   const data = await getAssistanceData();
 
-  // Warna indikator badge AQI
-  const aqiBadgeClass =
-    data.aqiLevel === "good"
-      ? "bg-white text-emerald-800 shadow-2xs"
-      : data.aqiLevel === "moderate"
-        ? "bg-white text-amber-800 shadow-2xs"
-        : data.aqiLevel === "unhealthy-sensitive"
-          ? "bg-white text-orange-800 shadow-2xs"
-          : "bg-white text-rose-800 shadow-2xs";
-
   return (
     <div className="mt-8 pt-6 sm:mt-6 sm:pt-5 border-t border-gray-200/80 mb-8 sm:mb-0">
-      {/* Header Widget */}
+      {/* Header Widget (Polos & Bersih) */}
       <div className="flex items-center justify-between mb-3.5">
-        <div className="flex items-center gap-2">
-
-          <h3 className="text-sm font-bold font-heading text-gray-900 tracking-tight flex items-center gap-1.5">
-            <span>Info Harian & Tren</span>
-          </h3>
-        </div>
+        <h3 className="text-sm font-bold font-heading text-gray-900 tracking-tight">
+          Info Harian & Tren
+        </h3>
         <div className="flex items-center gap-2">
           <span className="text-[10px] text-gray-400 font-medium sm:hidden">Geser ➔</span>
-          <span className="text-[10px] text-indigo-700 font-medium hidden sm:inline bg-indigo-100/70 px-2 py-0.5 rounded-full">
+          <span className="text-[10px] text-gray-600 font-medium hidden sm:inline bg-gray-100 px-2 py-0.5 rounded">
             Live Update
           </span>
         </div>
       </div>
 
-      {/* Grid Kartu / Horizontal Scroll di Mobile (Sejajar dengan padding halaman tanpa mepet tepi) */}
+      {/* Grid Kartu Minimalis Polos Bebas Ikon */}
       <div className="flex sm:grid sm:grid-cols-3 gap-3 sm:gap-2.5 overflow-x-auto pb-3 sm:pb-0 scrollbar-hide snap-x">
 
         {/* KARTU 1: Kurs USD ke IDR */}
-        <div className="w-[180px] sm:w-auto shrink-0 snap-start bg-emerald-100 hover:bg-emerald-200/70 rounded-xl p-3.5 sm:p-3 flex flex-col justify-between transition-colors group shadow-2xs min-h-[96px]">
+        <div className="w-[180px] sm:w-auto shrink-0 snap-start bg-white border border-gray-200 rounded-sm p-3 flex flex-col justify-between hover:border-gray-400 transition-colors shadow-2xs min-h-[96px]">
           <div className="flex items-center justify-between mb-1.5">
-            <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider">
+            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
               USD / IDR
             </span>
-            <div className="w-6 h-6 rounded-md bg-white/80 text-emerald-700 flex items-center justify-center shrink-0">
-              <DollarSign className="w-3.5 h-3.5" />
-            </div>
           </div>
           <div>
             <div className="text-sm sm:text-base font-black text-gray-900 tracking-tight">
               Rp {data.usdRate.toLocaleString("id-ID")}
             </div>
-            <span className="text-[10px] text-emerald-900/70 font-medium block mt-0.5">
+            <span className="text-[10px] text-gray-400 font-medium block mt-0.5">
               Acuan Pasar Global
             </span>
           </div>
         </div>
 
         {/* KARTU 2: Cuaca & Suhu Hari Ini */}
-        <div className="w-[180px] sm:w-auto shrink-0 snap-start bg-amber-100 hover:bg-amber-200/70 rounded-xl p-3.5 sm:p-3 flex flex-col justify-between transition-colors group shadow-2xs min-h-[96px]">
+        <div className="w-[180px] sm:w-auto shrink-0 snap-start bg-white border border-gray-200 rounded-sm p-3 flex flex-col justify-between hover:border-gray-400 transition-colors shadow-2xs min-h-[96px]">
           <div className="flex items-center justify-between mb-1.5">
-            <span className="text-[10px] font-bold text-amber-800 uppercase tracking-wider">
+            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
               Jakarta
             </span>
-            <div className="w-6 h-6 rounded-md bg-white/80 text-amber-700 flex items-center justify-center shrink-0">
-              {data.weatherCode === 0 ? (
-                <Sun className="w-3.5 h-3.5" />
-              ) : [51, 53, 55, 61, 63, 65, 80, 81, 82, 95].includes(data.weatherCode) ? (
-                <CloudRain className="w-3.5 h-3.5" />
-              ) : (
-                <CloudSun className="w-3.5 h-3.5" />
-              )}
-            </div>
           </div>
           <div>
             <div className="text-sm sm:text-base font-black text-gray-900 tracking-tight">
               {data.temp}°C
             </div>
-            <span className="text-[10px] text-amber-900/80 font-medium block mt-0.5 truncate">
+            <span className="text-[10px] text-gray-400 font-medium block mt-0.5 truncate">
               {data.weatherCondition}
             </span>
           </div>
         </div>
 
         {/* KARTU 3: Kualitas Udara (AQI) */}
-        <div className="w-[180px] sm:w-auto shrink-0 snap-start bg-sky-100 hover:bg-sky-200/70 rounded-xl p-3.5 sm:p-3 flex flex-col justify-between transition-colors group shadow-2xs min-h-[96px]">
+        <div className="w-[180px] sm:w-auto shrink-0 snap-start bg-white border border-gray-200 rounded-sm p-3 flex flex-col justify-between hover:border-gray-400 transition-colors shadow-2xs min-h-[96px]">
           <div className="flex items-center justify-between mb-1.5">
-            <span className="text-[10px] font-bold text-sky-800 uppercase tracking-wider">
+            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
               Udara (AQI)
             </span>
-            <div className="w-6 h-6 rounded-md bg-white/80 text-sky-700 flex items-center justify-center shrink-0">
-              <Wind className="w-3.5 h-3.5" />
-            </div>
           </div>
           <div>
             <div className="flex items-center gap-1.5">
               <span className="text-sm sm:text-base font-black text-gray-900 tracking-tight">
                 {data.aqi}
               </span>
-              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${aqiBadgeClass}`}>
+              <span className="text-[9px] font-bold text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded">
                 {data.aqiStatus}
               </span>
             </div>
-            <span className="text-[10px] text-sky-900/70 font-medium block mt-0.5">
+            <span className="text-[10px] text-gray-400 font-medium block mt-0.5">
               Indeks PM2.5
             </span>
           </div>
         </div>
 
-        {/* KARTU 4: Trending Topik Google Hari Ini (Lebar 2 Kolom di Desktop) */}
-        <div className="w-[280px] sm:w-auto sm:col-span-2 shrink-0 snap-start bg-indigo-100 hover:bg-indigo-200/70 rounded-xl p-3.5 sm:p-3 flex flex-col justify-between transition-colors group shadow-2xs min-h-[96px]">
+        {/* KARTU 4: Trending Topik Google Hari Ini */}
+        <div className="w-[280px] sm:w-auto sm:col-span-2 shrink-0 snap-start bg-white border border-gray-200 rounded-sm p-3 flex flex-col justify-between hover:border-gray-400 transition-colors shadow-2xs min-h-[96px]">
           <div className="flex items-center justify-between mb-1.5">
-            <div className="flex items-center gap-1.5">
-              <div className="w-6 h-6 rounded-md bg-white/80 text-indigo-700 flex items-center justify-center shrink-0">
-                <Flame className="w-3.5 h-3.5" />
-              </div>
-              <span className="text-[11px] font-bold text-indigo-950 tracking-tight">
-                Tren Google Hari Ini
-              </span>
-            </div>
-            <span className="text-[9px] font-bold text-indigo-700 bg-white/90 px-1.5 py-0.5 rounded shadow-2xs">
+            <span className="text-[11px] font-bold text-gray-900 tracking-tight">
+              Tren Pencarian
+            </span>
+            <span className="text-[9px] font-bold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
               Indonesia
             </span>
           </div>
@@ -252,10 +213,10 @@ export default async function DailyAssistanceWidget() {
               <Link
                 key={idx}
                 href={`/cari?q=${encodeURIComponent(trend)}`}
-                className="inline-flex items-center gap-1 text-[11px] font-medium text-gray-800 bg-white hover:bg-indigo-600 hover:text-white px-2 py-0.5 rounded-lg transition-colors shadow-2xs group/tag max-w-[170px]"
+                className="inline-flex items-center gap-1 text-[11px] font-medium text-gray-700 bg-gray-100 hover:bg-black hover:text-white px-2 py-0.5 rounded transition-colors group/tag max-w-[170px]"
                 title={`Cari berita seputar: ${trend}`}
               >
-                <span className="text-[10px] font-bold text-indigo-500 group-hover/tag:text-indigo-200">
+                <span className="text-[10px] font-bold text-gray-400 group-hover/tag:text-gray-300">
                   #{idx + 1}
                 </span>
                 <span className="truncate">{trend}</span>
@@ -264,24 +225,21 @@ export default async function DailyAssistanceWidget() {
           </div>
         </div>
 
-        {/* KARTU 5: Status Layanan Digital (Lebar 1 Kolom di Desktop) */}
-        <div className="w-[190px] sm:w-auto sm:col-span-1 shrink-0 snap-start bg-teal-100 hover:bg-teal-200/70 rounded-xl p-3.5 sm:p-3 flex flex-col justify-between transition-colors group shadow-2xs min-h-[96px]">
+        {/* KARTU 5: Status Layanan Digital */}
+        <div className="w-[190px] sm:w-auto sm:col-span-1 shrink-0 snap-start bg-white border border-gray-200 rounded-sm p-3 flex flex-col justify-between hover:border-gray-400 transition-colors shadow-2xs min-h-[96px]">
           <div className="flex items-center justify-between mb-1.5">
-            <span className="text-[10px] font-bold text-teal-800 uppercase tracking-wider">
+            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
               Layanan Digital
             </span>
-            <div className="w-6 h-6 rounded-md bg-white/80 text-teal-700 flex items-center justify-center shrink-0">
-              <ShieldCheck className="w-3.5 h-3.5" />
-            </div>
           </div>
           <div>
             <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-teal-600 shrink-0"></span>
-              <span className="text-xs sm:text-sm font-bold text-teal-900">
+              <span className="w-2 h-2 rounded-full bg-gray-900 shrink-0"></span>
+              <span className="text-xs sm:text-sm font-bold text-gray-900">
                 100% Normal
               </span>
             </div>
-            <span className="text-[9.5px] text-teal-900/70 font-medium block mt-0.5 truncate" title="Google, WhatsApp, Cloudflare, AWS">
+            <span className="text-[9.5px] text-gray-400 font-medium block mt-0.5 truncate" title="Google, WhatsApp, Cloudflare, AWS">
               Google • WA • Cloudflare • AWS
             </span>
           </div>

@@ -31,8 +31,8 @@ export default function CategoryPillsMobile({ categories }: CategoryPillsMobileP
               href={cat.href}
               className={`text-xs whitespace-nowrap px-3 py-1.5 rounded-full transition-all shrink-0 ${
                 isActive
-                  ? "bg-red-600 text-white font-bold shadow-xs"
-                  : "bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium"
+                  ? "bg-black text-white font-bold"
+                  : "bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium"
               }`}
             >
               {cat.name}

@@ -88,7 +88,7 @@ export default function KabarNusantaraSection({ articles }: KabarNusantaraSectio
   }
 
   return (
-    <section className="mb-12 space-y-3">
+    <section className="mb-6 sm:mb-12 space-y-3 px-3.5 sm:px-0">
       {/* Header Bar Polos Minimalis (Persis Seperti Berita Sorotan) */}
       <div className="flex items-center justify-between pb-2 border-b border-gray-200">
         <div className="flex items-center gap-2">
@@ -128,10 +128,10 @@ export default function KabarNusantaraSection({ articles }: KabarNusantaraSectio
               </div>
               <div className="p-3 flex flex-col justify-between flex-1">
                 <div>
-                  <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider block mb-1">
+                  <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1">
                     {regionName}
                   </span>
-                  <h4 className="font-bold text-gray-900 group-hover:text-indigo-600 transition-colors line-clamp-2 text-xs sm:text-sm leading-snug">
+                  <h4 className="font-semibold text-gray-900 group-hover:text-gray-600 transition-colors line-clamp-2 text-xs sm:text-sm leading-snug">
                     {art.title}
                   </h4>
                 </div>
