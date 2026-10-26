@@ -13,6 +13,7 @@ import { Metadata } from "next";
 import ShareButtons from "./ShareButtons";
 import { getAdSettings } from "@/lib/ads";
 import AdSlot from "../../../../AdSlot";
+import { sanitizeCoverCaption } from "@/lib/ai-generator";
 
 export const instant = false;
 
@@ -281,7 +282,7 @@ export default async function ArticlePage({
               </div>
               {article.coverCaption && (
                 <p className="text-sm text-gray-500 italic">
-                  {article.coverCaption}
+                  {sanitizeCoverCaption(article.coverCaption, article.title, 'Redaksi')}
                 </p>
               )}
             </div>
