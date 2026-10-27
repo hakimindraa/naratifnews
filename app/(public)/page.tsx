@@ -8,6 +8,7 @@ import LatestNewsSection from "./LatestNewsSection";
 import DailyAssistanceWidget from "./DailyAssistanceWidget";
 import KabarNusantaraSection from "./KabarNusantaraSection";
 import ThematicSidebar from "./ThematicSidebar";
+import CenterCarousel from "./CenterCarousel";
 
 export const instant = false;
 
@@ -31,6 +32,16 @@ export default async function Home() {
 
   // 4. Populer Hari Ini (5 Artikel)
   const popularArticles = publishedArticles.slice(6, 11);
+
+  // 4b. Carousel Berita Pilihan Redaksi untuk Kolom Tengah (6 Artikel)
+  const carouselArticles = publishedArticles.slice(6, 12).map((a) => ({
+    id: a.id,
+    slug: a.slug,
+    title: a.title,
+    coverUrl: a.coverUrl,
+    category: a.category,
+    publishedAt: a.publishedAt ? a.publishedAt.toISOString() : null,
+  }));
 
   // Kumpulan ID yang sudah dipakai di atas agar Kilas Balik tidak menampilkan artikel yang sama
   const usedTopIds = publishedArticles.slice(0, 11).map((a) => a.id);
@@ -179,7 +190,7 @@ export default async function Home() {
                     <span className="text-red-600 font-bold uppercase text-[11px] tracking-wider block mb-1">
                       {sorotanArticles[0].category}
                     </span>
-                    <h3 className="font-heading font-semibold text-gray-900 group-hover:text-red-700 transition-colors text-base sm:text-lg leading-snug line-clamp-3">
+                    <h3 className="font-heading font-medium text-gray-900 group-hover:text-red-700 transition-colors text-base sm:text-lg leading-snug line-clamp-3">
                       {sorotanArticles[0].title}
                     </h3>
                   </Link>
@@ -198,7 +209,7 @@ export default async function Home() {
                         <span className="text-[11px] font-bold uppercase tracking-wider text-red-600 block mb-1">
                           {i === 0 ? "Terkini" : "Analisis"}
                         </span>
-                        <h4 className="font-heading font-semibold text-gray-900 group-hover:text-red-600 transition-colors text-sm sm:text-[15px] leading-snug line-clamp-3">
+                        <h4 className="font-heading font-medium text-gray-900 group-hover:text-red-600 transition-colors text-sm sm:text-[15px] leading-snug line-clamp-3">
                           {bj.title}
                         </h4>
                       </Link>
@@ -225,7 +236,7 @@ export default async function Home() {
                       <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 block">
                         {sorotanArticles[1].category}
                       </span>
-                      <h4 className="font-heading font-medium sm:font-semibold text-xs sm:text-sm text-gray-900 group-hover:text-red-600 transition-colors line-clamp-2 leading-snug mt-0.5">
+                      <h4 className="font-heading font-medium text-xs sm:text-sm text-gray-900 group-hover:text-red-600 transition-colors line-clamp-2 leading-snug mt-0.5">
                         {sorotanArticles[1].title}
                       </h4>
                     </div>
@@ -244,7 +255,7 @@ export default async function Home() {
                   href={`/berita/${featuredArticle.category.toLowerCase()}/${featuredArticle.id}/${featuredArticle.slug}`}
                   className="block mb-3.5"
                 >
-                  <h2 className="font-heading font-bold text-2xl sm:text-3xl lg:text-[32px] tracking-tight leading-[1.15] text-gray-900 group-hover:text-red-700 transition-colors">
+                  <h2 className="font-heading font-normal text-2xl sm:text-3xl lg:text-[32px] leading-snug text-gray-900 group-hover:text-red-700 transition-colors">
                     {featuredArticle.title}
                   </h2>
                 </Link>
@@ -282,12 +293,15 @@ export default async function Home() {
                       className="flex items-start gap-2 group/sub text-xs sm:text-sm text-gray-800 hover:text-red-600 transition-colors leading-snug"
                     >
                       <span className="text-gray-400 font-bold">•</span>
-                      <span className="font-semibold underline underline-offset-2">
+                      <span className="font-medium underline underline-offset-2">
                         {sorotanArticles[2].title}
                       </span>
                     </Link>
                   </div>
                 )}
+
+                {/* 5. CAROUSEL AUTO-SWIPE PILIHAN REDAKSI */}
+                <CenterCarousel articles={carouselArticles} />
               </article>
             </div>
 
@@ -314,7 +328,7 @@ export default async function Home() {
                         {String(index + 1).padStart(2, '0')}
                       </span>
                       <div className="min-w-0 flex-1">
-                        <h4 className="font-heading font-medium sm:font-semibold text-gray-900 group-hover:text-red-600 transition-colors line-clamp-2 text-xs sm:text-sm leading-snug">
+                        <h4 className="font-heading font-medium text-gray-900 group-hover:text-red-600 transition-colors line-clamp-2 text-xs sm:text-sm leading-snug">
                           {article.title}
                         </h4>
                         {article.publishedAt && (
@@ -347,7 +361,7 @@ export default async function Home() {
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                       />
                     </div>
-                    <h4 className="font-heading font-medium sm:font-semibold text-xs sm:text-sm text-gray-900 group-hover:text-red-600 transition-colors line-clamp-2 leading-snug">
+                    <h4 className="font-heading font-medium text-xs sm:text-sm text-gray-900 group-hover:text-red-600 transition-colors line-clamp-2 leading-snug">
                       {kilasBalikArticles[0].title}
                     </h4>
                   </Link>

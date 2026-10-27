@@ -1,6 +1,12 @@
 import type { Metadata } from "next";
+import { Inter } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
+
+const inter = Inter({
+  variable: "--font-inter",
+  subsets: ["latin"],
+});
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.adafakta.web.id';
 
@@ -70,7 +76,7 @@ export default function RootLayout({
   return (
     <html
       lang="id"
-      className="antialiased"
+      className={`${inter.variable} antialiased`}
     >
       <head>
         <script

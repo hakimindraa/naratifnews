@@ -241,7 +241,7 @@ export default async function ArticlePage({
       <div className="flex flex-col lg:flex-row gap-10">
         {/* Main Content (Left Column) */}
         <article className="lg:w-2/3">
-          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold font-heading text-gray-900 leading-snug mb-4">
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-normal font-heading text-gray-900 leading-snug mb-4">
             {article.title}
           </h1>
 
@@ -559,9 +559,9 @@ export default async function ArticlePage({
                 </p>
               </div>
 
-              {/* Saluran WhatsApp (Aktif) */}
+              {/* Kontak WhatsApp (Aktif) */}
               <a
-                href="https://whatsapp.com/channel/0029VbDdM7DFSAszJWyjca01"
+                href="https://wa.me/6283137412551?text=Halo%20Redaksi%20Ada%20Fakta%2C%20saya%20ingin%20berkorespondensi"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-full flex items-center justify-between p-3 rounded-sm bg-emerald-50/70 hover:bg-emerald-100/80 border border-emerald-200/80 transition-all group shadow-2xs gap-2"
@@ -571,12 +571,12 @@ export default async function ArticlePage({
                     <MessageCircle className="w-5 h-5" />
                   </div>
                   <div className="text-left min-w-0">
-                    <div className="font-bold text-gray-900 text-sm leading-tight truncate">Saluran WhatsApp</div>
-                    <div className="text-[11px] text-emerald-700 font-medium truncate">adafakta • Update Kilat</div>
+                    <div className="font-bold text-gray-900 text-sm leading-tight truncate">Kontak WhatsApp</div>
+                    <div className="text-[11px] text-emerald-700 font-medium truncate">0831-3741-2551 • Chat Redaksi</div>
                   </div>
                 </div>
                 <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-3 py-1 rounded-full shrink-0 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
-                  Ikuti
+                  Hubungi
                 </span>
               </a>
 

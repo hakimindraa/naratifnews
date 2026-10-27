@@ -131,7 +131,7 @@ export default function KabarNusantaraSection({ articles }: KabarNusantaraSectio
                   <span className="text-[10px] font-bold text-red-600 uppercase tracking-wider block mb-1">
                     {regionName}
                   </span>
-                  <h4 className="font-heading font-semibold text-gray-900 group-hover:text-red-600 transition-colors line-clamp-2 text-sm leading-snug">
+                  <h4 className="font-heading font-medium text-gray-900 group-hover:text-red-600 transition-colors line-clamp-2 text-sm leading-snug">
                     {art.title}
                   </h4>
                 </div>

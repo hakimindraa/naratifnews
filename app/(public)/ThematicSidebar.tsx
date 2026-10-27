@@ -81,7 +81,7 @@ function ThematicBlock({
                 <span className="text-[10px] font-bold uppercase tracking-wider text-red-600 block mb-1">
                   {firstArticle.category}
                 </span>
-                <h5 className="font-heading font-semibold text-gray-900 group-hover:text-red-600 transition-colors line-clamp-2 text-xs sm:text-sm leading-snug">
+                <h5 className="font-heading font-medium text-gray-900 group-hover:text-red-600 transition-colors line-clamp-2 text-xs sm:text-sm leading-snug">
                   {firstArticle.title}
                 </h5>
                 <span className="text-[10px] text-gray-400 mt-1.5 block font-normal">
@@ -102,7 +102,7 @@ function ThematicBlock({
                 >
                   <span className="text-gray-400 font-bold text-xs mt-0.5 select-none">•</span>
                   <div className="min-w-0 flex-1">
-                    <h5 className="font-heading font-medium sm:font-semibold text-gray-900 group-hover:text-red-600 transition-colors line-clamp-2 text-xs leading-snug">
+                    <h5 className="font-heading font-medium text-gray-900 group-hover:text-red-600 transition-colors line-clamp-2 text-xs leading-snug">
                       {art.title}
                     </h5>
                     <span className="text-[10px] text-gray-400 block mt-1 font-normal">

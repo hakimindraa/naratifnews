@@ -182,7 +182,7 @@ export default function LatestNewsSection({
                         <span className="text-[10px] font-bold uppercase tracking-wider text-red-600 block mb-1">
                           {article.category}
                         </span>
-                        <h4 className="font-heading font-bold text-gray-900 group-hover:text-red-600 transition-colors line-clamp-2 text-base sm:text-lg leading-snug">
+                        <h4 className="font-heading font-medium text-gray-900 group-hover:text-red-600 transition-colors line-clamp-2 text-base sm:text-lg leading-snug">
                           {article.title}
                         </h4>
                       </div>
@@ -217,7 +217,7 @@ export default function LatestNewsSection({
                         <span className="text-[10px] font-bold uppercase tracking-wider text-red-600 block mb-0.5">
                           {article.category}
                         </span>
-                        <h4 className="font-heading font-semibold text-gray-900 group-hover:text-red-600 transition-colors line-clamp-2 sm:line-clamp-3 text-sm sm:text-base leading-snug">
+                        <h4 className="font-heading font-medium text-gray-900 group-hover:text-red-600 transition-colors line-clamp-2 sm:line-clamp-3 text-sm sm:text-base leading-snug">
                           {article.title}
                         </h4>
                       </div>
@@ -252,7 +252,7 @@ export default function LatestNewsSection({
                         <span className="text-[10px] font-bold uppercase tracking-wider text-red-600 block mb-0.5">
                           {article.category}
                         </span>
-                        <h4 className="font-heading font-semibold text-gray-900 group-hover:text-red-600 transition-colors line-clamp-2 text-xs sm:text-sm leading-snug">
+                        <h4 className="font-heading font-medium text-gray-900 group-hover:text-red-600 transition-colors line-clamp-2 text-xs sm:text-sm leading-snug">
                           {article.title}
                         </h4>
                       </div>
