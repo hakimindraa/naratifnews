@@ -43,22 +43,22 @@ function ThematicBlock({
   const remainingArticles = articles.slice(1, 4);
 
   return (
-    <div className="bg-white rounded-sm border border-gray-200 p-4 sm:p-5 shadow-2xs">
-      {/* Header Blok (Polos Tanpa Ikon) */}
-      <div className="flex items-center justify-between pb-3 mb-3.5 border-b border-gray-200">
-        <h4 className="text-sm font-semibold font-heading text-gray-900 tracking-wide">
+    <div className="bg-white border border-gray-200 p-4 sm:p-5">
+      {/* Header Blok ala CNN */}
+      <div className="flex items-center justify-between pb-2 mb-3.5 border-b-2 border-black">
+        <h4 className="text-sm font-bold font-heading text-gray-900 uppercase tracking-wider">
           {title}
         </h4>
         <Link
           href={`/berita/${categorySlug}`}
-          className="inline-flex items-center text-xs font-semibold text-gray-500 hover:text-black transition-colors group"
+          className="inline-flex items-center text-xs font-semibold text-gray-600 hover:text-black transition-colors group font-heading"
         >
-          <span>Lihat Semua ➔</span>
+          <span>Lihat Semua</span>
         </Link>
       </div>
 
       {articles.length === 0 ? (
-        <div className="py-6 px-4 text-center rounded-sm bg-gray-50 border border-dashed border-gray-200 text-xs text-gray-400">
+        <div className="py-6 px-4 text-center bg-gray-50 border border-dashed border-gray-200 text-xs text-gray-400">
           <p>Belum ada berita {categoryName.toLowerCase()} yang diterbitkan.</p>
         </div>
       ) : (
@@ -67,9 +67,9 @@ function ThematicBlock({
           {firstArticle && (
             <Link
               href={`/berita/${firstArticle.category.toLowerCase()}/${firstArticle.id}/${firstArticle.slug}`}
-              className="group block bg-white rounded-sm overflow-hidden border border-gray-100 shadow-2xs hover:border-gray-400 transition-colors"
+              className="group block overflow-hidden border-b border-gray-200 pb-3"
             >
-              <div className="aspect-video w-full overflow-hidden bg-gray-100 relative">
+              <div className="aspect-video w-full overflow-hidden bg-gray-100 mb-2.5">
                 <img
                   src={firstArticle.coverUrl || ''}
                   alt={firstArticle.title}
@@ -77,11 +77,11 @@ function ThematicBlock({
                   loading="lazy"
                 />
               </div>
-              <div className="p-3">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 block mb-1">
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-red-600 block mb-1">
                   {firstArticle.category}
                 </span>
-                <h5 className="font-semibold text-gray-900 group-hover:text-gray-600 transition-colors line-clamp-2 text-xs sm:text-sm leading-snug">
+                <h5 className="font-heading font-semibold text-gray-900 group-hover:text-red-600 transition-colors line-clamp-2 text-xs sm:text-sm leading-snug">
                   {firstArticle.title}
                 </h5>
                 <span className="text-[10px] text-gray-400 mt-1.5 block font-normal">
@@ -93,16 +93,16 @@ function ThematicBlock({
 
           {/* List Ringkas Berita Berikutnya */}
           {remainingArticles.length > 0 && (
-            <div className="divide-y divide-gray-100 pt-1">
+            <div className="divide-y divide-gray-200 pt-1">
               {remainingArticles.map((art) => (
                 <Link
                   key={art.id}
                   href={`/berita/${art.category.toLowerCase()}/${art.id}/${art.slug}`}
-                  className="py-2.5 first:pt-0 last:pb-0 group flex items-start gap-2.5 block"
+                  className="py-2.5 first:pt-0 last:pb-0 group flex items-start gap-2 block"
                 >
-                  <span className="text-gray-300 font-bold text-xs mt-0.5 select-none">•</span>
+                  <span className="text-gray-400 font-bold text-xs mt-0.5 select-none">•</span>
                   <div className="min-w-0 flex-1">
-                    <h5 className="font-semibold text-gray-800 group-hover:text-gray-600 transition-colors line-clamp-2 text-xs leading-snug">
+                    <h5 className="font-heading font-medium sm:font-semibold text-gray-900 group-hover:text-red-600 transition-colors line-clamp-2 text-xs leading-snug">
                       {art.title}
                     </h5>
                     <span className="text-[10px] text-gray-400 block mt-1 font-normal">

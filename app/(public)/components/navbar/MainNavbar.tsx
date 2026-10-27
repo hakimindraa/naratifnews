@@ -19,24 +19,33 @@ export default function MainNavbar({ categories, onOpenDrawer }: MainNavbarProps
   const pathname = usePathname();
 
   return (
-    <div className="w-full bg-white/95 backdrop-blur-md border-b border-gray-100 transition-all">
+    <div className="w-full bg-white border-b border-gray-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* ================= DESKTOP VIEW (lg:flex) ================= */}
-        <div className="hidden lg:flex items-center justify-between h-16">
-          {/* Logo Brand */}
-          <div className="shrink-0 mr-6">
+        {/* ================= DESKTOP & TABLET VIEW ================= */}
+        <div className="hidden lg:flex items-center justify-between h-14">
+          {/* Sisi Kiri: Menu Drawer Button + Brand Logo adafakta */}
+          <div className="flex items-center space-x-4 shrink-0">
+            <button
+              onClick={onOpenDrawer}
+              className="p-1.5 -ml-1 text-gray-800 hover:text-black hover:bg-gray-100 rounded-md transition-colors cursor-pointer"
+              aria-label="Buka navigasi penuh"
+              title="Menu Lengkap"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+
             <Link
               href="/"
-              className="text-2xl lg:text-3xl font-black font-heading tracking-tighter group flex items-center"
+              className="text-2xl font-black font-heading tracking-tighter group flex items-center select-none"
             >
-              <span className="text-gray-900 group-hover:text-black transition-colors">ada</span>
+              <span className="text-black">ada</span>
               <span className="text-gray-400 group-hover:text-black transition-colors">fakta</span>
             </Link>
           </div>
 
-          {/* Navigasi Kategori Tengah dengan Indikator Aktif */}
-          <nav className="flex items-center space-x-6 xl:space-x-8">
-            {categories.map((cat) => {
+          {/* Tengah: Navigasi Kategori dengan Tipografi Tegas ala CNN */}
+          <nav className="flex items-center space-x-5 xl:space-x-7">
+            {categories.slice(0, 8).map((cat) => {
               const isActive =
                 cat.href === "/"
                   ? pathname === "/"
@@ -46,71 +55,79 @@ export default function MainNavbar({ categories, onOpenDrawer }: MainNavbarProps
                 <Link
                   key={cat.name}
                   href={cat.href}
-                  className={`text-sm tracking-tight transition-all pb-1 border-b-2 ${isActive
+                  className={`text-[13px] tracking-tight font-heading transition-colors pb-0.5 border-b-2 ${
+                    isActive
                       ? "text-black font-bold border-black"
-                      : "text-gray-700 hover:text-black font-semibold border-transparent"
-                    }`}
+                      : "text-gray-800 hover:text-black font-medium border-transparent"
+                  }`}
                 >
                   {cat.name}
                 </Link>
               );
             })}
+            {categories.length > 8 && (
+              <button
+                onClick={onOpenDrawer}
+                className="text-[13px] font-semibold font-heading text-gray-500 hover:text-black transition-colors cursor-pointer"
+              >
+                Lainnya ▾
+              </button>
+            )}
           </nav>
 
-          {/* Area Kanan: Pencarian & Tombol Saluran WhatsApp */}
-          <div className="flex items-center space-x-3 shrink-0 ml-4">
+          {/* Sisi Kanan: Search & Kontak WhatsApp */}
+          <div className="flex items-center space-x-3.5 shrink-0">
             <Link
               href="/cari"
-              className="flex items-center space-x-2 bg-gray-100 hover:bg-gray-200/80 text-gray-600 hover:text-gray-900 text-xs font-semibold px-3.5 py-1.5 rounded-full transition-colors"
+              className="flex items-center space-x-1.5 text-gray-700 hover:text-black text-xs font-semibold px-2.5 py-1.5 rounded-md hover:bg-gray-100 transition-colors"
               aria-label="Pencarian berita"
             >
-              <Search className="w-3.5 h-3.5 text-gray-500" />
-              <span>Cari...</span>
+              <Search className="w-4 h-4 text-gray-600" />
+              <span>Cari</span>
             </Link>
 
             <a
-              href="https://whatsapp.com/channel/0029VbDdM7DFSAszJWyjca01"
+              href="https://wa.me/6283137412551"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center space-x-1.5 bg-black hover:bg-gray-800 text-white text-xs font-bold px-3.5 py-1.5 rounded-full shadow-xs transition-colors shrink-0"
-              title="Gabung Saluran WhatsApp Resmi Ada Fakta"
+              className="flex items-center space-x-1.5 bg-black hover:bg-gray-800 text-white text-xs font-semibold px-3 py-1.5 rounded-full transition-colors shrink-0"
+              title="Hubungi WhatsApp Redaksi: 083137412551"
             >
               <MessageCircle className="w-3.5 h-3.5" />
-              <span>Saluran Redaksi</span>
+              <span>Kontak WA</span>
             </a>
           </div>
         </div>
 
         {/* ================= MOBILE VIEW (lg:hidden) ================= */}
         <div className="flex lg:hidden items-center justify-between h-14">
-          {/* Tombol Hamburger Menu */}
           <button
             onClick={onOpenDrawer}
-            className="p-2 -ml-2 text-gray-700 hover:text-gray-900 rounded-lg hover:bg-gray-100 transition-colors"
+            className="p-2 -ml-2 text-gray-800 hover:text-black rounded-lg hover:bg-gray-100 transition-colors"
             aria-label="Buka menu navigasi"
           >
             <Menu className="w-6 h-6" />
           </button>
 
-          {/* Logo Tengah */}
           <div className="flex-1 flex justify-center">
             <Link
               href="/"
               className="text-2xl font-black font-heading tracking-tighter"
             >
-              <span className="text-gray-900">ada</span>
+              <span className="text-black">ada</span>
               <span className="text-gray-400">fakta</span>
             </Link>
           </div>
 
-          {/* Tombol Cari */}
-          <Link
-            href="/cari"
-            className="p-2 -mr-2 text-gray-700 hover:text-gray-900 rounded-full hover:bg-gray-100 transition-colors"
-            aria-label="Cari artikel"
-          >
-            <Search className="w-5 h-5" />
-          </Link>
+          <div className="flex items-center space-x-1">
+            <Link
+              href="/cari"
+              className="p-2 text-gray-700 hover:text-black rounded-full hover:bg-gray-100 transition-colors"
+              aria-label="Cari artikel"
+            >
+              <Search className="w-5 h-5" />
+            </Link>
+          </div>
         </div>
       </div>
     </div>

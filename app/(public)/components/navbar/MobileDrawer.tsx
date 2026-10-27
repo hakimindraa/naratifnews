@@ -40,7 +40,7 @@ export default function MobileDrawer({ isOpen, onClose, categories }: MobileDraw
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 lg:hidden">
+    <div className="fixed inset-0 z-50">
       {/* Backdrop Gelap Tanpa Animasi / Blur Berat */}
       <div
         onClick={onClose}
@@ -52,13 +52,13 @@ export default function MobileDrawer({ isOpen, onClose, categories }: MobileDraw
       <aside className="fixed inset-y-0 left-0 w-80 max-w-[85vw] bg-white shadow-xl flex flex-col justify-between overflow-y-auto">
         <div>
           {/* Header Drawer: Logo & Tombol Tutup */}
-          <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+          <div className="p-4 border-b border-gray-200 flex items-center justify-between">
             <Link
               href="/"
               onClick={onClose}
               className="text-2xl font-black font-heading tracking-tighter"
             >
-              <span className="text-gray-900">ada</span>
+              <span className="text-black">ada</span>
               <span className="text-gray-400">fakta</span>
             </Link>
             <button
@@ -112,24 +112,24 @@ export default function MobileDrawer({ isOpen, onClose, categories }: MobileDraw
             </nav>
           </div>
 
-          {/* Banner Saluran WhatsApp Redaksi (Gaya Editorial Bersih) */}
+          {/* Kontak WhatsApp Redaksi */}
           <div className="px-4 py-2">
             <a
-              href="https://whatsapp.com/channel/0029VbDdM7DFSAszJWyjca01"
+              href="https://wa.me/6283137412551"
               target="_blank"
               rel="noopener noreferrer"
               className="block p-3.5 bg-gray-50 hover:bg-gray-100 rounded-xl border border-gray-200 transition-colors"
             >
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-gray-900">
-                  Saluran WhatsApp
+                  Kontak WhatsApp
                 </span>
                 <span className="text-[10px] bg-gray-900 text-white font-semibold px-1.5 py-0.5 rounded">
-                  Resmi
+                  0831-3741-2551
                 </span>
               </div>
               <p className="text-[11px] text-gray-500 mt-1">
-                Dapatkan update berita terverifikasi
+                Hubungi redaksi & konfirmasi siaran pers
               </p>
             </a>
           </div>

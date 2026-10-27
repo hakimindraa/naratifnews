@@ -88,28 +88,27 @@ export default function KabarNusantaraSection({ articles }: KabarNusantaraSectio
   }
 
   return (
-    <section className="mb-6 sm:mb-12 space-y-3 px-3.5 sm:px-0">
-      {/* Header Bar Polos Minimalis (Persis Seperti Berita Sorotan) */}
-      <div className="flex items-center justify-between pb-2 border-b border-gray-200">
+    <section className="mb-8 sm:mb-14 space-y-4 px-3.5 sm:px-0">
+      {/* Header Bar Tegas ala CNN */}
+      <div className="flex items-center justify-between pb-2 border-b-2 border-black">
         <div className="flex items-center gap-2">
-
           <h3 className="text-sm sm:text-base font-bold font-heading text-gray-900 uppercase tracking-wider">
             Kabar Nusantara
           </h3>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-[11px] text-gray-400 font-medium sm:hidden">Geser ➔</span>
+          <span className="text-[11px] text-gray-400 font-medium sm:hidden">Geser</span>
           <Link
             href="/berita/regional"
-            className="text-[11px] text-gray-400 hover:text-gray-900 font-medium transition-colors hidden sm:inline"
+            className="text-xs text-gray-600 hover:text-black font-semibold transition-colors hidden sm:inline font-heading"
           >
-            Berita Daerah ➔
+            Semua Berita Daerah
           </Link>
         </div>
       </div>
 
-      {/* Grid Kartu Berita Daerah Minimalis Polos */}
-      <div className="flex overflow-x-auto sm:grid sm:grid-cols-2 lg:grid-cols-4 gap-3.5 pb-3 sm:pb-0 scrollbar-hide snap-x">
+      {/* Grid 4-Kolom Kartu Daerah ala CNN */}
+      <div className="flex overflow-x-auto sm:grid sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 pb-3 sm:pb-0 scrollbar-hide snap-x">
         {articles.map((art) => {
           const regionName = detectRegionBadge(art.tags, art.title);
 
@@ -117,25 +116,26 @@ export default function KabarNusantaraSection({ articles }: KabarNusantaraSectio
             <Link
               key={art.id}
               href={`/berita/regional/${art.id}/${art.slug}`}
-              className="group flex flex-col bg-white rounded-sm border border-gray-100 overflow-hidden shadow-2xs hover:shadow-sm transition-all w-[240px] sm:w-auto shrink-0 snap-start"
+              className="group flex flex-col w-[240px] sm:w-auto shrink-0 snap-start"
             >
-              <div className="aspect-video w-full overflow-hidden bg-gray-50 relative">
+              <div className="aspect-video w-full overflow-hidden bg-gray-100 mb-2.5">
                 <img
                   src={art.coverUrl || ''}
                   alt={art.title}
                   className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  loading="lazy"
                 />
               </div>
-              <div className="p-3 flex flex-col justify-between flex-1">
+              <div className="flex flex-col justify-between flex-1">
                 <div>
-                  <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1">
+                  <span className="text-[10px] font-bold text-red-600 uppercase tracking-wider block mb-1">
                     {regionName}
                   </span>
-                  <h4 className="font-semibold text-gray-900 group-hover:text-gray-600 transition-colors line-clamp-2 text-xs sm:text-sm leading-snug">
+                  <h4 className="font-heading font-semibold text-gray-900 group-hover:text-red-600 transition-colors line-clamp-2 text-sm leading-snug">
                     {art.title}
                   </h4>
                 </div>
-                <span className="text-[10px] text-gray-400 mt-2 block">
+                <span className="text-[11px] text-gray-400 font-normal mt-2 block">
                   {art.publishedAt
                     ? formatDistanceToNow(new Date(art.publishedAt), { addSuffix: true, locale: id })
                     : ''}

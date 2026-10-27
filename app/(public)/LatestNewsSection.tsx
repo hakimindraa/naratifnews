@@ -55,7 +55,7 @@ function MobileThematicStrip({
           {title}
         </h4>
         <div className="flex items-center gap-2">
-          <span className="text-[10px] text-gray-400 font-medium">Geser ➔</span>
+          <span className="text-[10px] text-gray-400 font-medium">Geser</span>
           <Link
             href={`/berita/${categorySlug}`}
             className="text-[11px] font-semibold text-gray-900 hover:text-gray-600 transition-colors"
@@ -145,31 +145,31 @@ export default function LatestNewsSection({
 
   return (
     <div>
-      {/* Section Header Polos Minimalis */}
-      <div className="flex items-center mb-4 sm:mb-6 px-3.5 sm:px-0">
-        <h3 className="text-base sm:text-xl font-bold font-heading text-gray-900">Berita Terbaru</h3>
-        <div className="ml-4 flex-grow h-px bg-gray-200"></div>
+      {/* Section Header Tegas ala CNN */}
+      <div className="flex items-center justify-between mb-4 sm:mb-6 pb-2 border-b-2 border-black px-3.5 sm:px-0">
+        <h3 className="text-base sm:text-xl font-bold font-heading text-gray-900 uppercase tracking-wider">
+          Berita Terbaru
+        </h3>
+        <span className="text-xs text-red-600 font-bold uppercase font-heading tracking-wide">
+          Kabar Terkini
+        </span>
       </div>
 
-      {/* Grid Utama: Gaya Judul & Layout List ala Detiknews (Thumbnail KIRI, Judul KANAN font-semibold, waktu di bawah) */}
-      <div className="grid grid-cols-2 gap-x-3 sm:gap-x-6 gap-y-3.5 sm:gap-y-8 px-3.5 sm:px-0">
+      {/* Grid Utama: Gaya Judul & Layout List ala CNN & Detiknews */}
+      <div className="grid grid-cols-2 gap-x-3 sm:gap-x-6 gap-y-4 sm:gap-y-8 px-3.5 sm:px-0">
         {articlesList.map((article, idx) => {
-          // Pola Ritme Mobile (siklus 6 artikel):
-          // pattern 0: Hero Penuh (col-span-2, gambar lebar di atas)
-          // pattern 1, 2, 3: List Samping Detiknews style (col-span-2, thumbnail di KIRI, judul di KANAN)
-          // pattern 4, 5: Mini Grid 2-Kolom (col-span-1, gambar di atas, teks di bawah)
           const pattern = idx % 6;
 
           return (
             <Fragment key={article.id}>
               {/* TIPE 1: HERO PENUH (col-span-2 di mobile, standard grid di desktop) */}
               {pattern === 0 && (
-                <div className="col-span-2 sm:col-span-1 group cursor-pointer pb-3.5 sm:pb-0 border-b sm:border-b-0 border-gray-100">
+                <div className="col-span-2 sm:col-span-1 group cursor-pointer pb-4 sm:pb-0 border-b sm:border-b-0 border-gray-200">
                   <Link
                     href={`/berita/${article.category.toLowerCase()}/${article.id}/${article.slug}`}
                     className="flex flex-col h-full"
                   >
-                    <div className="relative aspect-video w-full rounded-md overflow-hidden bg-gray-100 mb-2.5 sm:mb-4">
+                    <div className="relative aspect-video w-full overflow-hidden bg-gray-100 mb-2 sm:mb-3">
                       <img
                         src={article.coverUrl || ''}
                         alt={article.title}
@@ -179,11 +179,14 @@ export default function LatestNewsSection({
                     </div>
                     <div className="flex flex-col justify-between flex-grow">
                       <div>
-                        <h4 className="font-semibold text-gray-900 group-hover:text-gray-600 transition-colors line-clamp-2 text-base sm:text-lg leading-snug">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-red-600 block mb-1">
+                          {article.category}
+                        </span>
+                        <h4 className="font-heading font-bold text-gray-900 group-hover:text-red-600 transition-colors line-clamp-2 text-base sm:text-lg leading-snug">
                           {article.title}
                         </h4>
                       </div>
-                      <span suppressHydrationWarning className="text-[11px] sm:text-xs text-gray-400 font-normal mt-1.5 block">
+                      <span suppressHydrationWarning className="text-[11px] text-gray-400 font-normal mt-2 block">
                         {getTimeAgo(article.publishedAt)}
                       </span>
                     </div>
@@ -191,15 +194,15 @@ export default function LatestNewsSection({
                 </div>
               )}
 
-              {/* TIPE 2: LIST DETIKNEWS STYLE (Thumbnail KIRI, Judul KANAN font-semibold, Waktu di bawah judul) */}
+              {/* TIPE 2: LIST SAMPING CNN STYLE (Thumbnail KIRI, Judul KANAN) */}
               {(pattern === 1 || pattern === 2 || pattern === 3) && (
-                <div className="col-span-2 sm:col-span-1 group cursor-pointer py-3 sm:py-0 border-b sm:border-b-0 border-gray-100">
+                <div className="col-span-2 sm:col-span-1 group cursor-pointer py-3 sm:py-0 border-b sm:border-b-0 border-gray-200">
                   <Link
                     href={`/berita/${article.category.toLowerCase()}/${article.id}/${article.slug}`}
                     className="flex items-start gap-3 sm:flex-col sm:gap-0 sm:h-full"
                   >
-                    {/* Thumbnail: Di KIRI persis seperti Detiknews di mobile, di ATAS di desktop */}
-                    <div className="relative w-[100px] h-[75px] sm:w-full sm:h-48 rounded-md overflow-hidden bg-gray-100 shrink-0 sm:mb-4">
+                    {/* Thumbnail: Di KIRI di mobile, di ATAS di desktop */}
+                    <div className="relative w-[100px] h-[75px] sm:w-full sm:h-48 overflow-hidden bg-gray-100 shrink-0 sm:mb-3">
                       <img
                         src={article.coverUrl || ''}
                         alt={article.title}
@@ -208,14 +211,19 @@ export default function LatestNewsSection({
                       />
                     </div>
 
-                    {/* Text: Di KANAN persis seperti Detiknews di mobile, di BAWAH di desktop */}
+                    {/* Text: Di KANAN di mobile, di BAWAH di desktop */}
                     <div className="flex-1 min-w-0 flex flex-col justify-between sm:h-full">
-                      <h4 className="font-semibold text-gray-900 group-hover:text-gray-600 transition-colors line-clamp-2 sm:line-clamp-3 text-[14.5px] sm:text-base leading-[1.35] sm:leading-snug">
-                        {article.title}
-                      </h4>
+                      <div>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-red-600 block mb-0.5">
+                          {article.category}
+                        </span>
+                        <h4 className="font-heading font-semibold text-gray-900 group-hover:text-red-600 transition-colors line-clamp-2 sm:line-clamp-3 text-sm sm:text-base leading-snug">
+                          {article.title}
+                        </h4>
+                      </div>
                       <div
                         suppressHydrationWarning
-                        className="text-[11px] sm:text-xs text-gray-400 font-normal mt-1 sm:mt-auto"
+                        className="text-[11px] text-gray-400 font-normal mt-1 sm:mt-2"
                       >
                         {getTimeAgo(article.publishedAt)}
                       </div>
@@ -231,7 +239,7 @@ export default function LatestNewsSection({
                     href={`/berita/${article.category.toLowerCase()}/${article.id}/${article.slug}`}
                     className="flex flex-col h-full"
                   >
-                    <div className="relative aspect-[4/3] sm:aspect-video w-full rounded-md overflow-hidden bg-gray-100 mb-2 sm:mb-4">
+                    <div className="relative aspect-[4/3] sm:aspect-video w-full overflow-hidden bg-gray-100 mb-2 sm:mb-3">
                       <img
                         src={article.coverUrl || ''}
                         alt={article.title}
@@ -240,10 +248,15 @@ export default function LatestNewsSection({
                       />
                     </div>
                     <div className="flex flex-col justify-between flex-grow">
-                      <h4 className="font-semibold text-gray-900 group-hover:text-gray-600 transition-colors line-clamp-2 text-xs sm:text-base leading-snug">
-                        {article.title}
-                      </h4>
-                      <span suppressHydrationWarning className="text-[10px] sm:text-xs text-gray-400 font-normal mt-1.5 block">
+                      <div>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-red-600 block mb-0.5">
+                          {article.category}
+                        </span>
+                        <h4 className="font-heading font-semibold text-gray-900 group-hover:text-red-600 transition-colors line-clamp-2 text-xs sm:text-sm leading-snug">
+                          {article.title}
+                        </h4>
+                      </div>
+                      <span suppressHydrationWarning className="text-[10px] sm:text-[11px] text-gray-400 font-normal mt-1.5 block">
                         {getTimeAgo(article.publishedAt)}
                       </span>
                     </div>

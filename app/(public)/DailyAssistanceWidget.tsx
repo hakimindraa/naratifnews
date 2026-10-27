@@ -124,127 +124,68 @@ export default async function DailyAssistanceWidget() {
   const data = await getAssistanceData();
 
   return (
-    <div className="mt-8 pt-6 sm:mt-6 sm:pt-5 border-t border-gray-200/80 mb-8 sm:mb-0">
-      {/* Header Widget (Polos & Bersih) */}
-      <div className="flex items-center justify-between mb-3.5">
-        <h3 className="text-sm font-bold font-heading text-gray-900 tracking-tight">
-          Info Harian & Tren
-        </h3>
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] text-gray-400 font-medium sm:hidden">Geser ➔</span>
-          <span className="text-[10px] text-gray-600 font-medium hidden sm:inline bg-gray-100 px-2 py-0.5 rounded">
-            Live Update
-          </span>
-        </div>
-      </div>
-
-      {/* Grid Kartu Minimalis Polos Bebas Ikon */}
-      <div className="flex sm:grid sm:grid-cols-3 gap-3 sm:gap-2.5 overflow-x-auto pb-3 sm:pb-0 scrollbar-hide snap-x">
-
-        {/* KARTU 1: Kurs USD ke IDR */}
-        <div className="w-[180px] sm:w-auto shrink-0 snap-start bg-white border border-gray-200 rounded-sm p-3 flex flex-col justify-between hover:border-gray-400 transition-colors shadow-2xs min-h-[96px]">
-          <div className="flex items-center justify-between mb-1.5">
-            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
-              USD / IDR
+    <div className="w-full bg-gray-50/80 border-y border-gray-200 py-2.5 my-6 sm:my-8 px-3.5 sm:px-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+        {/* Sisi Kiri: Indikator Finansial & Cuaca Real-Time */}
+        <div className="flex items-center space-x-4 sm:space-x-6 overflow-x-auto scrollbar-hide py-0.5">
+          <div className="flex items-center space-x-1.5 shrink-0">
+            <span className="font-heading font-bold text-[10px] uppercase text-gray-500 tracking-wider">
+              USD/IDR
             </span>
-          </div>
-          <div>
-            <div className="text-sm sm:text-base font-black text-gray-900 tracking-tight">
+            <span className="font-heading font-semibold text-gray-900 text-xs sm:text-sm">
               Rp {data.usdRate.toLocaleString("id-ID")}
-            </div>
-            <span className="text-[10px] text-gray-400 font-medium block mt-0.5">
-              Acuan Pasar Global
             </span>
           </div>
-        </div>
 
-        {/* KARTU 2: Cuaca & Suhu Hari Ini */}
-        <div className="w-[180px] sm:w-auto shrink-0 snap-start bg-white border border-gray-200 rounded-sm p-3 flex flex-col justify-between hover:border-gray-400 transition-colors shadow-2xs min-h-[96px]">
-          <div className="flex items-center justify-between mb-1.5">
-            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+          <span className="text-gray-300 font-light select-none">|</span>
+
+          <div className="flex items-center space-x-1.5 shrink-0">
+            <span className="font-heading font-bold text-[10px] uppercase text-gray-500 tracking-wider">
               Jakarta
             </span>
-          </div>
-          <div>
-            <div className="text-sm sm:text-base font-black text-gray-900 tracking-tight">
+            <span className="font-heading font-semibold text-gray-900 text-xs sm:text-sm">
               {data.temp}°C
-            </div>
-            <span className="text-[10px] text-gray-400 font-medium block mt-0.5 truncate">
-              {data.weatherCondition}
+            </span>
+            <span className="text-gray-500 text-[11px] font-medium hidden md:inline">
+              ({data.weatherCondition})
             </span>
           </div>
-        </div>
 
-        {/* KARTU 3: Kualitas Udara (AQI) */}
-        <div className="w-[180px] sm:w-auto shrink-0 snap-start bg-white border border-gray-200 rounded-sm p-3 flex flex-col justify-between hover:border-gray-400 transition-colors shadow-2xs min-h-[96px]">
-          <div className="flex items-center justify-between mb-1.5">
-            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+          <span className="text-gray-300 font-light select-none">|</span>
+
+          <div className="flex items-center space-x-1.5 shrink-0">
+            <span className="font-heading font-bold text-[10px] uppercase text-gray-500 tracking-wider">
               Udara (AQI)
             </span>
+            <span className="font-heading font-semibold text-gray-900 text-xs sm:text-sm">
+              {data.aqi}
+            </span>
+            <span className="text-[10px] font-medium text-gray-700 bg-gray-200/80 px-1.5 py-0.5 rounded-xs">
+              {data.aqiStatus}
+            </span>
           </div>
-          <div>
-            <div className="flex items-center gap-1.5">
-              <span className="text-sm sm:text-base font-black text-gray-900 tracking-tight">
-                {data.aqi}
-              </span>
-              <span className="text-[9px] font-bold text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded">
-                {data.aqiStatus}
-              </span>
+        </div>
+
+        {/* Sisi Kanan: Tren Pencarian Populer Indonesia */}
+        {data.trends.length > 0 && (
+          <div className="flex items-center space-x-2 shrink-0 overflow-x-auto scrollbar-hide">
+            <span className="font-heading font-bold text-[10px] uppercase text-gray-500 tracking-wider shrink-0">
+              Tren Populer:
+            </span>
+            <div className="flex items-center space-x-1.5">
+              {data.trends.map((t, idx) => (
+                <Link
+                  key={idx}
+                  href={`/cari?q=${encodeURIComponent(t)}`}
+                  className="bg-white hover:bg-black hover:text-white border border-gray-200 text-gray-800 text-[11px] font-medium px-2 py-0.5 rounded-xs transition-colors whitespace-nowrap"
+                  title={`Cari berita seputar: ${t}`}
+                >
+                  #{t}
+                </Link>
+              ))}
             </div>
-            <span className="text-[10px] text-gray-400 font-medium block mt-0.5">
-              Indeks PM2.5
-            </span>
           </div>
-        </div>
-
-        {/* KARTU 4: Trending Topik Google Hari Ini */}
-        <div className="w-[280px] sm:w-auto sm:col-span-2 shrink-0 snap-start bg-white border border-gray-200 rounded-sm p-3 flex flex-col justify-between hover:border-gray-400 transition-colors shadow-2xs min-h-[96px]">
-          <div className="flex items-center justify-between mb-1.5">
-            <span className="text-[11px] font-bold text-gray-900 tracking-tight">
-              Tren Pencarian
-            </span>
-            <span className="text-[9px] font-bold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
-              Indonesia
-            </span>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-1.5 mt-1">
-            {data.trends.map((trend, idx) => (
-              <Link
-                key={idx}
-                href={`/cari?q=${encodeURIComponent(trend)}`}
-                className="inline-flex items-center gap-1 text-[11px] font-medium text-gray-700 bg-gray-100 hover:bg-black hover:text-white px-2 py-0.5 rounded transition-colors group/tag max-w-[170px]"
-                title={`Cari berita seputar: ${trend}`}
-              >
-                <span className="text-[10px] font-bold text-gray-400 group-hover/tag:text-gray-300">
-                  #{idx + 1}
-                </span>
-                <span className="truncate">{trend}</span>
-              </Link>
-            ))}
-          </div>
-        </div>
-
-        {/* KARTU 5: Status Layanan Digital */}
-        <div className="w-[190px] sm:w-auto sm:col-span-1 shrink-0 snap-start bg-white border border-gray-200 rounded-sm p-3 flex flex-col justify-between hover:border-gray-400 transition-colors shadow-2xs min-h-[96px]">
-          <div className="flex items-center justify-between mb-1.5">
-            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
-              Layanan Digital
-            </span>
-          </div>
-          <div>
-            <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-gray-900 shrink-0"></span>
-              <span className="text-xs sm:text-sm font-bold text-gray-900">
-                100% Normal
-              </span>
-            </div>
-            <span className="text-[9.5px] text-gray-400 font-medium block mt-0.5 truncate" title="Google, WhatsApp, Cloudflare, AWS">
-              Google • WA • Cloudflare • AWS
-            </span>
-          </div>
-        </div>
-
+        )}
       </div>
     </div>
   );

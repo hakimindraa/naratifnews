@@ -164,7 +164,7 @@ export default async function CategoryPage({
               ) : (
                 popularArticles.map((article, index) => (
                   <div key={article.id} className="flex gap-4 group cursor-pointer">
-                    <div className="text-4xl font-black font-heading text-gray-200 group-hover:text-gray-300 transition-colors -mt-1">
+                    <div className="text-4xl font-bold font-heading text-gray-200 group-hover:text-gray-300 transition-colors -mt-1">
                       {index + 1}
                     </div>
                     <div>

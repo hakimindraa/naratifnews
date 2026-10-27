@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from "react";
-import TopUtilityBar from "./TopUtilityBar";
 import MainNavbar from "./MainNavbar";
 import BreakingTicker from "./BreakingTicker";
 import MobileDrawer from "./MobileDrawer";
@@ -35,25 +34,22 @@ export default function NavbarContainer({ breakingNews, trendingTags }: NavbarCo
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   return (
-    <header className="w-full flex flex-col">
-      {/* 1. Desktop Utility Bar (Non-sticky, menghilang saat scroll) */}
-      <TopUtilityBar />
-
-      {/* 2. Main Sticky Section (Glassmorphic Header) */}
-      <div className="sticky top-0 z-40 shadow-xs">
+    <header className="w-full flex flex-col bg-white">
+      {/* 1. Main Sticky Header (CNN-Style 1-Row Slim Header) */}
+      <div className="sticky top-0 z-40 bg-white">
         <MainNavbar
           categories={CATEGORIES}
           onOpenDrawer={() => setIsDrawerOpen(true)}
         />
       </div>
 
-      {/* 3. Ticker Berita Terkini & Trending Tags */}
+      {/* 2. Hot Topics Strip ala CNN (sub-header dengan pemisah pipa |) */}
       <BreakingTicker
         breakingNews={breakingNews}
         trendingTags={trendingTags}
       />
 
-      {/* 4. Off-Canvas Mobile Drawer */}
+      {/* 3. Off-Canvas Mobile Drawer */}
       <MobileDrawer
         isOpen={isDrawerOpen}
         onClose={() => setIsDrawerOpen(false)}

@@ -361,7 +361,7 @@ export default async function ArticlePage({
                           <Globe className="w-4 h-4" />
                         </div>
                         <div className="min-w-0">
-                          <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-gray-400 block">
+                          <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-gray-400 block">
                             Atribusi Sumber Berita
                           </span>
                           <p className="font-bold text-gray-900 truncate text-xs sm:text-sm mt-0.5">
@@ -548,7 +548,7 @@ export default async function ArticlePage({
             {/* Widget Komunitas & Media Sosial Ada Fakta */}
             <div className="mb-8 p-4 sm:p-5 bg-gradient-to-br from-gray-50 via-white to-gray-50 rounded-sm border border-gray-200 shadow-sm space-y-3.5">
               <div>
-                <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-gray-900 bg-gray-100 px-2.5 py-1 rounded-md">
+                <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-gray-900 bg-gray-100 px-2.5 py-1 rounded-md">
                   Komunitas & Media
                 </span>
                 <h3 className="font-bold font-heading text-gray-900 text-base sm:text-lg mt-2 leading-snug">
@@ -613,7 +613,7 @@ export default async function ArticlePage({
               ) : (
                 popularArticles.map((pop, index) => (
                   <div key={pop.id} className="flex gap-4 group cursor-pointer">
-                    <div className="text-4xl font-black font-heading text-gray-200 group-hover:text-gray-300 transition-colors -mt-1">
+                    <div className="text-4xl font-bold font-heading text-gray-200 group-hover:text-gray-300 transition-colors -mt-1">
                       {index + 1}
                     </div>
                     <div>

@@ -14,46 +14,47 @@ interface BreakingTickerProps {
 
 export default function BreakingTicker({ breakingNews, trendingTags }: BreakingTickerProps) {
   return (
-    <div className="bg-gray-50 border-b border-gray-200 text-xs py-2 transition-colors">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row md:items-center justify-between gap-2">
-        {/* Sisi Kiri: Breaking News Headline */}
-        <div className="flex items-center min-w-0 flex-1">
-          <span className="bg-red-600 text-white text-[10px] md:text-xs font-medium px-2 py-0.5 rounded-md mr-2.5 shrink-0 tracking-wide uppercase">
-            Terkini
+    <div className="w-full bg-white border-b border-gray-200 text-xs py-2">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-4 overflow-hidden">
+        {/* Sisi Kiri: Breaking Lead Alert / Topik Hangat */}
+        <div className="flex items-center space-x-3 overflow-x-auto scrollbar-hide py-0.5 min-w-0 flex-1">
+          <span className="font-heading font-bold text-gray-900 uppercase tracking-wider text-[11px] shrink-0">
+            Topik Hangat:
           </span>
-          {breakingNews ? (
-            <Link
-              href={`/berita/${breakingNews.category.toLowerCase()}/${breakingNews.id}/${breakingNews.slug}`}
-              className="truncate text-xs md:text-sm font-normal text-gray-800 hover:text-red-600 transition-colors"
-            >
-              {breakingNews.title}
-            </Link>
-          ) : (
-            <span className="truncate text-xs text-gray-500 italic">
-              Belum ada berita terbit hari ini.
-            </span>
-          )}
-        </div>
 
-        {/* Sisi Kanan: Trending Tags (Desktop & Tablet) */}
-        {trendingTags && trendingTags.length > 0 && (
-          <div className="hidden md:flex items-center space-x-2 shrink-0 text-xs">
-            <span className="font-bold text-gray-800 shrink-0">
-              Trending:
-            </span>
-            <div className="flex items-center space-x-1.5 overflow-x-auto scrollbar-hide">
-              {trendingTags.slice(0, 4).map((tag) => (
-                <Link
-                  key={tag}
-                  href={`/cari?q=${encodeURIComponent(tag)}`}
-                  className="bg-white hover:bg-gray-100 text-gray-700 hover:text-black font-medium px-2.5 py-0.5 rounded-sm border border-gray-200 shadow-2xs whitespace-nowrap transition-colors text-[11px]"
-                >
-                  #{tag}
-                </Link>
+          {trendingTags && trendingTags.length > 0 && (
+            <div className="flex items-center space-x-2.5 text-xs shrink-0">
+              {trendingTags.slice(0, 5).map((tag, i) => (
+                <div key={tag} className="flex items-center space-x-2.5">
+                  {i > 0 && <span className="text-gray-300 font-light select-none">|</span>}
+                  <Link
+                    href={`/cari?q=${encodeURIComponent(tag)}`}
+                    className="text-gray-700 hover:text-red-700 font-medium whitespace-nowrap transition-colors hover:underline"
+                  >
+                    #{tag}
+                  </Link>
+                </div>
               ))}
             </div>
-          </div>
-        )}
+          )}
+
+          {breakingNews && (
+            <>
+              <span className="text-gray-300 font-light select-none shrink-0 hidden md:inline">|</span>
+              <div className="hidden md:flex items-center space-x-2 min-w-0">
+                <span className="text-red-600 font-bold uppercase text-[10px] tracking-wider shrink-0">
+                  Terkini:
+                </span>
+                <Link
+                  href={`/berita/${breakingNews.category.toLowerCase()}/${breakingNews.id}/${breakingNews.slug}`}
+                  className="truncate text-gray-800 hover:text-red-600 transition-colors font-medium text-xs"
+                >
+                  {breakingNews.title}
+                </Link>
+              </div>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
