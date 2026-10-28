@@ -379,9 +379,9 @@ export default async function Home() {
       <KabarNusantaraSection articles={regionalArticles} />
 
       {/* Bagian Bawah: Feed Berita Terbaru (Lebar 8) + Sidebar Tematik (Lebar 4 Desktop Only) */}
-      <div className="mt-6 sm:mt-14 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-start">
-        {/* Kolom Kiri: Feed Berita Terbaru (Mobile: 2 Kolom dengan Selingan Carousel Tematik) */}
-        <div className="lg:col-span-8 min-w-0">
+      <div className="mt-8 sm:mt-14 grid grid-cols-1 lg:grid-cols-12 gap-0 items-start">
+        {/* Kolom Kiri: Feed Berita Terbaru (Stream Horizontal & Selingan Highlight) */}
+        <div className="lg:col-span-8 min-w-0 lg:pr-8">
           <LatestNewsSection
             initialArticles={initialLatestArticles}
             initialHasMore={hasMore}
@@ -394,9 +394,9 @@ export default async function Home() {
           />
         </div>
 
-        {/* Kolom Kanan: Sidebar Tematik Desktop (Nasional, Internasional, Sport) */}
+        {/* Kolom Kanan: Sidebar Tematik Desktop dengan Garis Vertikal Pemisah Koran */}
         {/* Disembunyikan di mobile (hidden lg:block) karena di mobile sudah diselipkan rapi di sela-sela feed */}
-        <div className="hidden lg:block lg:col-span-4 min-w-0 lg:sticky lg:top-24">
+        <div className="hidden lg:block lg:col-span-4 min-w-0 lg:pl-8 lg:border-l lg:border-gray-200 lg:sticky lg:top-24">
           <ThematicSidebar
             nasionalArticles={nasionalArticles}
             internasionalArticles={internasionalArticles}

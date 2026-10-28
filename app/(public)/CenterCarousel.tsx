@@ -109,11 +109,11 @@ export default function CenterCarousel({ articles }: CenterCarouselProps) {
       {/* Kontainer Slide Ringan dengan Infinite Loop */}
       <div className="overflow-hidden">
         <div
+          suppressHydrationWarning
           onTransitionEnd={handleTransitionEnd}
-          className="flex"
+          className={`flex ${isTransitioning ? 'transition-transform duration-500 ease-in-out' : ''}`}
           style={{
             transform: `translateX(-${currentIndex * 100}%)`,
-            transition: isTransitioning ? 'transform 500ms ease-in-out' : 'none',
           }}
         >
           {allSlides.map((pair, slideIndex) => (
