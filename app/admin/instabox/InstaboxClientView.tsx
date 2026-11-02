@@ -21,6 +21,7 @@ import {
   MessageSquare,
   Bot,
   Info,
+  Stethoscope,
 } from 'lucide-react';
 import {
   DashboardData,
@@ -31,8 +32,9 @@ import {
   triggerKeepaliveAction,
   saveInstaboxConfigAction,
   testTelegramNotificationAction,
+  checkHermesHealthAction,
 } from './actions';
-import { SshTokenResponse, formatCooldownTime } from '@/lib/instabox';
+import { SshTokenResponse, formatCooldownTime, HermesServiceHealth } from '@/lib/instabox';
 
 interface Props {
   initialData: DashboardData;
@@ -54,6 +56,10 @@ export default function InstaboxClientView({ initialData }: Props) {
   const [isGeneratingSsh, setIsGeneratingSsh] = useState(false);
   const [copiedSsh, setCopiedSsh] = useState(false);
   const [copiedCron, setCopiedCron] = useState(false);
+
+  // State untuk Health Check Hermes
+  const [serviceHealth, setServiceHealth] = useState<HermesServiceHealth | null>(null);
+  const [isCheckingHealth, setIsCheckingHealth] = useState(false);
 
   // State untuk Form Settings
   const [apiKeyInput, setApiKeyInput] = useState('');
@@ -136,6 +142,22 @@ export default function InstaboxClientView({ initialData }: Props) {
       }
     } finally {
       setIsGeneratingSsh(false);
+    }
+  };
+
+  // 4b. Aksi Deep Health Check Hermes
+  const handleCheckHealth = async () => {
+    setIsCheckingHealth(true);
+    try {
+      const res = await checkHermesHealthAction(data.config.machineId);
+      setServiceHealth(res);
+      if (res.isHealthy) {
+        showNotification('success', 'Service Hermes terdeteksi aktif!');
+      } else {
+        showNotification('error', 'Service Hermes belum terdeteksi aktif di sistem.');
+      }
+    } finally {
+      setIsCheckingHealth(false);
     }
   };
 
@@ -400,6 +422,68 @@ export default function InstaboxClientView({ initialData }: Props) {
         </div>
       </div>
 
+      {/* Card Progress Bar Kuota Harian (0 - 8 Jam) */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-xs p-5 space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Clock className="w-4 h-4 text-indigo-600" />
+            <span className="text-xs font-bold text-gray-900 uppercase tracking-wider">
+              Penggunaan Kuota Harian (Batas 8 Jam Nonstop)
+            </span>
+          </div>
+          <div className="flex items-center gap-2 text-xs">
+            <span className="font-bold text-gray-900 font-heading">
+              {data.usageStats.usedHours} / {data.usageStats.maxHours} Jam ({data.usageStats.percentage}%)
+            </span>
+            <span className="text-gray-300">•</span>
+            <span className="text-gray-600">
+              Sisa Kuota: <strong className="text-emerald-600">{data.usageStats.remainingHours} Jam</strong>
+            </span>
+          </div>
+        </div>
+
+        {/* Visual Bar */}
+        <div className="w-full bg-gray-100 h-3 rounded-full overflow-hidden p-0.5 border border-gray-200">
+          <div
+            className={`h-full rounded-full transition-all duration-500 ${
+              data.usageStats.statusLevel === 'critical'
+                ? 'bg-rose-500'
+                : data.usageStats.statusLevel === 'warning'
+                ? 'bg-amber-500'
+                : 'bg-emerald-500'
+            }`}
+            style={{ width: `${Math.max(4, data.usageStats.percentage)}%` }}
+          />
+        </div>
+
+        <div className="flex flex-wrap items-center justify-between text-[11px] text-gray-500 gap-2 pt-1 border-t border-gray-50">
+          <div className="flex items-center gap-2">
+            <span
+              className={`w-2 h-2 rounded-full ${
+                data.usageStats.statusLevel === 'critical'
+                  ? 'bg-rose-500 animate-pulse'
+                  : data.usageStats.statusLevel === 'warning'
+                  ? 'bg-amber-500'
+                  : 'bg-emerald-500'
+              }`}
+            />
+            <span>
+              {data.usageStats.statusLevel === 'critical'
+                ? 'Kritis: Kuota harian hampir habis. Segera pause mesin jika sudah selesai.'
+                : data.usageStats.statusLevel === 'warning'
+                ? 'Perhatian: Kuota harian sudah terpakai lebih dari 50%.'
+                : 'Aman: Kuota harian masih banyak dan leluasa digunakan.'}
+            </span>
+          </div>
+
+          {isRunning && data.usageStats.continuousRunMinutes > 0 && (
+            <div className="font-mono text-gray-600">
+              Sesi aktif saat ini: <strong>{data.usageStats.continuousRunFormatted}</strong>
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Banner Cooldown Aktif */}
       {isCooldownActive && (
         <div className="bg-amber-500/10 border border-amber-300 rounded-2xl p-4 sm:p-5 flex items-start gap-3.5 shadow-2xs">
@@ -442,7 +526,7 @@ export default function InstaboxClientView({ initialData }: Props) {
               {isPending && <span className="text-xs text-indigo-600 font-medium animate-pulse">Menghubungi API...</span>}
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               <button
                 type="button"
                 onClick={handleWakeUp}
@@ -460,7 +544,7 @@ export default function InstaboxClientView({ initialData }: Props) {
                 className="flex items-center justify-center gap-2 p-3.5 rounded-xl border border-emerald-200 bg-emerald-50/60 hover:bg-emerald-50 text-emerald-700 font-semibold text-xs transition-colors disabled:opacity-50"
               >
                 <Activity className="w-4 h-4 text-emerald-600" />
-                <span>Trigger Keep-Alive (Ping)</span>
+                <span>Trigger Ping</span>
               </button>
 
               <button
@@ -472,7 +556,37 @@ export default function InstaboxClientView({ initialData }: Props) {
                 <Pause className="w-4 h-4 text-amber-600" />
                 <span>Pause / Tidurkan</span>
               </button>
+
+              <button
+                type="button"
+                onClick={handleCheckHealth}
+                disabled={isCheckingHealth}
+                className="flex items-center justify-center gap-2 p-3.5 rounded-xl border border-purple-200 bg-purple-50/60 hover:bg-purple-50 text-purple-800 font-semibold text-xs transition-colors disabled:opacity-50"
+              >
+                <Stethoscope className="w-4 h-4 text-purple-600" />
+                <span>{isCheckingHealth ? 'Mengecek...' : 'Cek Service Hermes'}</span>
+              </button>
             </div>
+
+            {/* Kotak Hasil Health Check */}
+            {serviceHealth && (
+              <div className="p-3.5 bg-gray-50 rounded-xl border border-gray-200 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="flex items-center gap-2.5">
+                  <span
+                    className={`w-2.5 h-2.5 rounded-full shrink-0 ${
+                      serviceHealth.isHealthy ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'
+                    }`}
+                  />
+                  <span className="font-semibold text-gray-800">
+                    Status Service: {serviceHealth.serviceState === 'active' ? '🟢 Active & Ready' : serviceHealth.serviceState === 'starting' ? '🟡 Sedang Booting' : '🔴 Offline / Belum Berjalan'}
+                  </span>
+                  <span className="text-[11px] text-gray-400">({serviceHealth.checkedAt})</span>
+                </div>
+                <div className="font-mono text-[10px] text-gray-500 truncate max-w-sm bg-white px-2 py-1 rounded border border-gray-100">
+                  {serviceHealth.processSummary.split('\n')[0]}
+                </div>
+              </div>
+            )}
 
             <div className="p-3 bg-gray-50 rounded-xl border border-gray-100 text-xs text-gray-600 flex items-start gap-2">
               <Info className="w-4 h-4 text-indigo-500 shrink-0 mt-0.5" />

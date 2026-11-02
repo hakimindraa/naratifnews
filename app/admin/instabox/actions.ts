@@ -6,13 +6,18 @@ import {
   getInstaboxMachine,
   listInstaboxMachines,
   wakeInstaboxMachine,
+  pauseInstaboxMachine,
   createInstaboxSshToken,
   execInstaboxCommand,
   runInstaboxKeepAlive,
   fetchInstaboxApi,
+  getHermesUsageStats,
+  checkHermesServiceHealth,
   InstaboxMachine,
   SshTokenResponse,
   ExecResult,
+  HermesUsageStats,
+  HermesServiceHealth,
 } from '@/lib/instabox';
 import { db } from '@/db';
 import { systemSettings } from '@/db/schema';
@@ -35,6 +40,7 @@ export interface DashboardData {
   };
   machine: InstaboxMachine | null;
   allMachines: InstaboxMachine[];
+  usageStats: HermesUsageStats;
   lastKeepalive: {
     timestamp: string;
     machineId: string;
@@ -99,6 +105,15 @@ export async function getInstaboxDashboardData(): Promise<DashboardData> {
       },
       machine: null,
       allMachines: [],
+      usageStats: {
+        usedHours: 0,
+        maxHours: 8.0,
+        remainingHours: 8.0,
+        percentage: 0,
+        statusLevel: 'safe',
+        continuousRunMinutes: 0,
+        continuousRunFormatted: '0 menit',
+      },
       lastKeepalive,
       error: 'INSTABOX_API_KEY belum dikonfigurasi. Silakan masukkan API Key di panel pengaturan bawah atau di file .env.local',
     };
@@ -124,6 +139,8 @@ export async function getInstaboxDashboardData(): Promise<DashboardData> {
     allMachines = listRes.machines;
   }
 
+  const usageStats = await getHermesUsageStats(machine);
+
   return {
     config: {
       apiKeyConfigured: true,
@@ -139,6 +156,7 @@ export async function getInstaboxDashboardData(): Promise<DashboardData> {
     },
     machine,
     allMachines,
+    usageStats,
     lastKeepalive,
     error,
   };
@@ -162,24 +180,19 @@ export async function wakeMachineAction(targetMachineId?: string) {
  */
 export async function pauseMachineAction(targetMachineId?: string) {
   try {
-    const config = await getInstaboxConfig();
-    const mId = targetMachineId || config.machineId;
-    if (!mId) return { success: false, error: 'Machine ID tidak ditemukan' };
-
-    const res = await fetchInstaboxApi(`/v1/machines/${encodeURIComponent(mId)}/pause`, {
-      method: 'POST',
-      requiresIdempotency: true,
-    });
-
+    const res = await pauseInstaboxMachine(targetMachineId);
     revalidatePath('/admin/instabox');
-    return {
-      success: res.success,
-      message: res.success ? 'Mesin berhasil dipause.' : res.error,
-      error: res.error,
-    };
+    return res;
   } catch (err: any) {
-    return { success: false, error: err?.message };
+    return { success: false, error: err?.message, message: 'Gagal mem-pause mesin' };
   }
+}
+
+/**
+ * Server action: Deep Health Check untuk proses Hermes
+ */
+export async function checkHermesHealthAction(targetMachineId?: string): Promise<HermesServiceHealth> {
+  return await checkHermesServiceHealth(targetMachineId);
 }
 
 /**

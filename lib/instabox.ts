@@ -2,6 +2,7 @@ import { db } from '@/db';
 import { systemSettings } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import crypto from 'crypto';
+import { sendTelegramMessage } from '@/lib/telegram';
 
 export interface InstaboxMachine {
   id: string;
@@ -48,6 +49,23 @@ export interface ExecResult {
   stderr?: string;
   exitCode?: number;
   error?: string;
+}
+
+export interface HermesUsageStats {
+  usedHours: number;
+  maxHours: number;
+  remainingHours: number;
+  percentage: number;
+  statusLevel: 'safe' | 'warning' | 'critical';
+  continuousRunMinutes: number;
+  continuousRunFormatted: string;
+}
+
+export interface HermesServiceHealth {
+  isHealthy: boolean;
+  serviceState: 'active' | 'starting' | 'stopped' | 'unknown';
+  processSummary: string;
+  checkedAt: string;
 }
 
 /**
@@ -449,6 +467,110 @@ export async function createInstaboxSshToken(
 }
 
 /**
+ * Pause / Tidurkan mesin Instabox secara manual
+ */
+export async function pauseInstaboxMachine(targetMachineId?: string): Promise<{
+  success: boolean;
+  message: string;
+  error?: string;
+}> {
+  const config = await getInstaboxConfig();
+  const mId = targetMachineId || config.machineId;
+  if (!mId) return { success: false, message: 'Machine ID tidak ditemukan', error: 'Machine ID belum disetel.' };
+
+  const res = await fetchInstaboxApi(`/v1/machines/${encodeURIComponent(mId)}/pause`, {
+    method: 'POST',
+    requiresIdempotency: true,
+  });
+
+  return {
+    success: res.success,
+    message: res.success ? 'Mesin berhasil dipause/ditidurkan.' : res.error || 'Gagal mem-pause mesin.',
+    error: res.error,
+  };
+}
+
+/**
+ * Hitung statistik penggunaan kuota jam harian (0 - 8 jam) dan durasi nonstop
+ */
+export async function getHermesUsageStats(machine?: InstaboxMachine | null): Promise<HermesUsageStats> {
+  const maxHours = machine?.maxRunMinutes ? machine.maxRunMinutes / 60 : 8.0;
+
+  let continuousRunMinutes = 0;
+  if (machine?.runStartedAt && (machine.state === 'running' || machine.status === 'running')) {
+    const started = new Date(machine.runStartedAt).getTime();
+    const now = Date.now();
+    if (now > started) {
+      continuousRunMinutes = Math.floor((now - started) / (1000 * 60));
+    }
+  }
+
+  const hoursRun = Math.floor(continuousRunMinutes / 60);
+  const minsRun = continuousRunMinutes % 60;
+  const continuousRunFormatted = hoursRun > 0 ? `${hoursRun} jam ${minsRun} menit` : `${minsRun} menit`;
+
+  // Pemakaian berdasarkan durasi sesi berjalan saat ini
+  const usedHours = Math.min(maxHours, Math.round((continuousRunMinutes / 60) * 10) / 10);
+  const remainingHours = Math.max(0, Math.round((maxHours - usedHours) * 10) / 10);
+  const percentage = Math.min(100, Math.round((usedHours / maxHours) * 100));
+
+  let statusLevel: 'safe' | 'warning' | 'critical' = 'safe';
+  if (percentage >= 80 || continuousRunMinutes >= 390) statusLevel = 'critical'; // >6.5 jam
+  else if (percentage >= 50 || continuousRunMinutes >= 240) statusLevel = 'warning'; // >4 jam
+
+  return {
+    usedHours,
+    maxHours,
+    remainingHours,
+    percentage,
+    statusLevel,
+    continuousRunMinutes,
+    continuousRunFormatted,
+  };
+}
+
+/**
+ * Deep Probe: Cek kesehatan proses dan aplikasi Hermes di dalam VPS Linux
+ */
+export async function checkHermesServiceHealth(targetMachineId?: string): Promise<HermesServiceHealth> {
+  const checkedAt = new Date().toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta' }) + ' WIB';
+  try {
+    const execRes = await execInstaboxCommand(
+      'pgrep -a -f -i hermes || pgrep -a python3 || pgrep -a node || ps aux | head -n 8',
+      targetMachineId,
+      10
+    );
+
+    if (execRes.error) {
+      return {
+        isHealthy: false,
+        serviceState: 'unknown',
+        processSummary: execRes.error,
+        checkedAt,
+      };
+    }
+
+    const output = (execRes.stdout || '').trim();
+    const isHermesFound = /hermes/i.test(output);
+    const isProcessAlive = output.length > 0;
+
+    return {
+      isHealthy: isProcessAlive,
+      serviceState: isHermesFound ? 'active' : isProcessAlive ? 'starting' : 'stopped',
+      processSummary: output.slice(0, 600) || 'Tidak ada proses terdeteksi',
+      checkedAt,
+    };
+  } catch (err: any) {
+    return {
+      isHealthy: false,
+      serviceState: 'unknown',
+      processSummary: err?.message || 'Gagal menghubungi service Hermes',
+      checkedAt,
+    };
+  }
+}
+
+/**
  * Logika Inti Keep-Alive:
  * Dipanggil berkala oleh Cron Job untuk memastikan mesin tidak ter-pause 30 menit.
  */
@@ -545,6 +667,68 @@ export async function runInstaboxKeepAlive(): Promise<{
       message: `Mesin sedang masa cooldown hingga ${cooldownInfo.formatted} (${cooldownInfo.remainingText}). Auto-wake dilewati.`,
       details: { cooldownUntil: machine.cooldownUntil, cooldownInfo },
     };
+  }
+
+  // 1c. Continuous Run Guard: Peringatan jika mesin sudah berjalan nonstop >= 3 Jam (180 Menit)
+  if (machine.runStartedAt && currentStatus === 'running') {
+    const started = new Date(machine.runStartedAt).getTime();
+    const runMinutes = Math.floor((Date.now() - started) / (1000 * 60));
+
+    if (runMinutes >= 180) {
+      try {
+        const lastAlertRow = await db
+          .select()
+          .from(systemSettings)
+          .where(eq(systemSettings.key, 'hermes_last_3h_alert_session'))
+          .limit(1);
+
+        const lastAlertSession = lastAlertRow[0]?.value;
+
+        if (lastAlertSession !== machine.runStartedAt) {
+          const adminChatId =
+            process.env.TELEGRAM_ADMIN_CHAT_ID ||
+            process.env.TELEGRAM_ALLOWED_CHAT_ID ||
+            '';
+
+          if (adminChatId) {
+            const hours = Math.floor(runMinutes / 60);
+            const mins = runMinutes % 60;
+            const alertMsg = [
+              `🔔 <b>PERINGATAN DURASI AKTIF HERMES VPS</b>`,
+              `━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
+              `Mesin Hermes telah menyala nonstop selama:`,
+              `⏱️ <b>${hours} Jam ${mins} Menit</b>`,
+              ``,
+              `⚠️ <i>Batas maksimal nonstop Free Tier adalah 8 jam. Setelah 8 jam, mesin akan otomatis dikunci cooldown 24 jam!</i>`,
+              ``,
+              `💡 Jika pekerjaan dengan Hermes sudah selesai, tekan tombol di bawah untuk menidurkan mesin agar kuota harian tetap hemat dan aman.`,
+            ].join('\n');
+
+            await sendTelegramMessage(adminChatId, alertMsg, {
+              parseMode: 'HTML',
+              inlineKeyboard: [
+                [{ text: '⏸️ Pause / Tidurkan Mesin Sekarang', callback_data: 'vps:pause' }],
+                [{ text: '🖥️ Buka Status VPS', callback_data: 'vps:status' }],
+              ],
+            }).catch(() => {});
+
+            await db
+              .insert(systemSettings)
+              .values({
+                key: 'hermes_last_3h_alert_session',
+                value: machine.runStartedAt,
+                updatedAt: new Date(),
+              })
+              .onConflictDoUpdate({
+                target: systemSettings.key,
+                set: { value: machine.runStartedAt, updatedAt: new Date() },
+              });
+          }
+        }
+      } catch (e) {
+        // Non-critical
+      }
+    }
   }
 
   // 2. Jika mesin sedang tertidur (idle pause), bangunkan!

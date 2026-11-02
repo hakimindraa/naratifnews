@@ -35,10 +35,13 @@ import {
 import {
   getInstaboxMachine,
   wakeInstaboxMachine,
+  pauseInstaboxMachine,
   createInstaboxSshToken,
   execInstaboxCommand,
   getInstaboxConfig,
   formatCooldownTime,
+  getHermesUsageStats,
+  checkHermesServiceHealth,
 } from '@/lib/instabox';
 
 export const maxDuration = 60; // Timeout 60 detik untuk operasi AI
@@ -2428,6 +2431,9 @@ Silakan periksa konfigurasi <code>INSTABOX_API_KEY</code> & <code>INSTABOX_MACHI
     }
   }
 
+  const usage = await getHermesUsageStats(m);
+  const quotaLine = `📊 <b>Kuota Harian:</b> ${usage.usedHours} / ${usage.maxHours} Jam (${usage.percentage}%)\n   • Status: ${usage.statusLevel === 'critical' ? '🔴 Kritis' : usage.statusLevel === 'warning' ? '🟡 Waspada' : '🟢 Aman'} (Sisa: ${usage.remainingHours} Jam)${isRunning && usage.continuousRunMinutes > 0 ? `\n   • Sesi Aktif: ⏱️ <b>${usage.continuousRunFormatted}</b>` : ''}\n`;
+
   const text = `🖥️ <b>STATUS INSTABOX VPS (HERMES)</b>
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 <blockquote>
@@ -2435,7 +2441,7 @@ Silakan periksa konfigurasi <code>INSTABOX_API_KEY</code> & <code>INSTABOX_MACHI
 🆔 <b>Machine ID:</b> <code>${m.id}</code>
 ${statusEmoji} <b>Status:</b> <b>${statusUpper}</b> (${statusDesc})${specText}
 ⏱️ <b>Auto-Suspend:</b> ${m.autoSuspendAfterSeconds ? Math.round(m.autoSuspendAfterSeconds / 60) : 30} Menit Idle
-${cooldownLine}🔄 <b>Auto Keep-Alive:</b> ${config.autoKeepaliveEnabled ? '🟢 <b>Aktif (Tiap 15m)</b>' : '🔴 <b>Nonaktif</b>'}
+${quotaLine}${cooldownLine}🔄 <b>Auto Keep-Alive:</b> ${config.autoKeepaliveEnabled ? '🟢 <b>Aktif (Tiap 15m)</b>' : '🔴 <b>Nonaktif</b>'}
 </blockquote>
 
 👇 <i>Pilih aksi cepat di bawah untuk mengontrol mesin:</i>`;
@@ -2443,6 +2449,10 @@ ${cooldownLine}🔄 <b>Auto Keep-Alive:</b> ${config.autoKeepaliveEnabled ? '�
   const inlineKeyboard = [
     [
       { text: '⚡ Bangunkan (Wake Up)', callback_data: 'vps:wake' },
+      { text: '⏸️ Pause (Tidurkan)', callback_data: 'vps:pause' },
+    ],
+    [
+      { text: '🩺 Cek Service Hermes', callback_data: 'vps:health' },
       { text: '🔄 Refresh Status', callback_data: 'vps:status' },
     ],
     [
@@ -3040,6 +3050,50 @@ Token SSH berhasil dibuat. Silakan salin perintah di bawah dan jalankan di termi
           inlineKeyboard: [
             [{ text: '⚡ Bangunkan Mesin', callback_data: 'vps:wake' }],
             [{ text: '🔄 Refresh Status', callback_data: 'vps:status' }],
+            [{ text: '🏠 Menu Utama', callback_data: 'btn:start' }],
+          ],
+        });
+        return NextResponse.json({ ok: true });
+      }
+
+      if (data === 'vps:pause') {
+        await updateOrSendMessage(chatId, messageId, '⏳ <i>Mengirim perintah pause ke Instabox...</i>');
+        const pauseRes = await pauseInstaboxMachine();
+        const resText = pauseRes.success
+          ? `⏸️ <b>MESIN HERMES BERHASIL DITIDURKAN (PAUSED)</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nMesin berhasil di-pause. Kuota nonstop 8 jam harian Anda tetap aman dan hemat.\n\nKapan pun ingin digunakan kembali, tekan tombol di bawah:`
+          : `❌ <b>Gagal Mem-pause Mesin:</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n<code>${pauseRes.error || pauseRes.message}</code>`;
+
+        await updateOrSendMessage(chatId, messageId, resText, {
+          inlineKeyboard: [
+            [{ text: '⚡ Bangunkan Mesin', callback_data: 'vps:wake' }],
+            [{ text: '🖥️ Status VPS', callback_data: 'vps:status' }],
+            [{ text: '🏠 Menu Utama', callback_data: 'btn:start' }],
+          ],
+        });
+        return NextResponse.json({ ok: true });
+      }
+
+      if (data === 'vps:health') {
+        await updateOrSendMessage(chatId, messageId, '🩺 <i>Mengecek kesehatan service Hermes di dalam VPS...</i>');
+        const health = await checkHermesServiceHealth();
+
+        const healthEmoji = health.serviceState === 'active' ? '🟢' : health.serviceState === 'starting' ? '🟡' : '🔴';
+        const healthDesc = health.serviceState === 'active' ? 'Active & Ready' : health.serviceState === 'starting' ? 'Sedang Booting' : 'Offline / Belum Berjalan';
+
+        const healthText = `🩺 <b>HERMES SERVICE HEALTH CHECK</b>
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+<blockquote>
+${healthEmoji} <b>Status Service:</b> <b>${healthDesc}</b>
+⏱️ <b>Waktu Cek:</b> ${health.checkedAt}
+</blockquote>
+
+💻 <b>Ringkasan Proses di Linux:</b>
+<pre><code>${health.processSummary}</code></pre>`;
+
+        await updateOrSendMessage(chatId, messageId, healthText, {
+          inlineKeyboard: [
+            [{ text: '🩺 Cek Ulang', callback_data: 'vps:health' }],
+            [{ text: '🖥️ Status VPS', callback_data: 'vps:status' }],
             [{ text: '🏠 Menu Utama', callback_data: 'btn:start' }],
           ],
         });
@@ -3835,6 +3889,46 @@ Mesin Hermes telah mencapai batas penggunaan nonstop harian (8 jam).
           [{ text: '🏠 Menu Utama', callback_data: 'btn:start' }],
         ],
       });
+      return NextResponse.json({ ok: true });
+    }
+
+    // COMMAND: /pause, /vps_pause
+    if (rawText === '/pause' || rawText === '/vps_pause') {
+      await clearTgUserState(chatId);
+      const pauseRes = await pauseInstaboxMachine();
+      const resText = pauseRes.success
+        ? `⏸️ <b>Mesin Hermes Berhasil Ditidurkan (Paused)</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nMesin berhasil di-pause. Kuota nonstop 8 jam harian Anda tetap aman dan hemat.\n\nKapan pun ingin dipakai kembali, kirim <code>/wake</code>.`
+        : `❌ <b>Gagal Mem-pause Mesin:</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n<code>${pauseRes.error || pauseRes.message}</code>`;
+
+      await sendTelegramMessage(chatId, resText, {
+        inlineKeyboard: [
+          [{ text: '⚡ Bangunkan Mesin', callback_data: 'vps:wake' }],
+          [{ text: '🖥️ Status VPS', callback_data: 'vps:status' }],
+        ],
+      });
+      return NextResponse.json({ ok: true });
+    }
+
+    // COMMAND: /health, /vps_health
+    if (rawText === '/health' || rawText === '/vps_health') {
+      await clearTgUserState(chatId);
+      const waitMsg = await sendTelegramMessage(chatId, '🩺 <i>Mengecek kesehatan service Hermes di dalam VPS...</i>');
+      const health = await checkHermesServiceHealth();
+
+      const healthEmoji = health.serviceState === 'active' ? '🟢' : health.serviceState === 'starting' ? '🟡' : '🔴';
+      const healthDesc = health.serviceState === 'active' ? 'Active & Ready' : health.serviceState === 'starting' ? 'Sedang Booting' : 'Offline / Belum Berjalan';
+
+      const healthText = `🩺 <b>HERMES SERVICE HEALTH CHECK</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n<blockquote>${healthEmoji} <b>Status:</b> <b>${healthDesc}</b>\n⏱️ <b>Waktu Cek:</b> ${health.checkedAt}</blockquote>\n\n💻 <b>Ringkasan Proses di Linux:</b>\n<pre><code>${health.processSummary}</code></pre>`;
+
+      if (waitMsg.success && waitMsg.data?.result?.message_id) {
+        await editTelegramMessage(chatId, waitMsg.data.result.message_id, healthText, {
+          inlineKeyboard: [[{ text: '🖥️ Status VPS', callback_data: 'vps:status' }]],
+        });
+      } else {
+        await sendTelegramMessage(chatId, healthText, {
+          inlineKeyboard: [[{ text: '🖥️ Status VPS', callback_data: 'vps:status' }]],
+        });
+      }
       return NextResponse.json({ ok: true });
     }
 
