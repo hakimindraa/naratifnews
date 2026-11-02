@@ -38,6 +38,7 @@ import {
   createInstaboxSshToken,
   execInstaboxCommand,
   getInstaboxConfig,
+  formatCooldownTime,
 } from '@/lib/instabox';
 
 export const maxDuration = 60; // Timeout 60 detik untuk operasi AI
@@ -2419,6 +2420,14 @@ Silakan periksa konfigurasi <code>INSTABOX_API_KEY</code> & <code>INSTABOX_MACHI
     ? `\n⚙️ <b>Spesifikasi:</b> ${m.spec.vcpus || 4} vCPU | ${Math.round((m.spec.memMiB || 8192) / 1024)} GB RAM | ${m.storage?.sizeGiB || 20} GB Disk`
     : '';
 
+  let cooldownLine = '';
+  if (m.cooldownUntil) {
+    const cd = formatCooldownTime(m.cooldownUntil);
+    if (!cd.isExpired) {
+      cooldownLine = `⏳ <b>Cooldown Berakhir:</b>\n   • 🗓️ <b>${cd.formatted}</b>\n   • ⏱️ <i>(Sisa: ${cd.remainingText})</i>\n`;
+    }
+  }
+
   const text = `🖥️ <b>STATUS INSTABOX VPS (HERMES)</b>
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 <blockquote>
@@ -2426,7 +2435,7 @@ Silakan periksa konfigurasi <code>INSTABOX_API_KEY</code> & <code>INSTABOX_MACHI
 🆔 <b>Machine ID:</b> <code>${m.id}</code>
 ${statusEmoji} <b>Status:</b> <b>${statusUpper}</b> (${statusDesc})${specText}
 ⏱️ <b>Auto-Suspend:</b> ${m.autoSuspendAfterSeconds ? Math.round(m.autoSuspendAfterSeconds / 60) : 30} Menit Idle
-${m.cooldownUntil ? `⏳ <b>Cooldown Berakhir:</b> <code>${m.cooldownUntil}</code>\n` : ''}🔄 <b>Auto Keep-Alive:</b> ${config.autoKeepaliveEnabled ? '🟢 <b>Aktif (Tiap 15m)</b>' : '🔴 <b>Nonaktif</b>'}
+${cooldownLine}🔄 <b>Auto Keep-Alive:</b> ${config.autoKeepaliveEnabled ? '🟢 <b>Aktif (Tiap 15m)</b>' : '🔴 <b>Nonaktif</b>'}
 </blockquote>
 
 👇 <i>Pilih aksi cepat di bawah untuk mengontrol mesin:</i>`;
@@ -2946,9 +2955,26 @@ export async function POST(req: NextRequest) {
       if (data === 'vps:wake') {
         await updateOrSendMessage(chatId, messageId, '⏳ <i>Mengirim sinyal bangunkan (Wake Up) ke Instabox API...</i>');
         const wakeRes = await wakeInstaboxMachine();
-        const resText = wakeRes.success
-          ? `✅ <b>Perintah Wake Up Berhasil Dikirim!</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nMesin Instabox sedang dibangunkan. Layanan Hermes akan segera aktif kembali dalam beberapa detik.`
-          : `❌ <b>Gagal Membangunkan Mesin:</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n<code>${wakeRes.error || wakeRes.message}</code>`;
+
+        let resText = '';
+        if (wakeRes.success) {
+          resText = `✅ <b>Perintah Wake Up Berhasil Dikirim!</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nMesin Instabox sedang dibangunkan. Layanan Hermes akan segera aktif kembali dalam beberapa detik.`;
+        } else if (wakeRes.isCooldown) {
+          const machineRes = await getInstaboxMachine();
+          const cd = formatCooldownTime(machineRes.machine?.cooldownUntil);
+
+          resText = `⚠️ <b>MESIN SEDANG MASA ISTIRAHAT (COOLDOWN)</b>
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Mesin Hermes telah mencapai batas penggunaan nonstop harian (8 jam).
+
+⏳ <b>Bisa Dibangunkan Kembali Pada:</b>
+• 🗓️ <b>${cd.formatted}</b>
+• ⏱️ <b>Sisa: ${cd.remainingText}</b>
+
+💡 <i>Setelah masa cooldown selesai, gunakan Hermes secara on-demand agar kuota harian tidak cepat habis.</i>`;
+        } else {
+          resText = `❌ <b>Gagal Membangunkan Mesin:</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n<code>${wakeRes.error || wakeRes.message}</code>`;
+        }
 
         await updateOrSendMessage(chatId, messageId, resText, {
           inlineKeyboard: [
@@ -3782,9 +3808,26 @@ Format    : <b>${lengthLabel}</b>
     if (rawText === '/wake' || rawText === '/vps_wake') {
       await clearTgUserState(chatId);
       const wakeRes = await wakeInstaboxMachine();
-      const resText = wakeRes.success
-        ? `✅ <b>Perintah Wake Up Berhasil Dikirim!</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nMesin Instabox sedang dibangunkan. Layanan Hermes akan segera aktif kembali.`
-        : `❌ <b>Gagal Membangunkan Mesin:</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n<code>${wakeRes.error || wakeRes.message}</code>`;
+
+      let resText = '';
+      if (wakeRes.success) {
+        resText = `✅ <b>Perintah Wake Up Berhasil Dikirim!</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nMesin Instabox sedang dibangunkan. Layanan Hermes akan segera aktif kembali.`;
+      } else if (wakeRes.isCooldown) {
+        const machineRes = await getInstaboxMachine();
+        const cd = formatCooldownTime(machineRes.machine?.cooldownUntil);
+
+        resText = `⚠️ <b>MESIN SEDANG MASA ISTIRAHAT (COOLDOWN)</b>
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Mesin Hermes telah mencapai batas penggunaan nonstop harian (8 jam).
+
+⏳ <b>Bisa Dibangunkan Kembali Pada:</b>
+• 🗓️ <b>${cd.formatted}</b>
+• ⏱️ <b>Sisa: ${cd.remainingText}</b>
+
+💡 <i>Setelah masa cooldown selesai, gunakan Hermes secara on-demand agar kuota harian tidak cepat habis.</i>`;
+      } else {
+        resText = `❌ <b>Gagal Membangunkan Mesin:</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n<code>${wakeRes.error || wakeRes.message}</code>`;
+      }
 
       await sendTelegramMessage(chatId, resText, {
         inlineKeyboard: [

@@ -32,7 +32,7 @@ import {
   saveInstaboxConfigAction,
   testTelegramNotificationAction,
 } from './actions';
-import { SshTokenResponse } from '@/lib/instabox';
+import { SshTokenResponse, formatCooldownTime } from '@/lib/instabox';
 
 interface Props {
   initialData: DashboardData;
@@ -65,6 +65,9 @@ export default function InstaboxClientView({ initialData }: Props) {
   // Status visual mesin
   const machine = data.machine;
   const rawStatus = (machine?.state || machine?.status || '').toLowerCase();
+  const cooldownInfo = formatCooldownTime(machine?.cooldownUntil);
+  const isCooldownActive = !cooldownInfo.isExpired;
+
   const isSuspended =
     rawStatus === 'paused' || rawStatus === 'suspended' || Boolean(machine?.autoSuspendedAt);
   const isRunning = rawStatus === 'running';
@@ -76,6 +79,15 @@ export default function InstaboxClientView({ initialData }: Props) {
 
   // 1. Aksi Wake Up
   const handleWakeUp = () => {
+    if (isCooldownActive) {
+      if (
+        !confirm(
+          `Mesin sedang masa cooldown hingga ${cooldownInfo.formatted} (${cooldownInfo.remainingText}). Server Instabox kemungkinan besar akan menolak perintah bangunkan sekarang. Tetap coba kirim?`
+        )
+      ) {
+        return;
+      }
+    }
     startTransition(async () => {
       const res = await wakeMachineAction(data.config.machineId);
       if (res.success) {
@@ -355,10 +367,12 @@ export default function InstaboxClientView({ initialData }: Props) {
             </span>
           </div>
           <div className="text-[11px] text-gray-500">
-            {machine?.autoSuspendAfterSeconds ? (
+            {isCooldownActive ? (
+              <span className="text-amber-700 font-semibold block leading-tight">
+                ⏳ Cooldown: {cooldownInfo.remainingText}
+              </span>
+            ) : machine?.autoSuspendAfterSeconds ? (
               <span>Auto-Suspend: {Math.round(machine.autoSuspendAfterSeconds / 60)} Menit Idle</span>
-            ) : machine?.cooldownUntil ? (
-              <span className="text-rose-600 font-semibold">Cooldown sampai: {machine.cooldownUntil}</span>
             ) : (
               <span className="text-emerald-600 font-medium">Bebas Cooldown (Idle Awake)</span>
             )}
@@ -385,6 +399,34 @@ export default function InstaboxClientView({ initialData }: Props) {
           </div>
         </div>
       </div>
+
+      {/* Banner Cooldown Aktif */}
+      {isCooldownActive && (
+        <div className="bg-amber-500/10 border border-amber-300 rounded-2xl p-4 sm:p-5 flex items-start gap-3.5 shadow-2xs">
+          <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center text-amber-700 shrink-0 mt-0.5">
+            <Clock className="w-5 h-5 animate-pulse" />
+          </div>
+          <div className="space-y-1 text-xs text-amber-900 flex-1">
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-sm font-heading">
+                Mesin Sedang Masa Istirahat (Cooldown 24 Jam)
+              </span>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-200 text-amber-800">
+                Sisa: {cooldownInfo.remainingText}
+              </span>
+            </div>
+            <p className="text-amber-800/90 leading-relaxed">
+              Mesin Hermes telah mencapai batas pemakaian nonstop harian (8 jam). Server Instabox mengunci sementara perintah <code>wake</code> hingga:
+            </p>
+            <div className="font-semibold text-amber-950 font-mono text-[11px] bg-white/70 px-3 py-1.5 rounded-lg border border-amber-200 inline-block mt-1">
+              🗓️ {cooldownInfo.formatted}
+            </div>
+            <p className="text-[11px] text-amber-700 italic pt-1">
+              💡 Tips: Saat cooldown selesai, gunakan Hermes secara on-demand via Telegram agar jatah 8 jam per hari awet dan tidak cepat habis.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Konten Utama: 2 Kolom Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

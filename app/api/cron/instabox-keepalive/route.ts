@@ -70,6 +70,7 @@ async function handleKeepAlive(request: Request) {
       timestamp: new Date().toISOString(),
       action: result.actionTaken,
       machineId: result.machineId,
+      cooldownUntil: (result as any).cooldownUntil || null,
       message: result.message,
       details: result.details,
     });

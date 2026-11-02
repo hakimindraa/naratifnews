@@ -51,6 +51,47 @@ export interface ExecResult {
 }
 
 /**
+ * Format string tanggal UTC / Cooldown menjadi teks bahasa Indonesia WIB yang ramah
+ */
+export function formatCooldownTime(isoString?: string | null): {
+  formatted: string;
+  remainingText: string;
+  isExpired: boolean;
+} {
+  if (!isoString) {
+    return { formatted: '-', remainingText: '-', isExpired: true };
+  }
+
+  const targetDate = new Date(isoString);
+  const now = new Date();
+  const diffMs = targetDate.getTime() - now.getTime();
+
+  if (diffMs <= 0 || isNaN(diffMs)) {
+    return { formatted: '-', remainingText: 'Selesai', isExpired: true };
+  }
+
+  const diffMinutes = Math.floor(diffMs / (1000 * 60));
+  const hours = Math.floor(diffMinutes / 60);
+  const minutes = diffMinutes % 60;
+
+  const remainingText =
+    hours > 0 ? `${hours} jam ${minutes} menit lagi` : `${minutes} menit lagi`;
+
+  const formatted =
+    targetDate.toLocaleString('id-ID', {
+      timeZone: 'Asia/Jakarta',
+      weekday: 'long',
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    }) + ' WIB';
+
+  return { formatted, remainingText, isExpired: false };
+}
+
+/**
  * Mengambil kredensial Instabox dari .env atau fallback ke systemSettings (database)
  */
 export async function getInstaboxConfig(): Promise<{
@@ -271,6 +312,7 @@ export async function getInstaboxMachine(targetMachineId?: string): Promise<{
 export async function wakeInstaboxMachine(targetMachineId?: string): Promise<{
   success: boolean;
   message: string;
+  isCooldown?: boolean;
   operationId?: string;
   data?: any;
   error?: string;
@@ -294,8 +336,19 @@ export async function wakeInstaboxMachine(targetMachineId?: string): Promise<{
   });
 
   if (!res.success) {
+    const errCode = res.data?.error?.code || '';
+    if (errCode === 'machine_cooldown' || res.error?.includes('cooling down')) {
+      return {
+        success: false,
+        isCooldown: true,
+        message: res.data?.error?.message || res.error || 'Mesin sedang dalam masa istirahat (cooldown).',
+        error: res.data?.error?.message || res.error,
+        data: res.data,
+      };
+    }
+
     // Jika 409 operation_conflict, bisa jadi sedang proses waking
-    if (res.status === 409) {
+    if (res.status === 409 && (errCode === 'operation_conflict' || !errCode)) {
       return {
         success: true,
         message: 'Mesin sedang dalam proses dibangunkan / operasi lain berjalan.',
@@ -304,8 +357,10 @@ export async function wakeInstaboxMachine(targetMachineId?: string): Promise<{
     }
     return {
       success: false,
+      isCooldown: false,
       message: res.error || 'Gagal membangunkan mesin Instabox.',
       error: res.error,
+      data: res.data,
     };
   }
 
@@ -399,9 +454,10 @@ export async function createInstaboxSshToken(
  */
 export async function runInstaboxKeepAlive(): Promise<{
   success: boolean;
-  actionTaken: 'woken' | 'pinged' | 'skipped_disabled' | 'error';
+  actionTaken: 'woken' | 'pinged' | 'skipped_disabled' | 'skipped_cooldown' | 'error';
   machineId: string;
   previousStatus?: string;
+  cooldownUntil?: string | null;
   message: string;
   details?: any;
 }> {
@@ -456,6 +512,7 @@ export async function runInstaboxKeepAlive(): Promise<{
           machineId: machine.id,
           status: currentStatus,
           isSuspended: isSuspendedOrPaused,
+          cooldownUntil: machine.cooldownUntil || null,
         }),
         updatedAt: new Date(),
       })
@@ -467,6 +524,7 @@ export async function runInstaboxKeepAlive(): Promise<{
             machineId: machine.id,
             status: currentStatus,
             isSuspended: isSuspendedOrPaused,
+            cooldownUntil: machine.cooldownUntil || null,
           }),
           updatedAt: new Date(),
         },
@@ -475,15 +533,42 @@ export async function runInstaboxKeepAlive(): Promise<{
     // Non-critical
   }
 
+  // 1b. Smart Guard: Jika mesin sedang dalam masa istirahat (cooldown), lewati wake
+  if (machine.cooldownUntil && new Date(machine.cooldownUntil).getTime() > Date.now()) {
+    const cooldownInfo = formatCooldownTime(machine.cooldownUntil);
+    return {
+      success: true,
+      actionTaken: 'skipped_cooldown',
+      machineId: machine.id,
+      previousStatus: currentStatus,
+      cooldownUntil: machine.cooldownUntil,
+      message: `Mesin sedang masa cooldown hingga ${cooldownInfo.formatted} (${cooldownInfo.remainingText}). Auto-wake dilewati.`,
+      details: { cooldownUntil: machine.cooldownUntil, cooldownInfo },
+    };
+  }
+
   // 2. Jika mesin sedang tertidur (idle pause), bangunkan!
   if (isSuspendedOrPaused) {
     const wakeRes = await wakeInstaboxMachine(machine.id);
+    if (!wakeRes.success && (wakeRes as any).isCooldown) {
+      return {
+        success: true,
+        actionTaken: 'skipped_cooldown',
+        machineId: machine.id,
+        previousStatus: currentStatus,
+        cooldownUntil: machine.cooldownUntil,
+        message: wakeRes.message,
+        details: wakeRes,
+      };
+    }
     return {
       success: wakeRes.success,
-      actionTaken: 'woken',
+      actionTaken: wakeRes.success ? 'woken' : 'error',
       machineId: machine.id,
       previousStatus: currentStatus,
-      message: `Mesin sempat tertidur (${currentStatus}). Berhasil memicu Wake Up.`,
+      message: wakeRes.success
+        ? `Mesin sempat tertidur (${currentStatus}). Berhasil memicu Wake Up.`
+        : `Gagal memicu Wake Up: ${wakeRes.message}`,
       details: wakeRes,
     };
   }
