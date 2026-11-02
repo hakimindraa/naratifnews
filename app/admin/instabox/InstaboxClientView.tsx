@@ -34,7 +34,7 @@ import {
   testTelegramNotificationAction,
   checkHermesHealthAction,
 } from './actions';
-import { SshTokenResponse, formatCooldownTime, HermesServiceHealth } from '@/lib/instabox';
+import { SshTokenResponse, formatCooldownTime, HermesServiceHealth } from '@/lib/instabox-types';
 
 interface Props {
   initialData: DashboardData;
