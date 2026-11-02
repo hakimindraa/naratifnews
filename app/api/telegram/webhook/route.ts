@@ -32,6 +32,13 @@ import {
   attachPhotoUrlToDraftAction,
   deleteDraftAction,
 } from '@/app/admin/jurnalis/actions';
+import {
+  getInstaboxMachine,
+  wakeInstaboxMachine,
+  createInstaboxSshToken,
+  execInstaboxCommand,
+  getInstaboxConfig,
+} from '@/lib/instabox';
 
 export const maxDuration = 60; // Timeout 60 detik untuk operasi AI
 
@@ -2287,6 +2294,10 @@ Halo <b>${firstName}</b> 👋 Selamat datang di asisten editorial pintar Ada Fak
       { text: '🔗 Sadur Berita', callback_data: 'btn:sadur_help' },
     ],
     [
+      { text: '🖥️ Status VPS Hermes', callback_data: 'vps:status' },
+      { text: '⚡ Wake Up VPS', callback_data: 'vps:wake' },
+    ],
+    [
       { text: '⚙️ Dasbor Admin Web ↗', url: `${siteUrl}/admin` },
       { text: '🌐 Buka Website ↗', url: siteUrl },
     ],
@@ -2364,6 +2375,78 @@ Laporan performa publikasi & infrastruktur server portal
       ],
     ],
   });
+}
+
+async function sendVpsStatusMessage(
+  chatId: number | string,
+  messageId: number | undefined,
+  siteUrl: string = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.adafakta.web.id'
+) {
+  const config = await getInstaboxConfig();
+  const machineRes = await getInstaboxMachine();
+
+  if (!machineRes.success || !machineRes.machine) {
+    const errorText = `🖥️ <b>STATUS INSTABOX VPS (HERMES)</b>
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️ <b>Gagal membaca status mesin:</b>
+<code>${machineRes.error || 'Mesin tidak ditemukan atau API Key belum disetel'}</code>
+
+Silakan periksa konfigurasi <code>INSTABOX_API_KEY</code> & <code>INSTABOX_MACHINE_ID</code> di panel admin atau .env.`;
+
+    const inlineKeyboard = [
+      [{ text: '🔄 Coba Lagi', callback_data: 'vps:status' }],
+      [{ text: '⚙️ Dasbor Admin Web ↗', url: `${siteUrl}/admin/instabox` }],
+      [{ text: '🏠 Menu Utama', callback_data: 'btn:start' }],
+    ];
+    await updateOrSendMessage(chatId, messageId, errorText, { inlineKeyboard });
+    return;
+  }
+
+  const m = machineRes.machine;
+  const rawStatus = (m.state || m.status || 'unknown').toLowerCase();
+  const statusUpper = rawStatus.toUpperCase();
+  const isRunning = statusUpper === 'RUNNING';
+  const statusEmoji = isRunning ? '🟢' : '🟡';
+  const isSuspended = Boolean(m.autoSuspendedAt) || statusUpper === 'PAUSED' || statusUpper === 'SUSPENDED';
+
+  let statusDesc = isRunning
+    ? 'Online & Berjalan Normal'
+    : isSuspended
+    ? 'Tertidur (Idle Paused - Siap Di-wake)'
+    : rawStatus;
+
+  const specText = m.spec
+    ? `\n⚙️ <b>Spesifikasi:</b> ${m.spec.vcpus || 4} vCPU | ${Math.round((m.spec.memMiB || 8192) / 1024)} GB RAM | ${m.storage?.sizeGiB || 20} GB Disk`
+    : '';
+
+  const text = `🖥️ <b>STATUS INSTABOX VPS (HERMES)</b>
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+<blockquote>
+🏷️ <b>Nama Mesin:</b> ${m.name || 'Hermes Machine'}
+🆔 <b>Machine ID:</b> <code>${m.id}</code>
+${statusEmoji} <b>Status:</b> <b>${statusUpper}</b> (${statusDesc})${specText}
+⏱️ <b>Auto-Suspend:</b> ${m.autoSuspendAfterSeconds ? Math.round(m.autoSuspendAfterSeconds / 60) : 30} Menit Idle
+${m.cooldownUntil ? `⏳ <b>Cooldown Berakhir:</b> <code>${m.cooldownUntil}</code>\n` : ''}🔄 <b>Auto Keep-Alive:</b> ${config.autoKeepaliveEnabled ? '🟢 <b>Aktif (Tiap 15m)</b>' : '🔴 <b>Nonaktif</b>'}
+</blockquote>
+
+👇 <i>Pilih aksi cepat di bawah untuk mengontrol mesin:</i>`;
+
+  const inlineKeyboard = [
+    [
+      { text: '⚡ Bangunkan (Wake Up)', callback_data: 'vps:wake' },
+      { text: '🔄 Refresh Status', callback_data: 'vps:status' },
+    ],
+    [
+      { text: '🔑 Ambil Token SSH', callback_data: 'vps:ssh' },
+      { text: '📡 Ping Hermes', callback_data: 'vps:ping' },
+    ],
+    [
+      { text: '⚙️ Dasbor VPS Admin ↗', url: `${siteUrl}/admin/instabox` },
+      { text: '🏠 Menu Utama', callback_data: 'btn:start' },
+    ],
+  ];
+
+  await updateOrSendMessage(chatId, messageId, text, { inlineKeyboard });
 }
 
 async function sendJurnalisStatusMessage(
@@ -2851,6 +2934,89 @@ export async function POST(req: NextRequest) {
       // Tombol Kembali ke Menu Utama
       if (data === 'btn:start') {
         await sendWelcomeMessage(chatId, messageId, firstName, userId, siteUrl);
+        return NextResponse.json({ ok: true });
+      }
+
+      // VPS Instabox Handlers
+      if (data === 'vps:status') {
+        await sendVpsStatusMessage(chatId, messageId, siteUrl);
+        return NextResponse.json({ ok: true });
+      }
+
+      if (data === 'vps:wake') {
+        await updateOrSendMessage(chatId, messageId, '⏳ <i>Mengirim sinyal bangunkan (Wake Up) ke Instabox API...</i>');
+        const wakeRes = await wakeInstaboxMachine();
+        const resText = wakeRes.success
+          ? `✅ <b>Perintah Wake Up Berhasil Dikirim!</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nMesin Instabox sedang dibangunkan. Layanan Hermes akan segera aktif kembali dalam beberapa detik.`
+          : `❌ <b>Gagal Membangunkan Mesin:</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n<code>${wakeRes.error || wakeRes.message}</code>`;
+
+        await updateOrSendMessage(chatId, messageId, resText, {
+          inlineKeyboard: [
+            [{ text: '🔄 Refresh Status Mesin', callback_data: 'vps:status' }],
+            [{ text: '🏠 Menu Utama', callback_data: 'btn:start' }],
+          ],
+        });
+        return NextResponse.json({ ok: true });
+      }
+
+      if (data === 'vps:ssh') {
+        await updateOrSendMessage(chatId, messageId, '⏳ <i>Membuat token SSH instan...</i>');
+        const sshRes = await createInstaboxSshToken('tele-quick-ssh');
+        if (!sshRes.success || !sshRes.tokenData) {
+          await updateOrSendMessage(chatId, messageId, `❌ <b>Gagal membuat SSH token:</b>\n<code>${sshRes.error}</code>`, {
+            inlineKeyboard: [[{ text: '🔄 Coba Lagi', callback_data: 'vps:ssh' }], [{ text: '🔙 Kembali', callback_data: 'vps:status' }]],
+          });
+          return NextResponse.json({ ok: true });
+        }
+
+        const token = sshRes.tokenData;
+        const sshText = `🔑 <b>ONE-CLICK SSH ACCESS</b>
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Token SSH berhasil dibuat. Silakan salin perintah di bawah dan jalankan di terminal HP (Termius) atau komputer:
+
+<code>${token.command}</code>
+
+<blockquote>
+⏱️ <b>Berlaku Hingga:</b> ${new Date(token.expiresAt).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })} WIB
+🌐 <b>Host:</b> <code>${token.host}</code> (Port <code>${token.port}</code>)
+</blockquote>`;
+
+        await updateOrSendMessage(chatId, messageId, sshText, {
+          inlineKeyboard: [
+            [{ text: '🔄 Cek Status Mesin', callback_data: 'vps:status' }],
+            [{ text: '🏠 Menu Utama', callback_data: 'btn:start' }],
+          ],
+        });
+        return NextResponse.json({ ok: true });
+      }
+
+      if (data === 'vps:ping') {
+        const startPing = Date.now();
+        await updateOrSendMessage(chatId, messageId, '📡 <i>Mengirim ping ke VPS Hermes via API exec...</i>');
+        const pingRes = await execInstaboxCommand('echo OK && hostname', undefined, 10);
+        const duration = Date.now() - startPing;
+
+        const pingText = !pingRes.error
+          ? `📡 <b>PING RESPON SUKSES!</b>
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⏱️ <b>Latency/Waktu:</b> ${duration} ms
+💻 <b>Output:</b>
+<code>${(pingRes.stdout || 'OK').trim()}</code>
+
+<i>Hermes VPS merespons dengan aktif dan sehat.</i>`
+          : `⚠️ <b>PING GAGAL / TIMEOUT:</b>
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+<code>${pingRes.error || pingRes.stderr || 'Tidak ada respon'}</code>
+
+<i>Mesin mungkin sedang tertidur. Coba tekan tombol Wake Up di bawah.</i>`;
+
+        await updateOrSendMessage(chatId, messageId, pingText, {
+          inlineKeyboard: [
+            [{ text: '⚡ Bangunkan Mesin', callback_data: 'vps:wake' }],
+            [{ text: '🔄 Refresh Status', callback_data: 'vps:status' }],
+            [{ text: '🏠 Menu Utama', callback_data: 'btn:start' }],
+          ],
+        });
         return NextResponse.json({ ok: true });
       }
 
@@ -3602,6 +3768,80 @@ Format    : <b>${lengthLabel}</b>
         chatId,
         `⛔ <b>Akses Terbatas</b>\n\nMaaf <b>${firstName}</b>, bot ini dikunci khusus untuk Redaksi Ada Fakta.\nID Telegram Anda: <code>${userId}</code>`
       );
+      return NextResponse.json({ ok: true });
+    }
+
+    // COMMAND: /vps, /instabox
+    if (rawText === '/vps' || rawText === '/instabox' || rawText.startsWith('/vps ')) {
+      await clearTgUserState(chatId);
+      await sendVpsStatusMessage(chatId, undefined, siteUrl);
+      return NextResponse.json({ ok: true });
+    }
+
+    // COMMAND: /wake
+    if (rawText === '/wake' || rawText === '/vps_wake') {
+      await clearTgUserState(chatId);
+      const wakeRes = await wakeInstaboxMachine();
+      const resText = wakeRes.success
+        ? `✅ <b>Perintah Wake Up Berhasil Dikirim!</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nMesin Instabox sedang dibangunkan. Layanan Hermes akan segera aktif kembali.`
+        : `❌ <b>Gagal Membangunkan Mesin:</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n<code>${wakeRes.error || wakeRes.message}</code>`;
+
+      await sendTelegramMessage(chatId, resText, {
+        inlineKeyboard: [
+          [{ text: '🔄 Cek Status Mesin', callback_data: 'vps:status' }],
+          [{ text: '🏠 Menu Utama', callback_data: 'btn:start' }],
+        ],
+      });
+      return NextResponse.json({ ok: true });
+    }
+
+    // COMMAND: /ssh, /vps_ssh
+    if (rawText === '/ssh' || rawText === '/vps_ssh') {
+      await clearTgUserState(chatId);
+      const sshRes = await createInstaboxSshToken('tele-ssh');
+      if (!sshRes.success || !sshRes.tokenData) {
+        await sendTelegramMessage(chatId, `❌ <b>Gagal membuat SSH token:</b>\n<code>${sshRes.error}</code>`, {
+          inlineKeyboard: [[{ text: '🔙 Status VPS', callback_data: 'vps:status' }]],
+        });
+        return NextResponse.json({ ok: true });
+      }
+
+      const token = sshRes.tokenData;
+      const sshText = `🔑 <b>ONE-CLICK SSH ACCESS</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nPerintah siap pakai (salin ke terminal HP/PC):\n\n<code>${token.command}</code>\n\n<blockquote>⏱️ Berlaku: 24 Jam\n🌐 Host: ${token.host}:${token.port}</blockquote>`;
+      await sendTelegramMessage(chatId, sshText, {
+        inlineKeyboard: [
+          [{ text: '🔄 Cek Status Mesin', callback_data: 'vps:status' }],
+          [{ text: '🏠 Menu Utama', callback_data: 'btn:start' }],
+        ],
+      });
+      return NextResponse.json({ ok: true });
+    }
+
+    // COMMAND: /exec <command>, /vps_exec <command>
+    if (rawText.startsWith('/exec ') || rawText.startsWith('/vps_exec ')) {
+      await clearTgUserState(chatId);
+      const cmdToRun = rawText.replace(/^\/(?:exec|vps_exec)\s+/, '').trim();
+      if (!cmdToRun) {
+        await sendTelegramMessage(chatId, '⚠️ Mohon sertakan perintah bash yang ingin dijalankan.\nContoh: <code>/exec ps aux</code>');
+        return NextResponse.json({ ok: true });
+      }
+
+      const waitMsg = await sendTelegramMessage(chatId, `⏳ <i>Mengeksekusi perintah: <code>${cmdToRun}</code>...</i>`);
+      const execRes = await execInstaboxCommand(cmdToRun, undefined, 25);
+
+      const outputText = execRes.error
+        ? `❌ <b>Eksekusi Gagal:</b>\n<pre><code>${execRes.error}</code></pre>`
+        : `💻 <b>Hasil Eksekusi:</b> <code>${cmdToRun}</code>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n<pre><code>${(execRes.stdout || execRes.stderr || 'Perintah selesai tanpa output.').slice(0, 3500)}</code></pre>\n<i>Exit Code: ${execRes.exitCode ?? 0}</i>`;
+
+      if (waitMsg.success && waitMsg.data?.result?.message_id) {
+        await editTelegramMessage(chatId, waitMsg.data.result.message_id, outputText, {
+          inlineKeyboard: [[{ text: '🖥️ Status VPS', callback_data: 'vps:status' }]],
+        });
+      } else {
+        await sendTelegramMessage(chatId, outputText, {
+          inlineKeyboard: [[{ text: '🖥️ Status VPS', callback_data: 'vps:status' }]],
+        });
+      }
       return NextResponse.json({ ok: true });
     }
 

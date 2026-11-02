@@ -22,6 +22,7 @@ import {
   Newspaper,
   Bot,
   Database,
+  Server,
 } from 'lucide-react';
 import { logoutAdmin } from './auth-actions';
 import VercelStatusBadge from './VercelStatusBadge';
@@ -77,6 +78,11 @@ export default function AdminLayoutClient({ children }: AdminLayoutClientProps) 
       label: 'Cron Job',
       href: '/admin/cron',
       icon: Timer,
+    },
+    {
+      label: 'VPS Instabox',
+      href: '/admin/instabox',
+      icon: Server,
     },
     {
       label: 'Manajemen Iklan',
