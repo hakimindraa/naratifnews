@@ -9,6 +9,7 @@ import { notifySearchEngines } from '@/lib/indexing';
 import { sendTelegramMessage } from '@/lib/telegram';
 import { getAISettings } from '@/app/admin/pengaturan/actions';
 import { sanitizeCoverCaption } from '@/lib/ai-generator';
+import { searchAndUploadCoverImage } from '@/lib/image-scraper';
 
 function generateSlug(text: string): string {
   const base = text
@@ -1008,6 +1009,7 @@ export async function processAutoGenerateNextDraftAction(): Promise<{
   message: string;
   draftId?: number;
   title?: string;
+  coverUrl?: string;
   error?: string;
 }> {
   try {
@@ -1061,7 +1063,27 @@ export async function processAutoGenerateNextDraftAction(): Promise<{
     const category = genResult.data.category || 'Nasional';
     const source = draftToProcess.source || 'Bot Berita';
 
-    // Kirim notifikasi ringkas ke bot Telegram Admin
+    // 2. Cek apakah sakelar Auto-Cover Image Scraper aktif
+    const autoCoverEnabled = await getJurnalisAutoCoverConfigAction();
+    let coverUploadedUrl: string | null = null;
+
+    if (autoCoverEnabled) {
+      try {
+        const coverRes = await searchAndUploadCoverImage(generatedTitle, category);
+        if (coverRes.success && coverRes.coverUrl) {
+          coverUploadedUrl = coverRes.coverUrl;
+          await attachPhotoUrlToDraftAction(
+            draftToProcess.id,
+            coverRes.coverUrl,
+            `Ilustrasi ${generatedTitle.slice(0, 80)} / Foto: Istimewa`
+          );
+        }
+      } catch (coverErr) {
+        console.warn('Gagal memasang foto sampul otomatis pada cron jurnalis:', coverErr);
+      }
+    }
+
+    // 3. Kirim notifikasi ke bot Telegram Admin
     const adminChatId =
       process.env.TELEGRAM_ADMIN_CHAT_ID ||
       process.env.TELEGRAM_ALLOWED_CHAT_ID ||
@@ -1076,20 +1098,25 @@ export async function processAutoGenerateNextDraftAction(): Promise<{
         `━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
         `📰 <b>${generatedTitle}</b>`,
         ``,
-        `🏷️ <b>Kategori:</b> ${category} | <b>Status:</b> Siap Tayang`,
+        `🏷️ <b>Kategori:</b> ${category} | <b>Status:</b> ${coverUploadedUrl ? 'Siap Tayang (Berjadwal)' : 'Need Photo (Belum Berfoto)'}`,
         `🌐 <b>Sumber Asli:</b> ${source}`,
+        coverUploadedUrl ? `🖼️ <b>Foto Sampul:</b> Terpasang (Google Images ➔ ImgBB)` : `🖼️ <b>Foto Sampul:</b> Belum Terpasang (Sakelar Nonaktif)`,
         ``,
-        `💡 <i>Draf telah tersimpan otomatis di Dasbor Jurnalis AI.</i>`,
+        coverUploadedUrl
+          ? `💡 <i>Artikel resmi masuk antrean tayang terjadwal (Waterfall Queue).</i>`
+          : `💡 <i>Draf telah tersimpan di Dasbor Jurnalis AI (menunggu foto).</i>`,
       ].join('\n');
+
+      const inlineKeyboard = [
+        [
+          { text: '📝 Buka di Dasbor Jurnalis', url: jurnalisAdminUrl },
+          ...(coverUploadedUrl ? [{ text: '🖼️ Lihat Foto', url: coverUploadedUrl }] : []),
+        ],
+      ];
 
       await sendTelegramMessage(adminChatId, telegramMsg, {
         parseMode: 'HTML',
-        inlineKeyboard: [
-          [
-            { text: '📝 Buka di Dasbor Jurnalis', url: jurnalisAdminUrl },
-            { text: '🖥️ Status VPS', callback_data: 'vps:status' },
-          ],
-        ],
+        inlineKeyboard,
       }).catch((err) => console.error('Gagal mengirim Telegram notif auto-generate:', err));
     }
 
@@ -1101,7 +1128,8 @@ export async function processAutoGenerateNextDraftAction(): Promise<{
       processed: true,
       draftId: draftToProcess.id,
       title: generatedTitle,
-      message: `Draf #${draftToProcess.id} berhasil digenerate dan notifikasi telah dikirim.`,
+      coverUrl: coverUploadedUrl || undefined,
+      message: `Draf #${draftToProcess.id} berhasil digenerate ${coverUploadedUrl ? 'beserta foto sampul' : ''} dan notifikasi telah dikirim.`,
     };
   } catch (err: any) {
     console.error('Error in processAutoGenerateNextDraftAction:', err);
@@ -1111,5 +1139,97 @@ export async function processAutoGenerateNextDraftAction(): Promise<{
       message: err?.message || 'Terjadi kesalahan sistem saat auto-generate draf',
       error: err?.message,
     };
+  }
+}
+
+/**
+ * Ambil konfigurasi Auto-Cover Image Scraper
+ */
+export async function getJurnalisAutoCoverConfigAction(): Promise<boolean> {
+  try {
+    const settingRow = await db
+      .select()
+      .from(systemSettings)
+      .where(eq(systemSettings.key, 'jurnalis_auto_cover_enabled'))
+      .limit(1);
+
+    return settingRow.length > 0 ? settingRow[0].value === 'true' : true;
+  } catch (err) {
+    console.error('Gagal mengambil konfigurasi auto-cover jurnalis:', err);
+    return true;
+  }
+}
+
+/**
+ * Mengubah status sakelar Auto-Cover Image Scraper (Aktif / Nonaktif)
+ */
+export async function toggleJurnalisAutoCoverAction(enabled: boolean): Promise<{
+  success: boolean;
+  enabled: boolean;
+  error?: string;
+}> {
+  try {
+    await db
+      .insert(systemSettings)
+      .values({
+        key: 'jurnalis_auto_cover_enabled',
+        value: String(enabled),
+        updatedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: systemSettings.key,
+        set: {
+          value: String(enabled),
+          updatedAt: new Date(),
+        },
+      });
+
+    revalidatePath('/admin/jurnalis');
+    revalidatePath('/admin');
+    return { success: true, enabled };
+  } catch (err: any) {
+    console.error('Gagal mengubah sakelar auto-cover jurnalis:', err);
+    return { success: false, enabled: !enabled, error: err?.message || 'Gagal mengubah status sakelar' };
+  }
+}
+
+/**
+ * Aksi Manual 1-Klik: Cari dan pasang foto Google Images untuk draf tertentu
+ */
+export async function autoFetchCoverForDraftAction(draftId: number): Promise<{
+  success: boolean;
+  coverUrl?: string;
+  error?: string;
+}> {
+  try {
+    const draft = await db.query.jurnalisDrafts.findFirst({
+      where: eq(jurnalisDrafts.id, draftId),
+    });
+
+    if (!draft) {
+      return { success: false, error: 'Draf tidak ditemukan' };
+    }
+
+    const titleToSearch = draft.generatedTitle || draft.title;
+    const coverRes = await searchAndUploadCoverImage(titleToSearch, draft.category || undefined);
+
+    if (!coverRes.success || !coverRes.coverUrl) {
+      return { success: false, error: coverRes.error || 'Gagal menemukan atau mengunggah gambar' };
+    }
+
+    const attachRes = await attachPhotoUrlToDraftAction(
+      draftId,
+      coverRes.coverUrl,
+      `Ilustrasi ${titleToSearch.slice(0, 80)} / Foto: Istimewa`
+    );
+
+    return {
+      success: attachRes.success,
+      coverUrl: coverRes.coverUrl,
+      error: attachRes.error,
+    };
+  } catch (err: any) {
+    console.error('Gagal auto-fetch cover untuk draf:', err);
+    return { success: false, error: err?.message || 'Gagal mengambil foto' };
   }
 }

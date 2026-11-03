@@ -32,6 +32,7 @@ async function handleAutoGenerate(request: Request) {
       processed: result.processed,
       draftId: result.draftId || null,
       title: result.title || null,
+      coverUrl: result.coverUrl || null,
       message: result.message,
       error: result.error || null,
     });

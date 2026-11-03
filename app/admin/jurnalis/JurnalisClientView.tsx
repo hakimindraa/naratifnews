@@ -40,6 +40,8 @@ import {
   instantPublishDraftAction,
   updateJurnalisPublishIntervalAction,
   toggleJurnalisAutoGenerateAction,
+  toggleJurnalisAutoCoverAction,
+  autoFetchCoverForDraftAction,
 } from './actions';
 import DraftPhotoModal from './DraftPhotoModal';
 
@@ -88,12 +90,14 @@ interface JurnalisClientViewProps {
   initialIntervalMinutes?: number;
   initialAutoGenerateEnabled?: boolean;
   initialPendingCount?: number;
+  initialAutoCoverEnabled?: boolean;
 }
 
 export default function JurnalisClientView({
   initialDrafts,
   initialIntervalMinutes = 60,
   initialAutoGenerateEnabled = true,
+  initialAutoCoverEnabled = true,
 }: JurnalisClientViewProps) {
   const router = useRouter();
   const [drafts, setDrafts] = useState<JurnalisDraftItem[]>(initialDrafts);
@@ -104,6 +108,12 @@ export default function JurnalisClientView({
   const [autoGenerateEnabled, setAutoGenerateEnabled] = useState<boolean>(initialAutoGenerateEnabled);
   const [isTogglingAutoGenerate, setIsTogglingAutoGenerate] = useState(false);
   const [autoGenerateMessage, setAutoGenerateMessage] = useState<string | null>(null);
+
+  // Auto-Cover Scraper Toggle
+  const [autoCoverEnabled, setAutoCoverEnabled] = useState<boolean>(initialAutoCoverEnabled);
+  const [isTogglingAutoCover, setIsTogglingAutoCover] = useState(false);
+  const [autoCoverMessage, setAutoCoverMessage] = useState<string | null>(null);
+  const [fetchingPhotoDraftId, setFetchingPhotoDraftId] = useState<number | null>(null);
 
   // Hitung jumlah draf yang belum di-generate
   const pendingCount = drafts.filter((d) => d.status === 'draft' && !d.generated_article).length;
@@ -129,6 +139,53 @@ export default function JurnalisClientView({
       router.refresh();
     }
     setIsTogglingAutoGenerate(false);
+  }
+
+  async function handleToggleAutoCover() {
+    if (isTogglingAutoCover) return;
+    const nextState = !autoCoverEnabled;
+    setIsTogglingAutoCover(true);
+    setAutoCoverMessage(null);
+
+    // Optimistic UI update
+    setAutoCoverEnabled(nextState);
+
+    const res = await toggleJurnalisAutoCoverAction(nextState);
+    if (!res.success) {
+      setAutoCoverEnabled(!nextState); // Rollback
+      setAutoCoverMessage('Gagal mengubah sakelar foto');
+    } else {
+      setAutoCoverMessage(
+        nextState ? '🟢 Auto-Cover Aktif' : '⚪ Auto-Cover Nonaktif'
+      );
+      setTimeout(() => setAutoCoverMessage(null), 3000);
+      router.refresh();
+    }
+    setIsTogglingAutoCover(false);
+  }
+
+  async function handleAutoFetchCover(draftId: number) {
+    if (fetchingPhotoDraftId) return;
+    setFetchingPhotoDraftId(draftId);
+    try {
+      const res = await autoFetchCoverForDraftAction(draftId);
+      if (res.success && res.coverUrl) {
+        setDrafts((prev) =>
+          prev.map((d) =>
+            d.id === draftId
+              ? { ...d, cover_url: res.coverUrl, status: 'ready_to_publish' }
+              : d
+          )
+        );
+        router.refresh();
+      } else {
+        alert(res.error || 'Gagal mencari foto sampul dari Google.');
+      }
+    } catch (err: any) {
+      alert(err?.message || 'Terjadi kesalahan saat mencari foto.');
+    } finally {
+      setFetchingPhotoDraftId(null);
+    }
   }
   const [loadingId, setLoadingId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
@@ -603,47 +660,91 @@ export default function JurnalisClientView({
 
       {/* Control Cards: Auto-Generate Cron Toggle & Waterfall Queue Interval */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
-        {/* Card 1: Auto-Generate Berita Masuk (Bot Tele AI) */}
+        {/* Card 1: Auto-Generate Berita Masuk (Bot Tele AI) & Auto-Cover Scraper */}
         <div className="bg-gradient-to-r from-purple-50/90 via-white to-indigo-50/90 border border-purple-200/80 rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-xs flex flex-col justify-between gap-3">
-          <div className="flex items-start sm:items-center justify-between gap-2.5 sm:gap-3">
-            <div className="flex items-start sm:items-center gap-2.5 sm:gap-3">
-              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-purple-600 text-white flex items-center justify-center shrink-0 shadow-xs">
-                <Bot className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
+          {/* Row 1: Auto-Generate Naskah */}
+          <div className="flex items-center justify-between gap-2.5 sm:gap-3">
+            <div className="flex items-center gap-2.5 sm:gap-3">
+              <div className="w-8 h-8 rounded-xl bg-purple-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                <Bot className="w-4 h-4" />
               </div>
               <div>
                 <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                   <span className="text-xs sm:text-sm font-bold text-gray-900 font-heading">
-                    Auto-Generate Berita Masuk
+                    Auto-Generate Naskah AI
                   </span>
                   <span
-                    className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold border transition-colors ${
+                    className={`text-[9px] sm:text-[10px] px-1.5 py-0.5 rounded-full font-bold border transition-colors ${
                       autoGenerateEnabled
                         ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
                         : 'bg-gray-100 text-gray-600 border-gray-300'
                     }`}
                   >
-                    {autoGenerateEnabled ? '🟢 Aktif (Cron 1 Berita/Siklus)' : '⚪ Nonaktif (Manual)'}
+                    {autoGenerateEnabled ? '🟢 Aktif' : '⚪ Nonaktif'}
                   </span>
                 </div>
-                <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5">
-                  Cron otomatis menyusun naskah & mengirim notif Telegram saat ada draf masuk.
+                <p className="text-[10px] sm:text-xs text-gray-500">
+                  Cron menyusun naskah 350-500 kata & judul editorial saat ada berita masuk.
                 </p>
               </div>
             </div>
 
-            {/* Toggle Switch */}
             <button
               type="button"
               disabled={isTogglingAutoGenerate}
               onClick={handleToggleAutoGenerate}
               aria-label="Toggle Auto-Generate"
-              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+              className={`relative inline-flex h-5 w-10 sm:h-6 sm:w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
                 autoGenerateEnabled ? 'bg-purple-600' : 'bg-gray-300'
               }`}
             >
               <span
-                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
+                className={`pointer-events-none inline-block h-4 w-4 sm:h-5 sm:w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
                   autoGenerateEnabled ? 'translate-x-5' : 'translate-x-0'
+                }`}
+              />
+            </button>
+          </div>
+
+          {/* Row 2: Auto-Cover Google Scraper */}
+          <div className="flex items-center justify-between gap-2.5 sm:gap-3 pt-2 border-t border-purple-100/80">
+            <div className="flex items-center gap-2.5 sm:gap-3">
+              <div className="w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                <ImageIcon className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                  <span className="text-xs sm:text-sm font-bold text-gray-900 font-heading">
+                    Auto-Pasang Foto (Google Scraper)
+                  </span>
+                  <span
+                    className={`text-[9px] sm:text-[10px] px-1.5 py-0.5 rounded-full font-bold border transition-colors ${
+                      autoCoverEnabled
+                        ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                        : 'bg-gray-100 text-gray-600 border-gray-300'
+                    }`}
+                  >
+                    {autoCoverEnabled ? '🟢 Full Autopilot' : '⚪ Manual'}
+                  </span>
+                </div>
+                <p className="text-[10px] sm:text-xs text-gray-500">
+                  Cari foto bersih bebas watermark, re-upload ke ImgBB, & langsung jadwalkan.
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              disabled={isTogglingAutoCover}
+              onClick={handleToggleAutoCover}
+              aria-label="Toggle Auto-Cover"
+              className={`relative inline-flex h-5 w-10 sm:h-6 sm:w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                autoCoverEnabled ? 'bg-indigo-600' : 'bg-gray-300'
+              }`}
+            >
+              <span
+                className={`pointer-events-none inline-block h-4 w-4 sm:h-5 sm:w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
+                  autoCoverEnabled ? 'translate-x-5' : 'translate-x-0'
                 }`}
               />
             </button>
@@ -652,14 +753,14 @@ export default function JurnalisClientView({
           <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-purple-100/80 text-[10px] sm:text-xs text-gray-500">
             <span className="flex items-center gap-1">
               <Sparkles className="w-3.5 h-3.5 text-purple-600" />
-              Antrean belum digenerate: <b className="text-purple-950 font-bold">{pendingCount} berita</b>
+              Antrean draf: <b className="text-purple-950 font-bold">{pendingCount} belum di-generate</b>
             </span>
-            {isTogglingAutoGenerate ? (
+            {isTogglingAutoGenerate || isTogglingAutoCover ? (
               <span className="inline-flex items-center gap-1 text-purple-600 font-medium">
-                <Loader2 className="w-3 h-3 animate-spin" /> Menyimpan status...
+                <Loader2 className="w-3 h-3 animate-spin" /> Menyimpan...
               </span>
-            ) : autoGenerateMessage ? (
-              <span className="font-semibold text-emerald-600">{autoGenerateMessage}</span>
+            ) : autoCoverMessage || autoGenerateMessage ? (
+              <span className="font-semibold text-emerald-600">{autoCoverMessage || autoGenerateMessage}</span>
             ) : (
               <span className="text-gray-400">Notifikasi otomatis ke Telegram aktif</span>
             )}
@@ -1042,21 +1143,42 @@ export default function JurnalisClientView({
                       <p className="text-[9px] sm:text-[10px] text-amber-700/80 mt-0.5 line-clamp-1">
                         Isi foto agar antre terbit
                       </p>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setPhotoModalDraft({
-                            draftId: draft.id,
-                            title: draft.generated_title || draft.title,
-                            currentCoverUrl: null,
-                            currentCaption: null,
-                          })
-                        }
-                        className="mt-1.5 inline-flex items-center justify-center gap-1 w-full py-1 px-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-md text-[10px] sm:text-xs font-bold transition-all shadow-2xs cursor-pointer"
-                      >
-                        <ImageIcon className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
-                        <span>+ Pasang Foto</span>
-                      </button>
+                      <div className="mt-1.5 flex items-center gap-1">
+                        <button
+                          type="button"
+                          disabled={fetchingPhotoDraftId === draft.id}
+                          onClick={() => handleAutoFetchCover(draft.id)}
+                          className="inline-flex items-center justify-center gap-1 flex-1 py-1 px-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-[10px] sm:text-xs font-bold transition-all shadow-2xs cursor-pointer disabled:opacity-50"
+                          title="Cari foto bersih bebas watermark dari Google Images & upload otomatis"
+                        >
+                          {fetchingPhotoDraftId === draft.id ? (
+                            <>
+                              <Loader2 className="w-2.5 h-2.5 sm:w-3 sm:h-3 animate-spin" />
+                              <span>Mencari...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Search className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                              <span>Auto-Cari Google</span>
+                            </>
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setPhotoModalDraft({
+                              draftId: draft.id,
+                              title: draft.generated_title || draft.title,
+                              currentCoverUrl: null,
+                              currentCaption: null,
+                            })
+                          }
+                          className="inline-flex items-center justify-center py-1 px-2 bg-amber-100 hover:bg-amber-200 text-amber-800 border border-amber-300 rounded-md text-[10px] sm:text-xs font-bold transition-all cursor-pointer"
+                          title="Pasang Foto Manual / Pilih dari ImgBB"
+                        >
+                          + Manual
+                        </button>
+                      </div>
                     </div>
                   ) : (
                     <div className="rounded-lg sm:rounded-xl border border-dashed border-gray-200 bg-gray-50/60 p-2 sm:p-2.5 text-center mb-2">

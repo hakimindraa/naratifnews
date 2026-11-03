@@ -2,12 +2,16 @@ import { db } from '@/db';
 import { jurnalisDrafts } from '@/db/schema';
 import { desc } from 'drizzle-orm';
 import JurnalisClientView, { JurnalisDraftItem } from './JurnalisClientView';
-import { getJurnalisPublishIntervalAction, getJurnalisAutoGenerateConfigAction } from './actions';
+import {
+  getJurnalisPublishIntervalAction,
+  getJurnalisAutoGenerateConfigAction,
+  getJurnalisAutoCoverConfigAction,
+} from './actions';
 
 export const instant = false;
 
 export default async function AdminJurnalisPage() {
-  const [drafts, initialIntervalMinutes, autoGenerateConfig] = await Promise.all([
+  const [drafts, initialIntervalMinutes, autoGenerateConfig, initialAutoCoverEnabled] = await Promise.all([
     db
       .select()
       .from(jurnalisDrafts)
@@ -15,6 +19,7 @@ export default async function AdminJurnalisPage() {
       .limit(100),
     getJurnalisPublishIntervalAction(),
     getJurnalisAutoGenerateConfigAction(),
+    getJurnalisAutoCoverConfigAction(),
   ]);
 
   const formattedDrafts: JurnalisDraftItem[] = drafts.map((d) => ({
@@ -42,6 +47,7 @@ export default async function AdminJurnalisPage() {
         initialIntervalMinutes={initialIntervalMinutes}
         initialAutoGenerateEnabled={autoGenerateConfig.enabled}
         initialPendingCount={autoGenerateConfig.pendingCount}
+        initialAutoCoverEnabled={initialAutoCoverEnabled}
       />
     </div>
   );
