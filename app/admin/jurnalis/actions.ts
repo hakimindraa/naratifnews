@@ -2,7 +2,7 @@
 
 import { db, sql } from '@/db';
 import { articles, jurnalisDrafts, systemSettings } from '@/db/schema';
-import { eq, desc, asc, inArray, and, isNotNull, gt } from 'drizzle-orm';
+import { eq, desc, asc, inArray, and, isNotNull, isNull, gt } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { uploadImageToImgbb } from '../media-actions';
 import { notifySearchEngines } from '@/lib/indexing';
@@ -926,5 +926,190 @@ export async function attachPhotoUrlToDraftAction(draftId: number, photoUrl: str
   } catch (err: any) {
     console.error('Gagal memasang URL foto draf:', err);
     return { success: false, error: err?.message || 'Gagal memasang foto' };
+  }
+}
+
+/**
+ * Ambil konfigurasi Auto-Generate Berita Masuk (Cron)
+ */
+export async function getJurnalisAutoGenerateConfigAction(): Promise<{
+  enabled: boolean;
+  pendingCount: number;
+}> {
+  try {
+    const settingRow = await db
+      .select()
+      .from(systemSettings)
+      .where(eq(systemSettings.key, 'jurnalis_auto_generate_enabled'))
+      .limit(1);
+
+    const enabled = settingRow.length > 0 ? settingRow[0].value === 'true' : true;
+
+    const pendingDrafts = await db
+      .select({ id: jurnalisDrafts.id })
+      .from(jurnalisDrafts)
+      .where(
+        and(
+          eq(jurnalisDrafts.status, 'draft'),
+          isNull(jurnalisDrafts.generatedArticle)
+        )
+      );
+
+    return {
+      enabled,
+      pendingCount: pendingDrafts.length,
+    };
+  } catch (err) {
+    console.error('Gagal mengambil konfigurasi auto-generate jurnalis:', err);
+    return { enabled: true, pendingCount: 0 };
+  }
+}
+
+/**
+ * Mengubah status sakelar Auto-Generate Berita Masuk (Aktif / Nonaktif)
+ */
+export async function toggleJurnalisAutoGenerateAction(enabled: boolean): Promise<{
+  success: boolean;
+  enabled: boolean;
+  error?: string;
+}> {
+  try {
+    await db
+      .insert(systemSettings)
+      .values({
+        key: 'jurnalis_auto_generate_enabled',
+        value: String(enabled),
+        updatedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: systemSettings.key,
+        set: {
+          value: String(enabled),
+          updatedAt: new Date(),
+        },
+      });
+
+    revalidatePath('/admin/jurnalis');
+    revalidatePath('/admin');
+    return { success: true, enabled };
+  } catch (err: any) {
+    console.error('Gagal mengubah sakelar auto-generate jurnalis:', err);
+    return { success: false, enabled: !enabled, error: err?.message || 'Gagal mengubah status sakelar' };
+  }
+}
+
+/**
+ * Worker Core: Mengambil 1 draf masuk terlama dan men-generate-nya secara otomatis via AI,
+ * lalu mengirimkan notifikasi ke Telegram Admin.
+ */
+export async function processAutoGenerateNextDraftAction(): Promise<{
+  success: boolean;
+  processed: boolean;
+  message: string;
+  draftId?: number;
+  title?: string;
+  error?: string;
+}> {
+  try {
+    const config = await getJurnalisAutoGenerateConfigAction();
+    if (!config.enabled) {
+      return {
+        success: true,
+        processed: false,
+        message: 'Auto-Generate sedang dinonaktifkan di pengaturan.',
+      };
+    }
+
+    // Ambil 1 draf terlama yang berstatus 'draft' dan belum punya generated_article
+    const [draftToProcess] = await db
+      .select({
+        id: jurnalisDrafts.id,
+        title: jurnalisDrafts.title,
+        source: jurnalisDrafts.source,
+      })
+      .from(jurnalisDrafts)
+      .where(
+        and(
+          eq(jurnalisDrafts.status, 'draft'),
+          isNull(jurnalisDrafts.generatedArticle)
+        )
+      )
+      .orderBy(asc(jurnalisDrafts.createdAt))
+      .limit(1);
+
+    if (!draftToProcess) {
+      return {
+        success: true,
+        processed: false,
+        message: 'Tidak ada draf yang menunggu untuk di-generate saat ini.',
+      };
+    }
+
+    // Eksekusi generate AI menggunakan action yang sudah ada
+    const genResult = await generateJurnalisDraftAction(draftToProcess.id);
+    if (!genResult.success || !genResult.data) {
+      return {
+        success: false,
+        processed: false,
+        draftId: draftToProcess.id,
+        message: `Gagal men-generate draf #${draftToProcess.id}: ${genResult.error}`,
+        error: genResult.error,
+      };
+    }
+
+    const generatedTitle = genResult.data.generatedTitle || draftToProcess.title;
+    const category = genResult.data.category || 'Nasional';
+    const source = draftToProcess.source || 'Bot Berita';
+
+    // Kirim notifikasi ringkas ke bot Telegram Admin
+    const adminChatId =
+      process.env.TELEGRAM_ADMIN_CHAT_ID ||
+      process.env.TELEGRAM_ALLOWED_CHAT_ID ||
+      '';
+
+    if (adminChatId) {
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.adafakta.web.id';
+      const jurnalisAdminUrl = `${siteUrl}/admin/jurnalis`;
+
+      const telegramMsg = [
+        `🤖 <b>Berita baru dari Bot Tele telah selesai disusun oleh AI:</b>`,
+        `━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
+        `📰 <b>${generatedTitle}</b>`,
+        ``,
+        `🏷️ <b>Kategori:</b> ${category} | <b>Status:</b> Siap Tayang`,
+        `🌐 <b>Sumber Asli:</b> ${source}`,
+        ``,
+        `💡 <i>Draf telah tersimpan otomatis di Dasbor Jurnalis AI.</i>`,
+      ].join('\n');
+
+      await sendTelegramMessage(adminChatId, telegramMsg, {
+        parseMode: 'HTML',
+        inlineKeyboard: [
+          [
+            { text: '📝 Buka di Dasbor Jurnalis', url: jurnalisAdminUrl },
+            { text: '🖥️ Status VPS', callback_data: 'vps:status' },
+          ],
+        ],
+      }).catch((err) => console.error('Gagal mengirim Telegram notif auto-generate:', err));
+    }
+
+    revalidatePath('/admin/jurnalis');
+    revalidatePath('/admin');
+
+    return {
+      success: true,
+      processed: true,
+      draftId: draftToProcess.id,
+      title: generatedTitle,
+      message: `Draf #${draftToProcess.id} berhasil digenerate dan notifikasi telah dikirim.`,
+    };
+  } catch (err: any) {
+    console.error('Error in processAutoGenerateNextDraftAction:', err);
+    return {
+      success: false,
+      processed: false,
+      message: err?.message || 'Terjadi kesalahan sistem saat auto-generate draf',
+      error: err?.message,
+    };
   }
 }

@@ -27,6 +27,8 @@ import {
   CalendarClock,
   Send,
   ArrowUpRight,
+  Bot,
+  Zap,
 } from 'lucide-react';
 import {
   deleteDraftAction,
@@ -37,6 +39,7 @@ import {
   removePhotoFromDraftAction,
   instantPublishDraftAction,
   updateJurnalisPublishIntervalAction,
+  toggleJurnalisAutoGenerateAction,
 } from './actions';
 import DraftPhotoModal from './DraftPhotoModal';
 
@@ -83,16 +86,50 @@ function formatRelativeSchedule(publishAtStr: string | null | undefined): { labe
 interface JurnalisClientViewProps {
   initialDrafts: JurnalisDraftItem[];
   initialIntervalMinutes?: number;
+  initialAutoGenerateEnabled?: boolean;
+  initialPendingCount?: number;
 }
 
 export default function JurnalisClientView({
   initialDrafts,
   initialIntervalMinutes = 60,
+  initialAutoGenerateEnabled = true,
 }: JurnalisClientViewProps) {
   const router = useRouter();
   const [drafts, setDrafts] = useState<JurnalisDraftItem[]>(initialDrafts);
   const [intervalMinutes, setIntervalMinutes] = useState<number>(initialIntervalMinutes);
   const [isSavingInterval, setIsSavingInterval] = useState(false);
+
+  // Auto-Generate Cron Toggle
+  const [autoGenerateEnabled, setAutoGenerateEnabled] = useState<boolean>(initialAutoGenerateEnabled);
+  const [isTogglingAutoGenerate, setIsTogglingAutoGenerate] = useState(false);
+  const [autoGenerateMessage, setAutoGenerateMessage] = useState<string | null>(null);
+
+  // Hitung jumlah draf yang belum di-generate
+  const pendingCount = drafts.filter((d) => d.status === 'draft' && !d.generated_article).length;
+
+  async function handleToggleAutoGenerate() {
+    if (isTogglingAutoGenerate) return;
+    const nextState = !autoGenerateEnabled;
+    setIsTogglingAutoGenerate(true);
+    setAutoGenerateMessage(null);
+
+    // Optimistic UI update
+    setAutoGenerateEnabled(nextState);
+
+    const res = await toggleJurnalisAutoGenerateAction(nextState);
+    if (!res.success) {
+      setAutoGenerateEnabled(!nextState); // Rollback
+      setAutoGenerateMessage('Gagal mengubah sakelar');
+    } else {
+      setAutoGenerateMessage(
+        nextState ? '🟢 Auto-Generate Aktif' : '⚪ Auto-Generate Nonaktif'
+      );
+      setTimeout(() => setAutoGenerateMessage(null), 3000);
+      router.refresh();
+    }
+    setIsTogglingAutoGenerate(false);
+  }
   const [loadingId, setLoadingId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [convertingId, setConvertingId] = useState<number | null>(null);
@@ -564,9 +601,73 @@ export default function JurnalisClientView({
         </div>
       </div>
 
-      {/* Waterfall Queue Interval Control Card */}
-      <div className="bg-gradient-to-r from-indigo-50/90 via-white to-purple-50/90 border border-indigo-200/80 rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-xs">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+      {/* Control Cards: Auto-Generate Cron Toggle & Waterfall Queue Interval */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
+        {/* Card 1: Auto-Generate Berita Masuk (Bot Tele AI) */}
+        <div className="bg-gradient-to-r from-purple-50/90 via-white to-indigo-50/90 border border-purple-200/80 rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-xs flex flex-col justify-between gap-3">
+          <div className="flex items-start sm:items-center justify-between gap-2.5 sm:gap-3">
+            <div className="flex items-start sm:items-center gap-2.5 sm:gap-3">
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-purple-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                <Bot className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
+              </div>
+              <div>
+                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                  <span className="text-xs sm:text-sm font-bold text-gray-900 font-heading">
+                    Auto-Generate Berita Masuk
+                  </span>
+                  <span
+                    className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold border transition-colors ${
+                      autoGenerateEnabled
+                        ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                        : 'bg-gray-100 text-gray-600 border-gray-300'
+                    }`}
+                  >
+                    {autoGenerateEnabled ? '🟢 Aktif (Cron 1 Berita/Siklus)' : '⚪ Nonaktif (Manual)'}
+                  </span>
+                </div>
+                <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5">
+                  Cron otomatis menyusun naskah & mengirim notif Telegram saat ada draf masuk.
+                </p>
+              </div>
+            </div>
+
+            {/* Toggle Switch */}
+            <button
+              type="button"
+              disabled={isTogglingAutoGenerate}
+              onClick={handleToggleAutoGenerate}
+              aria-label="Toggle Auto-Generate"
+              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                autoGenerateEnabled ? 'bg-purple-600' : 'bg-gray-300'
+              }`}
+            >
+              <span
+                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
+                  autoGenerateEnabled ? 'translate-x-5' : 'translate-x-0'
+                }`}
+              />
+            </button>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-purple-100/80 text-[10px] sm:text-xs text-gray-500">
+            <span className="flex items-center gap-1">
+              <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+              Antrean belum digenerate: <b className="text-purple-950 font-bold">{pendingCount} berita</b>
+            </span>
+            {isTogglingAutoGenerate ? (
+              <span className="inline-flex items-center gap-1 text-purple-600 font-medium">
+                <Loader2 className="w-3 h-3 animate-spin" /> Menyimpan status...
+              </span>
+            ) : autoGenerateMessage ? (
+              <span className="font-semibold text-emerald-600">{autoGenerateMessage}</span>
+            ) : (
+              <span className="text-gray-400">Notifikasi otomatis ke Telegram aktif</span>
+            )}
+          </div>
+        </div>
+
+        {/* Card 2: Waterfall Queue Interval Control Card */}
+        <div className="bg-gradient-to-r from-indigo-50/90 via-white to-purple-50/90 border border-indigo-200/80 rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-xs flex flex-col justify-between gap-3">
           <div className="flex items-start sm:items-center gap-2.5 sm:gap-3">
             <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-xs">
               <Clock className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
@@ -586,33 +687,35 @@ export default function JurnalisClientView({
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 sm:gap-2 self-start md:self-center shrink-0">
-            <span className="text-[10px] sm:text-xs text-gray-400 font-medium hidden sm:inline">
+          <div className="flex items-center justify-between gap-1.5 sm:gap-2 pt-2 border-t border-indigo-100/80">
+            <span className="text-[10px] sm:text-xs text-gray-500 font-medium">
               Pilih Jeda:
             </span>
-            {[
-              { label: '30 Menit', val: 30 },
-              { label: '1 Jam (Default)', val: 60 },
-              { label: '2 Jam', val: 120 },
-              { label: '3 Jam', val: 180 },
-            ].map((opt) => (
-              <button
-                key={opt.val}
-                type="button"
-                disabled={isSavingInterval}
-                onClick={() => handleSaveInterval(opt.val)}
-                className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-xs font-semibold transition-all cursor-pointer ${
-                  intervalMinutes === opt.val
-                    ? 'bg-indigo-600 text-white shadow-xs font-bold'
-                    : 'bg-white hover:bg-gray-100 text-gray-700 border border-gray-300/80'
-                }`}
-              >
-                {opt.label}
-              </button>
-            ))}
-            {isSavingInterval && (
-              <Loader2 className="w-3.5 h-3.5 text-indigo-600 animate-spin shrink-0 ml-1" />
-            )}
+            <div className="flex items-center gap-1 sm:gap-1.5">
+              {[
+                { label: '30 Menit', val: 30 },
+                { label: '1 Jam (Default)', val: 60 },
+                { label: '2 Jam', val: 120 },
+                { label: '3 Jam', val: 180 },
+              ].map((opt) => (
+                <button
+                  key={opt.val}
+                  type="button"
+                  disabled={isSavingInterval}
+                  onClick={() => handleSaveInterval(opt.val)}
+                  className={`px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-lg text-[10px] sm:text-xs font-semibold transition-all cursor-pointer ${
+                    intervalMinutes === opt.val
+                      ? 'bg-indigo-600 text-white shadow-xs font-bold'
+                      : 'bg-white hover:bg-gray-100 text-gray-700 border border-gray-300/80'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+              {isSavingInterval && (
+                <Loader2 className="w-3.5 h-3.5 text-indigo-600 animate-spin shrink-0 ml-1" />
+              )}
+            </div>
           </div>
         </div>
       </div>

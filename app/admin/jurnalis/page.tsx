@@ -2,18 +2,19 @@ import { db } from '@/db';
 import { jurnalisDrafts } from '@/db/schema';
 import { desc } from 'drizzle-orm';
 import JurnalisClientView, { JurnalisDraftItem } from './JurnalisClientView';
-import { getJurnalisPublishIntervalAction } from './actions';
+import { getJurnalisPublishIntervalAction, getJurnalisAutoGenerateConfigAction } from './actions';
 
 export const instant = false;
 
 export default async function AdminJurnalisPage() {
-  const [drafts, initialIntervalMinutes] = await Promise.all([
+  const [drafts, initialIntervalMinutes, autoGenerateConfig] = await Promise.all([
     db
       .select()
       .from(jurnalisDrafts)
       .orderBy(desc(jurnalisDrafts.createdAt))
       .limit(100),
     getJurnalisPublishIntervalAction(),
+    getJurnalisAutoGenerateConfigAction(),
   ]);
 
   const formattedDrafts: JurnalisDraftItem[] = drafts.map((d) => ({
@@ -39,6 +40,8 @@ export default async function AdminJurnalisPage() {
       <JurnalisClientView
         initialDrafts={formattedDrafts}
         initialIntervalMinutes={initialIntervalMinutes}
+        initialAutoGenerateEnabled={autoGenerateConfig.enabled}
+        initialPendingCount={autoGenerateConfig.pendingCount}
       />
     </div>
   );
