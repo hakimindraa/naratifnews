@@ -2,7 +2,7 @@
 
 import { db, sql } from '@/db';
 import { articles, jurnalisDrafts, systemSettings } from '@/db/schema';
-import { eq, desc, asc, inArray, and, isNotNull, isNull, gt } from 'drizzle-orm';
+import { eq, desc, asc, inArray, and, isNotNull, isNull, gt, or } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { uploadImageToImgbb } from '../media-actions';
 import { notifySearchEngines } from '@/lib/indexing';
@@ -1040,10 +1040,111 @@ export async function processAutoGenerateNextDraftAction(): Promise<{
       .limit(1);
 
     if (!draftToProcess) {
+      // Prioritas 2 (Sapu Bersih Draf Lama): Jika tidak ada draf baru mentah,
+      // periksa apakah ada draf lama yang sudah memiliki naskah tapi belum punya foto
+      const autoCoverEnabled = await getJurnalisAutoCoverConfigAction();
+      if (!autoCoverEnabled) {
+        return {
+          success: true,
+          processed: false,
+          message: 'Tidak ada draf baru yang menunggu untuk di-generate (Auto-Cover nonaktif).',
+        };
+      }
+
+      // Ambil 1 draf lama terlama yang sudah punya naskah tapi coverUrl-nya masih kosong
+      const [pendingPhotoDraft] = await db
+        .select({
+          id: jurnalisDrafts.id,
+          title: jurnalisDrafts.title,
+          generatedTitle: jurnalisDrafts.generatedTitle,
+          category: jurnalisDrafts.category,
+          source: jurnalisDrafts.source,
+        })
+        .from(jurnalisDrafts)
+        .where(
+          and(
+            isNotNull(jurnalisDrafts.generatedArticle),
+            or(isNull(jurnalisDrafts.coverUrl), eq(jurnalisDrafts.coverUrl, '')),
+            inArray(jurnalisDrafts.status, ['draft', 'generated'])
+          )
+        )
+        .orderBy(asc(jurnalisDrafts.createdAt))
+        .limit(1);
+
+      if (!pendingPhotoDraft) {
+        return {
+          success: true,
+          processed: false,
+          message: 'Tidak ada draf baru maupun draf lama yang menunggu foto saat ini.',
+        };
+      }
+
+      const titleToSearch = pendingPhotoDraft.generatedTitle || pendingPhotoDraft.title;
+      const category = pendingPhotoDraft.category || 'Nasional';
+
+      // Cari foto Google dan upload ke ImgBB
+      const coverRes = await searchAndUploadCoverImage(titleToSearch, category);
+      if (!coverRes.success || !coverRes.coverUrl) {
+        return {
+          success: false,
+          processed: false,
+          draftId: pendingPhotoDraft.id,
+          message: `Gagal mencari foto untuk draf lama #${pendingPhotoDraft.id}: ${coverRes.error}`,
+          error: coverRes.error,
+        };
+      }
+
+      // Pasang foto dan ubah status ke ready_to_publish (masuk antrean Waterfall Queue)
+      await attachPhotoUrlToDraftAction(
+        pendingPhotoDraft.id,
+        coverRes.coverUrl,
+        `Ilustrasi ${titleToSearch.slice(0, 80)} / Foto: Istimewa`
+      );
+
+      // Kirim notifikasi Telegram ke Admin
+      const adminChatId =
+        process.env.TELEGRAM_ADMIN_CHAT_ID ||
+        process.env.TELEGRAM_ALLOWED_CHAT_ID ||
+        '';
+
+      if (adminChatId) {
+        const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.adafakta.web.id';
+        const jurnalisAdminUrl = `${siteUrl}/admin/jurnalis`;
+
+        const telegramMsg = [
+          `🤖 <b>Foto Draf Lama Berhasil Dipasangkan Otomatis oleh Bot:</b>`,
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
+          `📰 <b>${titleToSearch}</b>`,
+          ``,
+          `🏷️ <b>Kategori:</b> ${category} | <b>Status:</b> Siap Tayang (Berjadwal)`,
+          `🖼️ <b>Foto Sampul:</b> Terpasang (Google Images ➔ ImgBB)`,
+          ``,
+          `💡 <i>Artikel resmi masuk antrean tayang terjadwal (Waterfall Queue).</i>`,
+        ].join('\n');
+
+        const inlineKeyboard = [
+          [
+            { text: '📝 Buka di Dasbor Jurnalis', url: jurnalisAdminUrl },
+            { text: '🖼️ Lihat Foto', url: coverRes.coverUrl },
+          ],
+        ];
+
+        await sendTelegramMessage(adminChatId, telegramMsg, {
+          parseMode: 'HTML',
+          inlineKeyboard,
+        }).catch((err) => console.error('Gagal mengirim Telegram notif auto-cover draf lama:', err));
+      }
+
+      revalidatePath('/admin/jurnalis');
+      revalidatePath('/admin');
+
       return {
         success: true,
-        processed: false,
-        message: 'Tidak ada draf yang menunggu untuk di-generate saat ini.',
+        processed: true,
+        draftId: pendingPhotoDraft.id,
+        title: titleToSearch,
+        coverUrl: coverRes.coverUrl,
+        message: `Foto sampul draf lama #${pendingPhotoDraft.id} berhasil dipasang otomatis dan dijadwalkan tayang.`,
       };
     }
 
