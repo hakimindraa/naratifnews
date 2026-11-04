@@ -1051,8 +1051,8 @@ export async function processAutoGenerateNextDraftAction(): Promise<{
         };
       }
 
-      // Ambil 1 draf lama terlama yang sudah punya naskah tapi coverUrl-nya masih kosong
-      const [pendingPhotoDraft] = await db
+      // Ambil hingga 5 kandidat draf lama yang sudah punya naskah tapi coverUrl-nya masih kosong
+      const pendingPhotoDrafts = await db
         .select({
           id: jurnalisDrafts.id,
           title: jurnalisDrafts.title,
@@ -1069,9 +1069,9 @@ export async function processAutoGenerateNextDraftAction(): Promise<{
           )
         )
         .orderBy(asc(jurnalisDrafts.createdAt))
-        .limit(1);
+        .limit(5);
 
-      if (!pendingPhotoDraft) {
+      if (pendingPhotoDrafts.length === 0) {
         return {
           success: true,
           processed: false,
@@ -1079,25 +1079,41 @@ export async function processAutoGenerateNextDraftAction(): Promise<{
         };
       }
 
-      const titleToSearch = pendingPhotoDraft.generatedTitle || pendingPhotoDraft.title;
-      const category = pendingPhotoDraft.category || 'Nasional';
+      let processedDraft: (typeof pendingPhotoDrafts)[0] | null = null;
+      let finalCoverUrl: string | null = null;
+      let lastError: string | null = null;
 
-      // Cari foto Google dan upload ke ImgBB
-      const coverRes = await searchAndUploadCoverImage(titleToSearch, category);
-      if (!coverRes.success || !coverRes.coverUrl) {
+      // Coba pasang foto untuk kandidat draf (jika ada 1 draf yang gagal, otomatis beralih ke draf berikutnya)
+      for (const draft of pendingPhotoDrafts) {
+        const titleToSearch = draft.generatedTitle || draft.title;
+        const category = draft.category || 'Nasional';
+
+        const coverRes = await searchAndUploadCoverImage(titleToSearch, category);
+        if (coverRes.success && coverRes.coverUrl) {
+          processedDraft = draft;
+          finalCoverUrl = coverRes.coverUrl;
+          break;
+        } else {
+          lastError = coverRes.error || 'Gagal menemukan gambar';
+        }
+      }
+
+      if (!processedDraft || !finalCoverUrl) {
         return {
           success: false,
           processed: false,
-          draftId: pendingPhotoDraft.id,
-          message: `Gagal mencari foto untuk draf lama #${pendingPhotoDraft.id}: ${coverRes.error}`,
-          error: coverRes.error,
+          message: `Gagal mencari foto untuk ${pendingPhotoDrafts.length} kandidat draf: ${lastError}`,
+          error: lastError || 'Tidak ada gambar yang cocok',
         };
       }
 
+      const titleToSearch = processedDraft.generatedTitle || processedDraft.title;
+      const category = processedDraft.category || 'Nasional';
+
       // Pasang foto dan ubah status ke ready_to_publish (masuk antrean Waterfall Queue)
       await attachPhotoUrlToDraftAction(
-        pendingPhotoDraft.id,
-        coverRes.coverUrl,
+        processedDraft.id,
+        finalCoverUrl,
         `Ilustrasi ${titleToSearch.slice(0, 80)} / Foto: Istimewa`
       );
 
@@ -1125,7 +1141,7 @@ export async function processAutoGenerateNextDraftAction(): Promise<{
         const inlineKeyboard = [
           [
             { text: '📝 Buka di Dasbor Jurnalis', url: jurnalisAdminUrl },
-            { text: '🖼️ Lihat Foto', url: coverRes.coverUrl },
+            { text: '🖼️ Lihat Foto', url: finalCoverUrl },
           ],
         ];
 
@@ -1141,10 +1157,10 @@ export async function processAutoGenerateNextDraftAction(): Promise<{
       return {
         success: true,
         processed: true,
-        draftId: pendingPhotoDraft.id,
+        draftId: processedDraft.id,
         title: titleToSearch,
-        coverUrl: coverRes.coverUrl,
-        message: `Foto sampul draf lama #${pendingPhotoDraft.id} berhasil dipasang otomatis dan dijadwalkan tayang.`,
+        coverUrl: finalCoverUrl,
+        message: `Foto sampul draf lama #${processedDraft.id} berhasil dipasang otomatis dan dijadwalkan tayang.`,
       };
     }
 

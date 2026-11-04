@@ -3,8 +3,21 @@ import { uploadImageToImgbb } from '@/app/admin/media-actions';
 /**
  * Pembersih kata kunci judul berita agar menjadi query pencarian visual yang akurat
  */
-export function sanitizeImageSearchQuery(title: string, category?: string): string {
-  if (!title) return category ? `${category} indonesia` : 'berita indonesia';
+export function sanitizeImageSearchQuery(title: string, category?: string): {
+  primary: string;
+  secondary: string;
+  fallback: string;
+} {
+  const cat = category?.trim() || 'Nasional';
+  const defaultFallback = `${cat} indonesia berita`;
+
+  if (!title) {
+    return {
+      primary: defaultFallback,
+      secondary: `${cat} indonesia`,
+      fallback: defaultFallback,
+    };
+  }
 
   // 1. Bersihkan prefix portal & editorial umum
   let clean = title
@@ -22,32 +35,39 @@ export function sanitizeImageSearchQuery(title: string, category?: string): stri
     'ini', 'itu', 'tersebut', 'menjadi', 'sebagai', 'serta', 'juga', 'pun',
     'tak', 'tidak', 'bukan', 'ada', 'lebih', 'paling', 'sangat', 'kembali',
     'segera', 'resmi', 'sukses', 'siap', 'dorong', 'gandeng', 'klaim', 'beberkan',
-    'beberkan', 'ungkap', 'sebut', 'kata', 'ungkapkan', 'catat'
+    'ungkap', 'sebut', 'kata', 'ungkapkan', 'catat', 'permasalahkan', 'belum', 'balas',
+    'minta', 'sorot', 'nilai', 'tanggapi', 'buka', 'tutup', 'tinjau', 'datang'
   ]);
 
   const words = clean
     .split(/\s+/)
     .map((w) => w.trim().replace(/[^\w-]/g, ''))
-    .filter((w) => w.length >= 3 && !stopWords.has(w.toLowerCase()));
+    .filter((w) => w.length >= 3);
 
-  // Ambil 4-6 kata kunci visual utama yang paling merepresentasikan peristiwa
-  const selectedWords = words.slice(0, 6);
+  const meaningfulWords = words.filter((w) => !stopWords.has(w.toLowerCase()));
+  const tokenSource = meaningfulWords.length >= 2 ? meaningfulWords : words;
 
-  if (selectedWords.length === 0) {
-    return category ? `${category} indonesia` : 'berita indonesia';
-  }
+  // Variasi 1: Kata kunci inti (3-4 kata)
+  const primary = tokenSource.slice(0, 4).join(' ') || defaultFallback;
 
-  return selectedWords.join(' ');
+  // Variasi 2: Lebih ringkas (2-3 kata subjek utama)
+  const secondary = tokenSource.slice(0, 3).join(' ') || primary;
+
+  // Variasi 3: Topik subjek utama + konteks berita
+  const fallback = tokenSource[0]
+    ? `${tokenSource[0]} ${cat} indonesia`
+    : defaultFallback;
+
+  return { primary, secondary, fallback };
 }
 
 /**
  * Mencari kandidat URL gambar asli dari mesin pencari web (HD & Landscape)
  */
 export async function searchCandidateImages(query: string): Promise<string[]> {
-  // Gunakan filter rasio Landscape / Wide & resolusi Large agar ideal sebagai cover berita
   const searchUrl = `https://www.bing.com/images/search?q=${encodeURIComponent(
     query
-  )}&qft=+filterui:aspect-wide+filterui:imagesize-large&first=1&scenario=ImageBasicHover`;
+  )}&qft=+filterui:aspect-wide&first=1&scenario=ImageBasicHover`;
 
   try {
     const controller = new AbortController();
@@ -73,56 +93,29 @@ export async function searchCandidateImages(query: string): Promise<string[]> {
 
     const html = await res.text();
     const murls: string[] = [];
-    const murlRegex = /&quot;murl&quot;:&quot;(https:\/\/[^&"]+?\.(?:jpe?g|png|webp))&quot;/gi;
+    const murlRegex = /&quot;murl&quot;:&quot;(https:\/\/[^&"]+?)&quot;/gi;
     let match: RegExpExecArray | null;
 
     while ((match = murlRegex.exec(html)) !== null) {
-      const url = match[1];
-      const lower = url.toLowerCase();
-      // Filter out domain pelacak / ikon / placeholder / avatar / logo
+      const rawUrl = match[1].replace(/\\/g, '');
+      const lower = rawUrl.toLowerCase();
+      // Validasi ekstensi gambar & filter out icon/avatar/logo/favicon
+      const hasImageExt =
+        lower.includes('.jpg') ||
+        lower.includes('.jpeg') ||
+        lower.includes('.png') ||
+        lower.includes('.webp');
+
       if (
+        hasImageExt &&
         !lower.includes('favicon') &&
         !lower.includes('icon') &&
         !lower.includes('logo') &&
         !lower.includes('avatar') &&
-        !lower.includes('author') &&
         !lower.includes('placeholder') &&
         !lower.includes('transparent')
       ) {
-        murls.push(url);
-      }
-    }
-
-    // Jika filter gambar large terlalu ketat dan tidak menemukan hasil, coba fallback ke wide umum
-    if (murls.length === 0) {
-      const fallbackUrl = `https://www.bing.com/images/search?q=${encodeURIComponent(
-        query
-      )}&qft=+filterui:aspect-wide&first=1&scenario=ImageBasicHover`;
-      const fallbackRes = await fetch(fallbackUrl, {
-        headers: {
-          'User-Agent':
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-          'Accept-Language': 'id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7',
-        },
-        signal: AbortSignal.timeout(6000),
-      });
-
-      if (fallbackRes.ok) {
-        const fallbackHtml = await fallbackRes.text();
-        while ((match = murlRegex.exec(fallbackHtml)) !== null) {
-          const url = match[1];
-          const lower = url.toLowerCase();
-          if (
-            !lower.includes('favicon') &&
-            !lower.includes('icon') &&
-            !lower.includes('logo') &&
-            !lower.includes('avatar') &&
-            !lower.includes('placeholder')
-          ) {
-            murls.push(url);
-          }
-        }
+        murls.push(rawUrl);
       }
     }
 
@@ -134,7 +127,7 @@ export async function searchCandidateImages(query: string): Promise<string[]> {
 }
 
 /**
- * Fungsi Inti: Mencari gambar di Google/Web berdasarkan judul,
+ * Fungsi Inti: Mencari gambar di Google/Web berdasarkan judul dengan Multi-Level Query Fallback,
  * lalu mengunduh buffer dan mengunggahnya ke ImgBB agar menghasilkan URL permanen yang aman.
  */
 export async function searchAndUploadCoverImage(
@@ -142,13 +135,23 @@ export async function searchAndUploadCoverImage(
   category?: string
 ): Promise<{ success: boolean; coverUrl?: string; error?: string }> {
   try {
-    const query = sanitizeImageSearchQuery(title, category);
-    const candidates = await searchCandidateImages(query);
+    const { primary, secondary, fallback } = sanitizeImageSearchQuery(title, category);
+    const querySteps = [primary, secondary, fallback].filter(Boolean);
+
+    let candidates: string[] = [];
+
+    // Coba setiap variasi kata kunci dari yang paling spesifik ke yang lebih ringkas
+    for (const q of querySteps) {
+      candidates = await searchCandidateImages(q);
+      if (candidates.length > 0) {
+        break;
+      }
+    }
 
     if (candidates.length === 0) {
       return {
         success: false,
-        error: `Tidak ada gambar yang ditemukan untuk topik "${query}".`,
+        error: `Tidak ada gambar yang ditemukan untuk topik "${primary}".`,
       };
     }
 
@@ -170,7 +173,7 @@ export async function searchAndUploadCoverImage(
           };
         }
       } catch (uploadErr) {
-        // Lanjutkan coba kandidat berikutnya jika kandidat ini gagal (misal hotlink protection)
+        // Lanjutkan coba kandidat berikutnya jika kandidat ini gagal
         continue;
       }
     }
