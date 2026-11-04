@@ -4,13 +4,13 @@ import { uploadImageToImgbb } from '@/app/admin/media-actions';
  * Pembersih kata kunci judul berita agar menjadi query pencarian visual yang akurat
  */
 export function sanitizeImageSearchQuery(title: string, category?: string): string {
-  if (!title) return category || 'berita nasional';
+  if (!title) return category ? `${category} indonesia` : 'berita indonesia';
 
-  // 1. Bersihkan prefix editorial umum
+  // 1. Bersihkan prefix portal & editorial umum
   let clean = title
     .replace(/^adafaktanews\s*[-–—:]\s*/i, '')
-    .replace(/^(breaking news|update|eksklusif|terkini|viral)\s*[-–—:]\s*/i, '')
-    .replace(/[\[\]\(\)\{\}"'“”‘’]/g, ' ')
+    .replace(/^(breaking news|update|eksklusif|terkini|viral|sorotan)\s*[-–—:]\s*/i, '')
+    .replace(/[\[\]\(\)\{\}"'“”‘’:,;!?\/\\]/g, ' ')
     .trim();
 
   // 2. Hapus kata sambung & kata pengantar yang tidak bernilai visual
@@ -21,16 +21,17 @@ export function sanitizeImageSearchQuery(title: string, category?: string): stri
     'bisa', 'dapat', 'harus', 'agar', 'supaya', 'tentang', 'terkait', 'soal',
     'ini', 'itu', 'tersebut', 'menjadi', 'sebagai', 'serta', 'juga', 'pun',
     'tak', 'tidak', 'bukan', 'ada', 'lebih', 'paling', 'sangat', 'kembali',
-    'segera', 'resmi', 'sukses', 'siap', 'dorong', 'gandeng', 'klaim', 'beberkan'
+    'segera', 'resmi', 'sukses', 'siap', 'dorong', 'gandeng', 'klaim', 'beberkan',
+    'beberkan', 'ungkap', 'sebut', 'kata', 'ungkapkan', 'catat'
   ]);
 
   const words = clean
     .split(/\s+/)
     .map((w) => w.trim().replace(/[^\w-]/g, ''))
-    .filter((w) => w.length > 2 && !stopWords.has(w.toLowerCase()));
+    .filter((w) => w.length >= 3 && !stopWords.has(w.toLowerCase()));
 
-  // Ambil 3-5 kata kunci visual utama
-  const selectedWords = words.slice(0, 5);
+  // Ambil 4-6 kata kunci visual utama yang paling merepresentasikan peristiwa
+  const selectedWords = words.slice(0, 6);
 
   if (selectedWords.length === 0) {
     return category ? `${category} indonesia` : 'berita indonesia';
@@ -43,7 +44,10 @@ export function sanitizeImageSearchQuery(title: string, category?: string): stri
  * Mencari kandidat URL gambar asli dari mesin pencari web (HD & Landscape)
  */
 export async function searchCandidateImages(query: string): Promise<string[]> {
-  const searchUrl = `https://www.bing.com/images/search?q=${encodeURIComponent(query)}&first=1&scenario=ImageBasicHover`;
+  // Gunakan filter rasio Landscape / Wide & resolusi Large agar ideal sebagai cover berita
+  const searchUrl = `https://www.bing.com/images/search?q=${encodeURIComponent(
+    query
+  )}&qft=+filterui:aspect-wide+filterui:imagesize-large&first=1&scenario=ImageBasicHover`;
 
   try {
     const controller = new AbortController();
@@ -74,16 +78,51 @@ export async function searchCandidateImages(query: string): Promise<string[]> {
 
     while ((match = murlRegex.exec(html)) !== null) {
       const url = match[1];
-      // Filter out domain pelacak / ikon / placeholder
       const lower = url.toLowerCase();
+      // Filter out domain pelacak / ikon / placeholder / avatar / logo
       if (
         !lower.includes('favicon') &&
         !lower.includes('icon') &&
         !lower.includes('logo') &&
         !lower.includes('avatar') &&
-        !lower.includes('placeholder')
+        !lower.includes('author') &&
+        !lower.includes('placeholder') &&
+        !lower.includes('transparent')
       ) {
         murls.push(url);
+      }
+    }
+
+    // Jika filter gambar large terlalu ketat dan tidak menemukan hasil, coba fallback ke wide umum
+    if (murls.length === 0) {
+      const fallbackUrl = `https://www.bing.com/images/search?q=${encodeURIComponent(
+        query
+      )}&qft=+filterui:aspect-wide&first=1&scenario=ImageBasicHover`;
+      const fallbackRes = await fetch(fallbackUrl, {
+        headers: {
+          'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': 'id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7',
+        },
+        signal: AbortSignal.timeout(6000),
+      });
+
+      if (fallbackRes.ok) {
+        const fallbackHtml = await fallbackRes.text();
+        while ((match = murlRegex.exec(fallbackHtml)) !== null) {
+          const url = match[1];
+          const lower = url.toLowerCase();
+          if (
+            !lower.includes('favicon') &&
+            !lower.includes('icon') &&
+            !lower.includes('logo') &&
+            !lower.includes('avatar') &&
+            !lower.includes('placeholder')
+          ) {
+            murls.push(url);
+          }
+        }
       }
     }
 
@@ -96,7 +135,7 @@ export async function searchCandidateImages(query: string): Promise<string[]> {
 
 /**
  * Fungsi Inti: Mencari gambar di Google/Web berdasarkan judul,
- * lalu mengunggahnya ke ImgBB agar menghasilkan URL permanen yang aman.
+ * lalu mengunduh buffer dan mengunggahnya ke ImgBB agar menghasilkan URL permanen yang aman.
  */
 export async function searchAndUploadCoverImage(
   title: string,
@@ -113,8 +152,8 @@ export async function searchAndUploadCoverImage(
       };
     }
 
-    // Coba upload maksimal 3 kandidat teratas hingga berhasil
-    for (let i = 0; i < Math.min(3, candidates.length); i++) {
+    // Coba upload maksimal 4 kandidat teratas hingga berhasil
+    for (let i = 0; i < Math.min(4, candidates.length); i++) {
       const candidateUrl = candidates[i];
       try {
         const formData = new FormData();

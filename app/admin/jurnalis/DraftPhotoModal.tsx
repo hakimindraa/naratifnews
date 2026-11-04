@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { X, Upload, Link2, Image as ImageIcon, Loader2, CheckCircle2, AlertCircle, Clock } from 'lucide-react';
 import { attachPhotoToDraftAction, getNextSuggestedPublishTimeAction } from './actions';
+import { compressImageUnder100KB } from '../image-compressor';
 
 interface DraftPhotoModalProps {
   isOpen: boolean;
@@ -50,6 +51,8 @@ export default function DraftPhotoModal({
     return toDateTimeLocalString(new Date(Date.now() + 60 * 60 * 1000));
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCompressing, setIsCompressing] = useState(false);
+  const [compressionNote, setCompressionNote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -76,23 +79,46 @@ export default function DraftPhotoModal({
 
   if (!isOpen) return null;
 
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const selected = e.target.files?.[0];
-    if (selected) {
-      if (selected.size > 32 * 1024 * 1024) {
-        setError('Ukuran file maksimal 32MB sesuai standar ImgBB.');
-        return;
-      }
+    if (!selected) return;
+
+    if (selected.size > 32 * 1024 * 1024) {
+      setError('Ukuran file maksimal 32MB sesuai standar ImgBB.');
+      return;
+    }
+
+    setError(null);
+    setIsCompressing(true);
+    setCompressionNote('Mengompresi ke WebP < 100 KB...');
+
+    try {
+      // Auto kompresi client-side garansi ukuran < 100 KB dalam format WebP
+      const comp = await compressImageUnder100KB(selected);
+      setFile(comp.file);
+      setFilePreview(URL.createObjectURL(comp.file));
+      setCompressionNote(
+        `Dikompresi: ${comp.originalSizeKB} KB ➔ ${comp.compressedSizeKB} KB (Hemat ${comp.savingsPercent}% | WebP < 100 KB)`
+      );
+    } catch (err: any) {
+      console.warn('Gagal kompresi, menggunakan file asli:', err);
       setFile(selected);
-      setError(null);
-      const url = URL.createObjectURL(selected);
-      setFilePreview(url);
+      setFilePreview(URL.createObjectURL(selected));
+      setCompressionNote(null);
+    } finally {
+      setIsCompressing(false);
     }
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+
+    if (isCompressing) {
+      setError('Sedang mengompresi gambar, silakan tunggu sesaat...');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -242,6 +268,21 @@ export default function DraftPhotoModal({
                   className="hidden"
                 />
               </label>
+
+              {/* Status & Hasil Kompresi Otomatis */}
+              {isCompressing && (
+                <div className="flex items-center justify-center gap-2 p-2.5 bg-indigo-50 border border-indigo-200 rounded-xl text-xs text-indigo-700 font-medium">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-600" />
+                  <span>Mengompresi gambar ke WebP (&lt; 100 KB)...</span>
+                </div>
+              )}
+
+              {compressionNote && !isCompressing && (
+                <div className="flex items-center gap-2 p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-[11px] text-emerald-800 font-semibold">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>{compressionNote}</span>
+                </div>
+              )}
             </div>
           ) : (
             <div className="space-y-2">
@@ -320,13 +361,18 @@ export default function DraftPhotoModal({
             </button>
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || isCompressing}
               className="px-5 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
             >
               {isSubmitting ? (
                 <>
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
                   <span>Mengunggah ke ImgBB...</span>
+                </>
+              ) : isCompressing ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>Mengompresi Gambar...</span>
                 </>
               ) : (
                 <>

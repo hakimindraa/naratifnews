@@ -67,8 +67,39 @@ export async function uploadImageToImgbb(formData: FormData): Promise<ImgbbUploa
           // gunakan URL asli jika gagal parse
         }
       }
-      imgbbBody.append('image', finalUrl);
-      imgbbBody.append('name', name);
+
+      // Unduh buffer gambar di sisi server dan kirim sebagai Base64
+      // Hal ini mengatasi error bug PHP 8.4 cURL (CURLOPT_BINARYTRANSFER) di server ImgBB
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 8000);
+        const imgRes = await fetch(finalUrl, {
+          headers: {
+            'User-Agent':
+              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+            Accept: 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+          },
+          signal: controller.signal,
+        });
+        clearTimeout(timeout);
+
+        if (!imgRes.ok) {
+          return { error: `Gagal mengunduh gambar sumber (HTTP ${imgRes.status}).` };
+        }
+
+        const buffer = await imgRes.arrayBuffer();
+        if (buffer.byteLength < 1024) {
+          return { error: 'Berkas gambar dari tautan terlalu kecil atau tidak valid.' };
+        }
+
+        const base64Data = Buffer.from(buffer).toString('base64');
+        imgbbBody.append('image', base64Data);
+        imgbbBody.append('name', name);
+      } catch (fetchErr: any) {
+        return {
+          error: `Gagal mengunduh gambar dari tautan: ${fetchErr?.message || 'Waktu koneksi habis'}`,
+        };
+      }
     }
 
     const response = await fetch(`https://api.imgbb.com/1/upload?key=${apiKey}`, {

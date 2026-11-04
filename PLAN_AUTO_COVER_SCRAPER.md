@@ -1,141 +1,121 @@
-# 📋 Rencana Implementasi: Auto-Cover Image Scraper via Google Images & Sakelar Kendali Admin
+# 📋 Rencana Implementasi: Kompresi Foto (< 100 KB) & Perbaikan Auto-Cover Image Scraper
 
-> **Status Dokumen:** 📝 Draft Perencanaan (Menunggu Persetujuan Pengguna)  
-> **Prinsip Utama:** Tidak ada file kode yang diubah/diimplementasikan sebelum dokumen ini disetujui.
-
----
-
-## 1. Latar Belakang & Tujuan
-
-* **Masalah:**  
-  1. Saat ini setelah draf berita selesai di-generate oleh AI, draf tersebut masih berada pada status *Need Photo* (belum berfoto) sehingga belum bisa diterbitkan otomatis oleh Waterfall Queue.
-  2. Gambar dari website sumber asli sering kali mengandung **logo/watermark besar** (seperti logo Detik, Kompas, Tribun, atau Antara) di sudut foto yang kurang profesional jika dipakai ulang.
-* **Tujuan Fitur:**  
-  1. Mengotomatiskan pencarian gambar ilustrasi/dokumentasi yang **bersih tanpa watermark** langsung dari Google Images berdasarkan judul berita yang dihasilkan AI.
-  2. Mengunduh dan mengunggah ulang (*re-host*) gambar tersebut ke akun **ImgBB Anda** agar link gambar permanen dan tidak pernah rusak (*broken link*).
-  3. Memasangkan foto ke draf berita dan langsung mengubah statusnya menjadi **`ready_to_publish`** (masuk jadwal antrean tayang runtun).
-  4. Menghadirkan **Sakelar On/Off di Web Admin** agar admin dapat memilih antara mode *100% Full Autopilot* atau *Semi-Otomatis (Pilih Foto Sendiri)*.
+> **Status Dokumen:** 📝 Menunggu Persetujuan Pengguna  
+> **Prinsip Utama:** Tidak ada file kode yang diubah/diimplementasikan sebelum rencana ini disetujui.
 
 ---
 
-## 2. Diagram Alur Sistem (Workflow)
+## 1. Latar Belakang & Akar Masalah
+
+Berdasarkan hasil investigasi mendalam terhadap codebase, ditemukan 3 hal utama yang perlu disempurnakan:
+
+### 1.1. Fitur Tambah Foto Manual Jurnalis AI (`DraftPhotoModal.tsx`) Belum Ada Kompresi
+* **Kondisi Saat Ini:** Ketika admin memilih foto (misalnya 2 MB – 5 MB dari kamera atau galeri), file mentah tersebut langsung diunggah utuh ke ImgBB tanpa kompresi.
+* **Dampak:** Kuota ImgBB cepat habis dan kecepatan load website menjadi berat bagi pembaca.
+* **Solusi:** Mengintegrasikan utilitas [`compressImageUnder100KB`](file:///e:/porto/naratif/app/admin/image-compressor.ts) ke dalam modal. Gambar akan otomatis diubah ke format modern **WebP**, resolusi dioptimalkan proporsional, dan ukuran dipastikan **di bawah 100 KB** (target 40 KB – 85 KB) sebelum dikirim ke ImgBB.
+
+### 1.2. Tombol Auto-Generate Foto Gagal / Error ImgBB
+* **Akar Masalah:** Saat scraper mengirimkan parameter `imageUrl` langsung ke endpoint API ImgBB (`https://api.imgbb.com/1/upload`), server ImgBB (yang berjalan di PHP 8.4) mengalami error internal:
+  `HTTP 400: Constant CURLOPT_BINARYTRANSFER is deprecated since 8.4, as it had no effect since 5.1.2`.
+* **Solusi:** Backend Next.js akan mengunduh (*fetch*) buffer gambar kandidat ke memori server terlebih dahulu, lalu mengonversinya menjadi **Base64**. Format Base64 diterima 100% lancar oleh ImgBB tanpa memicu bug cURL PHP 8.4 di server ImgBB.
+
+### 1.3. Gambar Pencarian Melantur / Tidak Sesuai Topik Berita
+* **Akar Masalah:**
+  1. Pada modal pencarian arsip lama admin, sistem mencari ke Wikimedia Commons yang merupakan arsip ensiklopedia sejarah, bukan database berita harian aktual.
+  2. Pembersihan kata kunci (*keyword sanitizer*) sebelumnya terlalu memangkas kata penting, sehingga kata kunci peristiwa spesifik hilang dan menghasilkan gambar acak.
+* **Solusi:**
+  1. Menyempurnakan pembersih judul: mempertahankan nama tokoh (Presiden, Menteri, Tokoh Publik), lokasi peristiwa, dan kata aksi utama.
+  2. Menambahkan filter pencarian gambar berita: orientasi **Landscape (Horizontal)**, resolusi tajam (HD / Large), dan filter anti-placeholder/logo.
+  3. Menyediakan mekanisme *multi-candidate fallback* (mencoba kandidat 1, 2, dan 3) jika terdapat gambar yang memiliki proteksi hotlinking.
+
+---
+
+## 2. Diagram Alur Kerja Sistem (Workflow)
 
 ```mermaid
 flowchart TD
-    A["Draf Selesai di-generate AI\n(Judul Editorial & Naskah Siap)"] --> B{"Sakelar Auto-Cover\nAktif?"}
-    
-    B -- Nonaktif (Manual) --> C["Biarkan Status 'need_photo'\n(Admin Pasang Foto Manual)"]
-    B -- Aktif (Otomatis) --> D["Ekstraksi Kata Kunci Visual\n(Bersihkan 'adafaktanews - ', stop words)"]
-    
-    D --> E["Scrape Google Images HD\n(Filter Landscape, Min Width >= 600px)"]
-    
-    E --> F{"Gambar Ditemukan?"}
-    F -- Gagal/Timeout --> G["Fallback: Biarkan draf tetap aman\n(Status 'need_photo' tanpa crash)"]
-    
-    F -- Sukses --> H["Download Buffer Gambar ke Memory"]
-    H --> I["Upload Otomatis ke Akun ImgBB Anda\n(Fungsi uploadImageToImgbb)"]
-    
-    I --> J["Pasang URL ImgBB ke Kolom cover_url Draf\n+ Caption: 'Ilustrasi [Topik] / Foto: Istimewa'"]
-    
-    J --> K["Update Status Draf: 'ready_to_publish'\n+ Jadwalkan di Waterfall Queue"]
-    
-    K --> L["Kirim Notifikasi Lengkap ke Bot Telegram Admin\n(Lengkap dengan link & preview foto)"]
+    subgraph ManualUpload["1. Jalur Upload Foto Manual (DraftPhotoModal)"]
+        A1["Admin Pilih Berkas Foto\n(Ukuran 1 MB - 5 MB)"] --> A2["Client-Side Auto-Compress\n(app/admin/image-compressor.ts)"]
+        A2 --> A3["Hasil: Format WebP < 100 KB\n(Rata-rata 40 KB - 85 KB)"]
+        A3 --> A4["Tampilkan Indikator Hemat Ukuran\n'1.8 MB ➔ 62 KB (< 100 KB)'"]
+        A4 --> A5["Upload ke ImgBB CDN & Pasang ke Draf"]
+    end
+
+    subgraph AutoCover["2. Jalur Auto-Cover (Tombol 1-Klik & Cron Worker)"]
+        B1["Judul Berita Hasil AI"] --> B2["Ekstraksi Kata Kunci Spesifik Berita\n(Tokoh, Lembaga, Lokasi, Peristiwa)"]
+        B2 --> B3["Pencarian Kandidat Gambar HD & Landscape"]
+        B3 --> B4["Server Download Buffer Gambar"]
+        B4 --> B5["Konversi Buffer ke Base64\n(Bypass Bug PHP 8.4 ImgBB)"]
+        B5 --> B6["Upload Base64 ke ImgBB CDN"]
+        B6 --> B7["Pasang Cover URL & Masuk Antrean Waterfall Queue"]
+    end
 ```
 
 ---
 
-## 3. Rincian Komponen & Logika Teknis
+## 3. Rincian Rencana Perubahan Berkas (Step-by-Step)
 
-### A. Modul Scraper Gambar Backend (`lib/image-scraper.ts` — File Baru)
-Modul ini bertugas mencari gambar di Google Images secara ringan tanpa memerlukan browser virtual:
-1. **Pembersihan Kata Kunci (*Smart Query Sanitizer*):**
-   * Menghapus prefix pengantar seperti `"adafaktanews - "`.
-   * Menghapus tanda petik, kurung, dan kata penghubung (di, ke, dari, pada, untuk, yang, ini, itu).
-   * Menghasilkan query visual presisi, contoh: `"Jalan Tol Trans Sumatera pembangunan proyek"`.
-2. **Pencarian Google Images:**
-   * Melakukan request HTTP dengan headers seluler/desktop modern ke Google Images.
-   * Mengekstrak URL gambar beresolusi tajam berformat `.jpg`, `.jpeg`, `.png`, atau `.webp`.
-   * Memastikan orientasi gambar adalah **Landscape (Horizontal)** dengan dimensi minimal $\ge 600$ piksel.
-3. **Re-host ke ImgBB:**
-   * Gambar di-fetch ke memory server (Buffer).
-   * Dikirim ke ImgBB via fungsi `uploadImageToImgbb(formData)`.
-   * Mengembalikan URL CDN permanen: `https://i.ibb.co.com/xxx/image.jpg`.
-4. **Safety Timeout:**
-   * Setiap proses pencarian gambar dibatasi timeout maksimal 8 detik. Jika gagal atau koneksi lambat, proses tidak akan memblokir draf (draf tetap tersimpan aman).
+### A. Modifikasi [`app/admin/jurnalis/DraftPhotoModal.tsx`](file:///e:/porto/naratif/app/admin/jurnalis/DraftPhotoModal.tsx)
+1. Import `compressImageUnder100KB` dari `@/app/admin/image-compressor`.
+2. Tambahkan state pelacak proses kompresi:
+   - `isCompressing: boolean`
+   - `compressionInfo: { originalKB: number; compressedKB: number; savings: number } | null`
+3. Pada event `handleFileChange`:
+   - Saat admin memilih gambar, langsung jalankan `compressImageUnder100KB(selected)`.
+   - Simpan berkas hasil kompresi ke state `file`.
+   - Buat URL preview dari berkas hasil kompresi.
+   - Tampilkan badge hijau informatif: *"✅ Berhasil dikompresi: 1.8 MB ➔ 64 KB (Hemat 96% | WebP < 100 KB)"*.
+4. Pada `handleSubmit`:
+   - Mengirim berkas WebP yang sudah pasti berukuran < 100 KB ke server action.
 
 ---
 
-### B. Penyimpanan Konfigurasi Sakelar (`system_settings`)
-* Key database: `jurnalis_auto_cover_enabled` (`'true'` atau `'false'`, Default: `'true'`).
-* Server Action di `app/admin/jurnalis/actions.ts`:
-  * `getJurnalisAutoCoverConfigAction()`
-  * `toggleJurnalisAutoCoverAction(enabled: boolean)`
+### B. Modifikasi [`lib/image-scraper.ts`](file:///e:/porto/naratif/lib/image-scraper.ts)
+1. **Penajaman Query (`sanitizeImageSearchQuery`):**
+   - Menghilangkan frasa pembuka portal (seperti *"adafaktanews - "*).
+   - Mempertahankan kata-kata kunci berita penting (nama lembaga KPK, POLRI, DPR, nama tokoh politik, daerah, serta objek peristiwa).
+2. **Filter Pencarian Gambar Tajam & Landscape:**
+   - Memastikan hasil pencarian berorientasi horisontal (landscape) dengan rasio lebar yang ideal untuk berita.
+3. **Download Buffer & Konversi Base64:**
+   - Di dalam `searchAndUploadCoverImage`:
+     - Ambil kandidat URL gambar.
+     - Lakukan `fetch(candidateUrl)` di server dengan timeout 5 detik.
+     - Konversi respon menjadi `Buffer.from(await res.arrayBuffer()).toString('base64')`.
+     - Kirim Base64 ke ImgBB API:
+       `imgbbBody.append('image', base64Data)`.
+   - Mengatasi 100% kegagalan error cURL PHP 8.4 `CURLOPT_BINARYTRANSFER`.
+4. **Mekanisme Fallback 3 Kandidat:**
+   - Jika kandidat gambar #1 gagal di-download (misal server asal memblokir bot / hotlink protection), otomatis mencoba kandidat #2 dan #3 secara berurutan.
 
 ---
 
-### C. Integrasi ke Worker Cron (`processAutoGenerateNextDraftAction`)
-Begitu `generateJurnalisDraftAction(draftId)` sukses:
-1. Sistem mengecek status sakelar `jurnalis_auto_cover_enabled`.
-2. Jika aktif:
-   * Memanggil `searchAndUploadCoverImage(generatedTitle, category)`.
-   * Jika URL ImgBB berhasil didapat, memanggil `attachPhotoUrlToDraftAction(draftId, imgbbUrl, caption)`.
-   * Draf otomatis berstatus **`ready_to_publish`** dan langsung mendapatkan slot jam tayang terjadwal (*Waterfall Queue*).
-3. Jika nonaktif:
-   * Draf tetap berstatus `need_photo` dan menunggu admin memasang foto secara manual.
+### C. Modifikasi [`app/admin/media-actions.ts`](file:///e:/porto/naratif/app/admin/media-actions.ts)
+1. Pada fungsi `uploadImageToImgbb`:
+   - Jika menerima `imageUrl` (tautan web gambar): alih-alih mengirim URL mentah ke ImgBB, sistem server Next.js akan men-download gambar menjadi buffer dan mengirimkannya sebagai Base64 ke ImgBB.
+   - Hal ini membuat semua fungsi upload gambar berbasis URL di seluruh aplikasi menjadi kebal dari bug server ImgBB.
 
 ---
 
-### D. Tampilan UI Sakelar di Web Admin (`app/admin/jurnalis/JurnalisClientView.tsx`)
-Di kartu kontrol bagian atas, akan dihadirkan dua sakelar yang serasi:
-
-```text
-┌────────────────────────────────────────────────────────────────────────┐
-│ 🤖 Auto-Generate Naskah AI:     [ 🟢 Aktif  ]                         │
-│ 🖼️ Auto-Pasang Foto Sampul:     [ 🟢 Aktif  / ⚪ Nonaktif ]            │
-│ ────────────────────────────────────────────────────────────────────── │
-│ 💡 Cron otomatis mencari foto bersih di Google, re-upload ke ImgBB,   │
-│    dan langsung menjadwalkan artikel ke antrean tayang.                │
-└────────────────────────────────────────────────────────────────────────┘
-```
-
-* **Bonus Tombol Manual:** Pada tabel draf yang belum memiliki foto, disediakan tombol cepat:  
-  `[ 🔍 Auto-Cari Foto Google ]`  
-  Sehingga admin bisa memicu pencarian foto Google untuk draf mana pun dengan 1 klik saja.
+### D. Pengujian & Verifikasi (Testing Plan)
+1. **Uji Kompresi Modal:**
+   - Buka modal "Pasang Foto" di menu Jurnalis AI.
+   - Upload file foto berukuran besar (misal 2 MB – 4 MB).
+   - Verifikasi apakah badge hijau muncul dan ukuran berkas terbukti menjadi < 100 KB WebP.
+   - Simpan, dan pastikan link gambar ImgBB tersimpan dengan baik.
+2. **Uji Tombol 1-Klik "Auto-Cari Google":**
+   - Klik tombol "Auto-Cari Google" pada draf berita yang belum ada fotonya.
+   - Verifikasi bahwa gambar berhasil di-upload ke ImgBB tanpa error cURL PHP 8.4.
+   - Pastikan gambar yang didapat relevan dengan topik berita dan berorientasi landscape.
+   - Pastikan status draf otomatis berubah menjadi `ready_to_publish` dan masuk antrean tayang.
+3. **Uji Build TypeScript:**
+   - Jalankan `npx tsc --noEmit` untuk memastikan tidak ada kesalahan tipe data.
 
 ---
 
-### E. Format Laporan Bot Telegram
-Pesan laporan bot Telegram kini akan mengabarkan bahwa foto sampul juga telah terpasang:
+## 4. Persetujuan Pengguna
 
-```text
-🤖 BERITA BARU + FOTO SAMPUL SELESAI DISUSUN!
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📰 [Judul Berita Baru Hasil AI]
+Rencana ini telah dirancang untuk menyelesaikan kedua kebutuhan Anda:
+1. Menjamin foto upload manual selalu **dikompresi otomatis ke < 100 KB WebP**.
+2. Memperbaiki fitur **Auto-Cover Gambar** agar berjalan mulus, tidak error, dan gambarnya relevan dengan berita.
 
-🏷️ Kategori: Infrastruktur | Status: Siap Tayang
-🖼️ Foto Sampul: Terpasang (Google Images ➔ ImgBB)
-⏰ Jadwal Tayang: Hari ini, 15:30 WIB (Waterfall Queue)
-
-💡 Artikel resmi masuk antrean tayang otomatis dan tidak memerlukan tindakan manual lagi.
-
-[ 📝 Buka di Dasbor Jurnalis ]   [ 🖼️ Lihat Foto Sampul ]
-```
-
----
-
-## 4. Rincian File yang Akan Dibuat dan Diubah
-
-| No | File | Jenis Perubahan | Deskripsi |
-|---|---|---|---|
-| 1 | `lib/image-scraper.ts` | **File Baru** | Scraper Google Images, filter landscape HD, dan re-host ke ImgBB |
-| 2 | `app/admin/jurnalis/actions.ts` | **Modifikasi** | Menambahkan `toggleJurnalisAutoCoverAction`, `autoFetchCoverForDraftAction`, dan integrasi ke cron worker |
-| 3 | `app/admin/jurnalis/page.tsx` | **Modifikasi** | Mengoper status awal sakelar auto-cover ke client view |
-| 4 | `app/admin/jurnalis/JurnalisClientView.tsx` | **Modifikasi** | Menambahkan switch toggle Auto-Cover & tombol 1-klik di tabel draf |
-
----
-
-## 5. Persetujuan & Langkah Lanjut
-
-Dokumen rencana ini telah disusun secara mendalam. Tidak ada kode produksi yang diubah sebelum ada persetujuan dari Anda.  
-Apakah rancangan di atas sudah sesuai dengan yang Anda harapkan dan siap kita implementasikan?
-
+Silakan tinjau rencana di atas. Jika Anda setuju, berikan konfirmasi agar implementasi dapat langsung dimulai.
