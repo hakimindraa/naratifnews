@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { sql } from "@/db";
+import { notifyKantorAI } from "@/lib/kantorAiNotifier";
 
 export async function POST(req: Request) {
   try {
@@ -29,6 +30,15 @@ export async function POST(req: Request) {
     `;
 
     const inserted = result.length > 0;
+
+    if (inserted) {
+      notifyKantorAI({
+        action: 'draft_created',
+        title: title,
+        source: source || 'Bot Berita',
+        category: 'Nasional',
+      });
+    }
 
     return NextResponse.json({
       success: true,

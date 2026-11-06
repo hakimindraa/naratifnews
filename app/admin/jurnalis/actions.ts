@@ -10,6 +10,7 @@ import { sendTelegramMessage } from '@/lib/telegram';
 import { getAISettings } from '@/app/admin/pengaturan/actions';
 import { sanitizeCoverCaption } from '@/lib/ai-generator';
 import { searchAndUploadCoverImage } from '@/lib/image-scraper';
+import { notifyKantorAI } from '@/lib/kantorAiNotifier';
 
 function generateSlug(text: string): string {
   const base = text
@@ -223,6 +224,14 @@ export async function attachPhotoToDraftAction(draftId: number, formData: FormDa
 
     revalidatePath('/admin/jurnalis');
     revalidatePath('/admin');
+
+    // Beri sinyal ke Kantor AI (Diorama 3D) bahwa foto sampul terpasang
+    notifyKantorAI({
+      action: 'cover_generated',
+      title: draft.generatedTitle || draft.title,
+      category: draft.category || 'Nasional',
+      coverUrl: finalCoverUrl,
+    });
 
     return {
       success: true,
@@ -546,6 +555,14 @@ export async function instantPublishDraftAction(draftId: number) {
     notifySearchEngines(articleUrl).catch((err) =>
       console.warn('Instant publish indexing error:', err)
     );
+
+    // Beri sinyal ke Kantor AI (Diorama 3D) bahwa artikel resmi terbit
+    notifyKantorAI({
+      action: 'article_published',
+      title: newArticle.title,
+      category: newArticle.category,
+      coverUrl: normalizedCoverUrl || undefined,
+    });
 
     // Notifikasi Telegram
     const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID?.trim();
@@ -914,6 +931,14 @@ export async function attachPhotoUrlToDraftAction(draftId: number, photoUrl: str
 
     revalidatePath('/admin/jurnalis');
     revalidatePath('/admin');
+
+    // Beri sinyal ke Kantor AI (Diorama 3D) bahwa foto sampul terpasang
+    notifyKantorAI({
+      action: 'cover_generated',
+      title: draft.generatedTitle || draft.title,
+      category: draft.category || 'Nasional',
+      coverUrl: normalizedCoverUrl,
+    });
 
     return {
       success: true,

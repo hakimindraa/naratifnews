@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache';
 import { notifySearchEngines } from '@/lib/indexing';
 import { sendTelegramMessage } from '@/lib/telegram';
 import { sanitizeCoverCaption } from '@/lib/ai-generator';
+import { notifyKantorAI } from '@/lib/kantorAiNotifier';
 
 export const maxDuration = 45;
 
@@ -161,6 +162,14 @@ export async function GET(request: Request) {
     notifySearchEngines(articleUrl).catch((err) =>
       console.warn('Jurnalis Queue Indexing Error:', err)
     );
+
+    // Beri sinyal ke Kantor AI (Diorama 3D) bahwa artikel resmi terbit
+    notifyKantorAI({
+      action: 'article_published',
+      title: newArticle.title,
+      category: newArticle.category,
+      coverUrl: coverUrl,
+    });
 
     // 9. Revalidasi Seluruh Cache Web
     revalidatePath('/', 'layout');
