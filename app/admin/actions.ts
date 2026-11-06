@@ -10,6 +10,7 @@ import { encrypt } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { notifySearchEngines } from '@/lib/indexing';
 import { sendTelegramMessage } from '@/lib/telegram';
+import { notifyKantorAI } from '@/lib/kantorAiNotifier';
 
 export async function uploadMarkdownFile(formData: FormData) {
   try {
@@ -518,6 +519,17 @@ export async function createArticle(formData: FormData) {
       const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.adafakta.web.id';
       const articleUrl = `${siteUrl}/berita/${catFormatted.toLowerCase()}/${newArticle.id}/${newArticle.slug}`;
       notifySearchEngines(articleUrl).catch((err) => console.warn('Create Article Indexing Error:', err));
+
+      // Beri sinyal ke Kantor AI (Diorama 3D) bahwa artikel manual terbit
+      notifyKantorAI({
+        action: 'article_published',
+        title,
+        category: catFormatted,
+        coverUrl: coverUrl || undefined,
+        articleUrl,
+        author: author || 'Redaksi',
+        excerpt: excerpt || undefined,
+      });
     }
 
     revalidatePath('/', 'layout');

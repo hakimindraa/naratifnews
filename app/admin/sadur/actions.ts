@@ -9,6 +9,7 @@ import { findSimilarArticles, checkSourceUrlHistory, SimilarityCheckResult } fro
 import { getAISettings } from '../pengaturan/actions';
 import { revalidatePath } from 'next/cache';
 import { notifySearchEngines } from '@/lib/indexing';
+import { notifyKantorAI } from '@/lib/kantorAiNotifier';
 
 export interface GenerateSadurParams {
   sourceUrl: string;
@@ -143,11 +144,25 @@ export async function generateSadurArticleAction(params: GenerateSadurParams) {
     revalidatePath('/admin/sadur');
 
     // Instant Indexing: Beritahu Google & Bing jika artikel langsung diterbitkan
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.adafakta.web.id';
+    const articleUrl = `${siteUrl}/berita/${newArticle.category.toLowerCase()}/${newArticle.id}/${newArticle.slug}`;
+
     if (params.status === 'published') {
-      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.adafakta.web.id';
-      const articleUrl = `${siteUrl}/berita/${newArticle.category.toLowerCase()}/${newArticle.id}/${newArticle.slug}`;
       notifySearchEngines(articleUrl).catch((err) => console.warn('Sadur Indexing Error:', err));
     }
+
+    // Beri sinyal ke Kantor AI (Diorama 3D) bahwa berita selesai disadur dari URL luar
+    notifyKantorAI({
+      action: 'article_rewritten',
+      title: newArticle.title,
+      category: newArticle.category,
+      coverUrl: newArticle.coverUrl || undefined,
+      articleUrl: articleUrl,
+      author: newArticle.author,
+      excerpt: newArticle.excerpt || undefined,
+      source: params.domain || params.sourceUrl,
+      model: result.modelUsed || params.provider,
+    });
 
     return {
       success: true,

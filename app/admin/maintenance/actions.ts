@@ -4,6 +4,7 @@ import { db } from '@/db';
 import { articles, jurnalisDrafts, aiGenerationLogs, systemSettings } from '@/db/schema';
 import { eq, and, lt, sql, desc } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
+import { notifyKantorAI } from '@/lib/kantorAiNotifier';
 
 export interface MaintenanceSettings {
   draftsRetentionDays: number; // 3, 5, 7, 14, 0 (0 = nonaktif)
@@ -212,6 +213,19 @@ export async function executePurgeAction(scope: 'all' | 'raw_drafts' | 'publishe
     revalidatePath('/admin');
 
     const totalDeleted = deletedRawDrafts + deletedPublishedDrafts + deletedAiLogs;
+
+    // Beri sinyal ke Kantor AI (Diorama 3D) bahwa pembersihan sampah DB selesai dilakukan
+    notifyKantorAI({
+      action: 'db_purged',
+      title: `${totalDeleted} data sampah dibersihkan`,
+      metadata: {
+        scope,
+        deletedRawDrafts,
+        deletedPublishedDrafts,
+        deletedAiLogs,
+        totalDeleted,
+      },
+    });
 
     return {
       success: true,

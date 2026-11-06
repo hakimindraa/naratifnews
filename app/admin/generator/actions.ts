@@ -6,6 +6,7 @@ import { requestArticleFromModelRouter, fetchGoogleNewsResearch, NewsSource } fr
 import { findSimilarArticles, SimilarityCheckResult } from '@/lib/duplicate-detector';
 import { revalidatePath } from 'next/cache';
 import { desc, eq } from 'drizzle-orm';
+import { notifyKantorAI } from '@/lib/kantorAiNotifier';
 
 export interface GeneratePayload {
   prompt: string;
@@ -100,6 +101,21 @@ export async function generateArticleAction(payload: GeneratePayload) {
     revalidatePath('/');
     revalidatePath('/admin');
     revalidatePath('/admin/generator');
+
+    // 6. Beri sinyal ke Kantor AI (Diorama 3D) bahwa artikel selesai dibuat via AI Studio
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.adafakta.web.id';
+    const articleUrl = `${siteUrl}/berita/${newArticle.category.toLowerCase()}/${newArticle.id}/${newArticle.slug}`;
+
+    notifyKantorAI({
+      action: 'ai_studio_generated',
+      title: newArticle.title,
+      category: newArticle.category,
+      coverUrl: newArticle.coverUrl || undefined,
+      articleUrl: articleUrl,
+      author: newArticle.author,
+      excerpt: newArticle.excerpt || undefined,
+      model: draft.modelUsed || payload.provider || 'AI Studio',
+    });
 
     return {
       success: true,

@@ -4,6 +4,7 @@ import { db } from '@/db';
 import { authors, articles } from '@/db/schema';
 import { eq, desc, sql, count, or, ilike } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
+import { notifyKantorAI } from '@/lib/kantorAiNotifier';
 
 export interface AuthorItem {
   id: number;
@@ -116,6 +117,15 @@ export async function createAuthorAction(formData: FormData) {
 
     revalidatePath('/admin/penulis');
     revalidatePath('/admin/tulis');
+
+    // Beri sinyal ke Kantor AI (Diorama 3D) bahwa ada penulis/wartawan baru
+    notifyKantorAI({
+      action: 'author_created',
+      title: inserted.name,
+      coverUrl: inserted.avatarUrl || undefined,
+      metadata: { role: inserted.role, bio: inserted.bio },
+    });
+
     return { success: true, author: inserted };
   } catch (err: any) {
     console.error('[Create Author Error]:', err);

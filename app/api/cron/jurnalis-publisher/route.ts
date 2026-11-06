@@ -169,6 +169,9 @@ export async function GET(request: Request) {
       title: newArticle.title,
       category: newArticle.category,
       coverUrl: coverUrl,
+      articleUrl: articleUrl,
+      author: 'Redaksi 2',
+      excerpt: excerpt || undefined,
     });
 
     // 9. Revalidasi Seluruh Cache Web

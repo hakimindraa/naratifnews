@@ -37,6 +37,8 @@ export async function POST(req: Request) {
         title: title,
         source: source || 'Bot Berita',
         category: 'Nasional',
+        excerpt: summary || undefined,
+        articleUrl: url || undefined,
       });
     }
 

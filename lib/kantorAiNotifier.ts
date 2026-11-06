@@ -5,11 +5,23 @@
  */
 
 export interface KantorAIPayload {
-  action: 'draft_created' | 'article_published' | 'cover_generated';
+  action:
+    | 'draft_created'
+    | 'cover_generated'
+    | 'article_published'
+    | 'article_rewritten'
+    | 'ai_studio_generated'
+    | 'author_created'
+    | 'db_purged';
   title: string;
   category?: string;
   coverUrl?: string;
+  articleUrl?: string;
+  author?: string;
+  excerpt?: string;
   source?: string;
+  model?: string;
+  metadata?: Record<string, any>;
 }
 
 export async function notifyKantorAI(payload: KantorAIPayload): Promise<void> {

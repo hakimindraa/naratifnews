@@ -562,6 +562,9 @@ export async function instantPublishDraftAction(draftId: number) {
       title: newArticle.title,
       category: newArticle.category,
       coverUrl: normalizedCoverUrl || undefined,
+      articleUrl: articleUrl,
+      author: 'Redaksi 2',
+      excerpt: draft.summary || undefined,
     });
 
     // Notifikasi Telegram
